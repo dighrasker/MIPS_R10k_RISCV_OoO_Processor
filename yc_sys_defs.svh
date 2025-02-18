@@ -30,6 +30,17 @@
 `define PHYS_REG_SZ_P6 32
 `define PHYS_REG_SZ_R10K (32 + `ROB_SZ)
 
+// EDITED HERE
+
+
+`define ROB_ENTRY_ID_BITS $clog2(ROB_SZ)
+`define PHYS_REG_ID_BITS $clog2(PHYS_REG_SZ_R10K)
+
+typedef logic [ROB_ENTRY_ID_BITS-1:0] ROB_ENTRY_ID;
+typedef logic [PHYS_REG_ID_BITS-1:0] PHYS_REG_IDX;
+
+// EDITED END
+
 // worry about these later
 `define BRANCH_PRED_SZ xx
 `define LSQ_SZ xx
@@ -388,5 +399,18 @@ typedef struct packed {
     logic   illegal;
     logic   valid;
 } COMMIT_PACKET;
+
+// EDIED HERE
+
+typedef struct packed {
+    ROB_ENTRY_ID    rob_entry_id;
+    PHYS_REG_IDX    T;
+    PHYS_REG_IDX    T_old;
+    INST            inst;
+    logic           inst_completed;
+    
+} ROB_ENTRY_PACKET;
+
+// EDITED END
 
 `endif // __SYS_DEFS_SVH__
