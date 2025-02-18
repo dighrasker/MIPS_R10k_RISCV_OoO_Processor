@@ -1,3 +1,4 @@
+
 /////////////////////////////////////////////////////////////////////////
 //                                                                     //
 //   Modulename :  sys_defs.svh                                        //
@@ -29,6 +30,19 @@
 `define RS_SZ xx
 `define PHYS_REG_SZ_P6 32
 `define PHYS_REG_SZ_R10K (32 + `ROB_SZ)
+
+// EDITED HERE
+
+
+`define ROB_ENTRY_ID_BITS $clog2(ROB_SZ)
+`define PHYS_REG_ID_BITS $clog2(PHYS_REG_SZ_R10K)
+`define ARCH_REG_ID_BITS $clog2(32) // Assuming # arch reg = 32
+
+typedef logic [ROB_ENTRY_ID_BITS-1:0] ROB_ENTRY_ID;
+typedef logic [PHYS_REG_ID_BITS-1:0] PHYS_REG_IDX;
+typedef logic [ARCH_REG_ID_BITS-1:0] ARCH_REG_IDX;
+
+// EDITED END
 
 // worry about these later
 `define BRANCH_PRED_SZ xx
@@ -388,5 +402,28 @@ typedef struct packed {
     logic   illegal;
     logic   valid;
 } COMMIT_PACKET;
+
+// EDIED HERE
+
+typedef struct packed {
+    // ADDR            PC;
+    PHYS_REG_IDX    T; // Use as unique rob id
+    PHYS_REG_IDX    T_old;
+    ARCH_REG_IDX    Arch_reg;
+    logic           wr_en;
+    logic           rd_en;
+} ROB_ENTRY_PACKET;
+
+typedef struct packed {
+    // ADDR            PC;
+    
+    PHYS_REG_IDX    T; // Use as unique rob id
+    PHYS_REG_IDX    T_old;
+    ARCH_REG_IDX    Arch_reg;
+    logic           wr_valid;
+    logic           rd_valid;
+} ROB_EXIT_PACKET;
+
+// EDITED END
 
 `endif // __SYS_DEFS_SVH__
