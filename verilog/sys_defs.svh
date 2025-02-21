@@ -407,11 +407,10 @@ typedef struct packed {
 
 typedef struct packed {
     // ADDR            PC;
+
     PHYS_REG_IDX    T; // Use as unique rob id
     PHYS_REG_IDX    T_old;
     ARCH_REG_IDX    Arch_reg;
-    logic           wr_en;
-    logic           rd_en;
 } ROB_ENTRY_PACKET;
 
 typedef struct packed {
@@ -420,9 +419,18 @@ typedef struct packed {
     PHYS_REG_IDX    T; // Use as unique rob id
     PHYS_REG_IDX    T_old;
     ARCH_REG_IDX    Arch_reg;
-    logic           wr_valid;
-    logic           rd_valid;
 } ROB_EXIT_PACKET;
+
+typedef struct packed {
+    // ADDR            PC;
+    ROB_ENTRY_PACKET       [`ROB_SZ-1:0] Entries; // Use as unique rob id
+    logic     [$clog2(`ROB_SZ)-1:0] Head;
+    logic     [$clog2(`ROB_SZ)-1:0] Tail;
+    logic [$clog2(`ROB_SZ + 1)-1:0] Spots;
+    logic                  [`N-1:0] Outputs_valid;
+    ROB_RETIRE_PACKET      [`N-1:0] Rob_Outputs;
+
+} ROB_DEBUG;
 
 // EDITED END
 
