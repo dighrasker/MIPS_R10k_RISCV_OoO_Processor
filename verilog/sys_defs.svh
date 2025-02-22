@@ -22,11 +22,11 @@
 // this is *your* processor, you decide these values (try analyzing which is best!)
 
 // superscalar width
-`define N 1
+`define N 10
 `define CDB_SZ `N // This MUST match your superscalar width
 
 // sizes
-`define ROB_SZ xx
+`define ROB_SZ 31
 `define RS_SZ xx
 `define PHYS_REG_SZ_P6 32
 `define PHYS_REG_SZ_R10K (32 + `ROB_SZ)
@@ -34,13 +34,14 @@
 // EDITED HERE
 
 
-`define ROB_ENTRY_ID_BITS $clog2(ROB_SZ)
-`define PHYS_REG_ID_BITS $clog2(PHYS_REG_SZ_R10K)
+`define ROB_ENTRY_ID_BITS $clog2(`ROB_SZ)
+`define PHYS_REG_ID_BITS $clog2(`PHYS_REG_SZ_R10K)
 `define ARCH_REG_ID_BITS $clog2(32) // Assuming # arch reg = 32
 
-typedef logic [ROB_ENTRY_ID_BITS-1:0] ROB_ENTRY_ID;
-typedef logic [PHYS_REG_ID_BITS-1:0] PHYS_REG_IDX;
-typedef logic [ARCH_REG_ID_BITS-1:0] ARCH_REG_IDX;
+typedef logic [`ROB_ENTRY_ID_BITS-1:0] ROB_ENTRY_ID;
+typedef logic [`PHYS_REG_ID_BITS-1:0]  PHYS_REG_IDX;
+typedef logic [`ARCH_REG_ID_BITS-1:0]  ARCH_REG_IDX;
+typedef logic [6:0]                   OPCODE;
 
 // EDITED END
 
@@ -408,7 +409,7 @@ typedef struct packed {
 typedef struct packed {
     // ADDR            PC;
 
-    PHYS_REG_IDX    T; // Use as unique rob id
+    PHYS_REG_IDX    T_new; // Use as unique rob id
     PHYS_REG_IDX    T_old;
     ARCH_REG_IDX    Arch_reg;
 } ROB_ENTRY_PACKET;
@@ -416,20 +417,40 @@ typedef struct packed {
 typedef struct packed {
     // ADDR            PC;
     
-    PHYS_REG_IDX    T; // Use as unique rob id
+    PHYS_REG_IDX    T_new; // Use as unique rob id
     PHYS_REG_IDX    T_old;
     ARCH_REG_IDX    Arch_reg;
 } ROB_EXIT_PACKET;
 
+//TODO: CHANGE FOR RS
 typedef struct packed {
     // ADDR            PC;
-    ROB_ENTRY_PACKET       [`ROB_SZ-1:0] Entries; // Use as unique rob id
+
+    PHYS_REG_IDX    T_new; // Use as unique RS id ???
+    PHYS_REG_IDX    Source1;
+    PHYS_REG_IDX    Source2;
+    OPCODE          Op;
+} RS_ENTRY_PACKET;
+
+typedef struct packed {
+    // ADDR            PC;
+    
+    PHYS_REG_IDX    T_new; // Use as unique RS id
+    INST            inst;
+    PHYS_REG_IDX    Source1;
+    ARCH_REG_IDX    Source2;
+    OPCODE          Op;
+} RS_EXIT_PACKET;
+
+typedef struct packed {
+    // ADDR            PC;
+    ROB_ENTRY_PACKET  [`ROB_SZ-1:0] Entries; // Use as unique rob id
     logic     [$clog2(`ROB_SZ)-1:0] Head;
     logic     [$clog2(`ROB_SZ)-1:0] Tail;
     logic [$clog2(`ROB_SZ + 1)-1:0] Spots;
     logic                  [`N-1:0] Outputs_valid;
-    ROB_RETIRE_PACKET      [`N-1:0] Rob_Outputs;
-
+    ROB_EXIT_PACKET        [`N-1:0] Rob_Outputs;
+    logic   [$clog2(`ROB_SZ + 1)-1:0] num_entries;
 } ROB_DEBUG;
 
 // EDITED END
