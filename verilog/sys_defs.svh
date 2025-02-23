@@ -36,12 +36,14 @@
 
 `define ROB_ENTRY_ID_BITS $clog2(`ROB_SZ)
 `define PHYS_REG_ID_BITS $clog2(`PHYS_REG_SZ_R10K)
+`define PHYS_REG_ID_BITS_BIG $clog2(`PHYS_REG_SZ_R10K+1)
 `define ARCH_REG_ID_BITS $clog2(32) // Assuming # arch reg = 32
 
-typedef logic [`ROB_ENTRY_ID_BITS-1:0] ROB_ENTRY_ID;
-typedef logic [`PHYS_REG_ID_BITS-1:0]  PHYS_REG_IDX;
-typedef logic [`ARCH_REG_ID_BITS-1:0]  ARCH_REG_IDX;
-typedef logic [6:0]                   OPCODE;
+typedef logic [`ROB_ENTRY_ID_BITS-1:0]      ROB_ENTRY_ID;
+typedef logic [`PHYS_REG_ID_BITS-1:0]       PHYS_REG_IDX;
+typedef logic [`PHYS_REG_ID_BITS_BIG-1:0]   PHYS_REG_IDX_BIG;
+typedef logic [`ARCH_REG_ID_BITS-1:0]       ARCH_REG_IDX;
+typedef logic [6:0]                         OPCODE;
 
 // EDITED END
 
@@ -428,7 +430,9 @@ typedef struct packed {
 
     PHYS_REG_IDX    T_new; // Use as unique RS id ???
     PHYS_REG_IDX    Source1;
+    logic           Source1_ready;
     PHYS_REG_IDX    Source2;
+    logic           Source2_ready;
     OPCODE          Op;
 } RS_ENTRY_PACKET;
 
@@ -452,6 +456,8 @@ typedef struct packed {
     ROB_EXIT_PACKET        [`N-1:0] Rob_Outputs;
     logic   [$clog2(`ROB_SZ + 1)-1:0] num_entries;
 } ROB_DEBUG;
+
+
 
 // EDITED END
 

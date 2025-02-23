@@ -6,10 +6,14 @@ module ROB #(
 ) (
     input   logic                        clock, 
     input   logic                        reset,
+
+    // ------------ TO/FROM DISPATCH ------------- //
     input   ROB_ENTRY_PACKET    [`N-1:0] rob_inputs,    // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
     input   logic  [NUM_SCALAR_BITS-1:0] inputs_valid,  // To distinguish invalid instructions being passed in from Dispatch (A number, NOT one hot)
     output  ROB_EXIT_PACKET     [`N-1:0] rob_outputs,   // For retire to check eligibility
     output  logic  [NUM_SCALAR_BITS-1:0] outputs_valid, // If not all N rob entries are valid entries they should not be considered
+
+    // ------------- TO/FROM RETIRE -------------- //
     input   logic  [NUM_SCALAR_BITS-1:0] num_retiring,  // Retire module tells the ROB how many entries can be cleared
     output  logic  [NUM_SCALAR_BITS-1:0] spots          //number of spots available, saturated at N
 `ifdef DEBUG

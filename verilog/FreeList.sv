@@ -4,10 +4,13 @@ module FreeList #(
 ) (
     input  logic                    clock,
     input  logic                    reset,
-    input  PHYS_REG_IDX    [`N-1:0] newly_freed;
-    input  logic           [`N-1:0] valid_frees;
-    output logic [$clog2(`N+1)-1:0] num_available;
+
+    // -------- FROM RETIRE --------- //
+    input  PHYS_REG_IDX_BIG    [`N-1:0] inputs_retiring;
+    
+    // ------- TO/FROM DISPATCH -------- //
     input  logic [$clog2(`N+1)-1:0] num_requested;
+    output logic [$clog2(`N+1)-1:0] num_available;
     output PHYS_REG_IDX    [`N-1:0] regs_to_use;
 );
 
@@ -16,7 +19,7 @@ module FreeList #(
     //free regs = current free list orred with retiring ones from R?
     //^This requires specific indices to be outputted from Retire
     //We have the option to either send in N reg indices or send in a 32 bit one hot vector
-
+    
 
     logic [LENGTH-1:0] free, next_free;
 
@@ -25,7 +28,7 @@ module FreeList #(
     always_comb begin
         next_curr_avail = $countones(valid_frees) + curr_avail - num_requested;
         num_available = ($countones(valid_frees) + curr_avail <= `N) ? $countones(valid_frees) + curr_avail : `N;
-        next_free = free//??
+        next_free = free;//??
     end
 
     always_ff @(posedge clock) begin

@@ -13,7 +13,6 @@ module ROB_test ();
     localparam NUM_ENTRIES_BITS = $clog2(DEPTH + 1);
     localparam NUM_SCALAR_BITS = $clog2(`N+1);
 
-
     logic                        clock; 
     logic                        reset;
     ROB_ENTRY_PACKET    [`N-1:0] rob_inputs; // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
@@ -24,10 +23,7 @@ module ROB_test ();
     logic  [NUM_SCALAR_BITS-1:0] spots;
     ROB_DEBUG                    rob_debug;
 
-
-
-    // variable to count values written to FIFO
-    int cnt;
+    logic [$bits(ROB_ENTRY_PACKET)-1:0] index;
 
     // INSTANCE is from the sys_defs.svh file
     // it renames the module if SYNTH is defined in
@@ -54,7 +50,7 @@ module ROB_test ();
         #(`CLOCK_PERIOD/2) clock = ~clock;
     end
 
-    logic [`N-1:0] [$bits(ROB_ENTRY_PACKET)-`PHYS_REG_ID_BITS-1:0] temp;
+    // logic [`N-1:0] [$bits(ROB_ENTRY_PACKET)-`PHYS_REG_ID_BITS-1:0] temp;
     logic [`N-1:0] [`PHYS_REG_ID_BITS - 1:0] T_new;
     //Generate random numbers for our write data on each cycle
     // always_ff @(negedge clock) begin
@@ -64,11 +60,21 @@ module ROB_test ();
     //     end
     // end
 
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            index <= 0;
+        end else begin
+            index <= index + inputs_valid;
+        end
+    end
+
     always_comb begin : generateRobInputs 
         for(int i = 0; i < `N; ++i) begin
-            T_new[i] = (rob_debug.Tail + i)%DEPTH;
+            // T_new[i] = (rob_debug.Tail + i)%DEPTH;
             // rob_inputs[i].T_new = {T_new[i], temp[i]}; 
-            rob_inputs[i].T_new = T_new[i]; 
+            rob_inputs[i] = index + i; 
+            // $display(" rob_inputs[%0d]: %0d, index %d",
+            //       i,    (i + index),   rob_inputs[i], index);
         end
     end
 
@@ -80,8 +86,8 @@ module ROB_test ();
         inputs_valid = 0;
         num_retiring = 0;
 
-        $monitor("  %3d | inputs_valid: %b   outputs_valid: %b   num_retiring: %b   spots: %b,   rob_head: %b,   tail: %b,   entries: %b",
-                  $time,  inputs_valid,      outputs_valid,      num_retiring,      spots,       rob_debug.Head, rob_debug.Tail, rob_debug.num_entries);
+        $monitor("  %3d | inputs_valid: %d   outputs_valid: %d   num_retiring: %d,   spots: %d,   rob_head: %d,   tail: %d,   entries: %d",
+                  $time,  inputs_valid,      outputs_valid,      num_retiring,       spots,       rob_debug.Head, rob_debug.Tail, rob_debug.num_entries);
 
         // for (int Index = 0; Index < `N; ++Index) begin
         //     $monitor("Index: %b | rob_inputs: %b   rob_outputs: %b",
@@ -94,13 +100,15 @@ module ROB_test ();
 
         // ---------- Test 1 ---------- //
         $display("\nTest 1: Add/Retire 1 entry to/from the ROB");
+        $display("Add 1 entry to the ROB");
         inputs_valid = 1;
         @(negedge clock);
         inputs_valid = 0;
 
         @(negedge clock);
-        num_retiring = 1;
 
+        $display("Retire 1 entry from the ROB");
+        num_retiring = 1;
         @(negedge clock);
         num_retiring = 0;
 
