@@ -4,9 +4,6 @@
 
 `include "verilog/sys_defs.svh"
 
-`ifndef ROB_SVA_SVH
-`define ROB_SVA_SVH
-
 module ROB_sva #(
     parameter DEPTH = `ROB_SZ,
     localparam DEPTH_BITS = $clog2(DEPTH),
@@ -85,4 +82,3 @@ module ROB_sva #(
 
 endmodule
 
-`endif // FIFO_SVA_SVH

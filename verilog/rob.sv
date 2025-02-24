@@ -36,6 +36,7 @@ module rob #(
         next_entries = entries + inputs_valid - num_retiring;
         spots = (DEPTH - entries < `N) ? DEPTH - entries : `N;
         outputs_valid = (entries < `N) ? entries : `N;
+        rob_outputs = '0;
         for (int i = 0; i < `N; ++i) begin
             if (i < outputs_valid) begin
                 rob_outputs[i] = rob_entries[(head + i)%DEPTH];
@@ -62,7 +63,7 @@ module rob #(
     end
 
 // Debug signals
-`ifdef DEBUG
+//`ifdef DEBUG
     assign rob_debug = {
         Entries:        rob_entries,
         Head:           head,
@@ -72,6 +73,6 @@ module rob #(
         Rob_Outputs:    rob_outputs,
         num_entries:    entries
     };
-`endif
+//`endif
 
 endmodule

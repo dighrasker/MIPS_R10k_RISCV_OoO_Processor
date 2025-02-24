@@ -2,8 +2,8 @@
 // This module generates the test vectors
 // Correctness checking is in FIFO_sva.svh
 
-`include "sys_defs.svh"
-`include "test/rob_sva.svh"
+`include "verilog/sys_defs.svh"
+//`include "test/rob_sva.svh"
 //`include "../verilog/rob.sv"
 `define DEBUG
 
@@ -40,9 +40,19 @@ module ROB_test ();
         .spots         (spots),
         .rob_debug     (rob_debug)
     );
-
-    bind dut ROB_sva DUT_sva (.*);
-
+    /*
+    bind dut ROB_sva DUT_sva (
+        .clock         (clock),
+        .reset         (reset),
+        .rob_inputs    (rob_inputs),
+        .inputs_valid  (inputs_valid), 
+        .rob_outputs   (rob_outputs),
+        .outputs_valid (outputs_valid),
+        .num_retiring  (num_retiring),
+        .spots         (spots),
+        .rob_debug     (rob_debug)
+    );
+    */
     always begin
         #(`CLOCK_PERIOD/2) clock = ~clock;
     end
@@ -218,4 +228,67 @@ module ROB_test ();
         $finish;
     end
 
+    //////////////////////////////////////////
+    //                                      //
+    //COPIED SVA CODE TO AVOID LINKER ISSUE //                             //
+    //                                      //
+    //////////////////////////////////////////
+    int spots_manual;
+    assign spots_manual = rob_debug.Head == rob_debug.Tail && rob_debug.Spots == 0 && rob_debug.num_entries != 0
+                            ? 0
+                            : DEPTH - ((rob_debug.Tail - rob_debug.Head + DEPTH) % DEPTH) > `N 
+                                ? `N
+                                : DEPTH - ((rob_debug.Tail - rob_debug.Head + DEPTH) % DEPTH);
+
+    logic [$bits(ROB_ENTRY_PACKET)-1:0] index_SVA;
+
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            index_SVA <= 0;
+        end else begin
+            index_SVA <= index_SVA + num_retiring;
+        end
+    end
+
+    task exit_on_error;
+        begin
+            $display("\n\033[31m@@@ Failed at time %4d\033[0m\n", $time);
+            $finish;
+        end
+    endtask
+    
+    always @(posedge clock) begin
+
+    // Check each valid output
+        for (int i = 0; i < outputs_valid; i++) begin
+            assert (reset || rob_outputs[i] == (i + index_SVA))
+                else begin
+                    $error("Mismatch on rob_outputs[%0d]: expected %0d, got %0d", 
+                        i,    (i + index_SVA),      rob_outputs[i]);
+                    $finish;
+                end
+        end
+
+        // Check overall conditions
+        assert (reset || rob_debug.Spots == spots_manual)
+            else begin
+                $error("rob_debug.Spots (%0d) does not equal spots_manual (%0d)", 
+                        rob_debug.Spots, spots_manual);
+                $finish;
+            end
+        
+        assert (reset || {1'b0, inputs_valid} <= ({1'b0, spots} + {1'b0, num_retiring}))
+            else begin
+                $error("inputs_valid (%0d) exceeds spots + num_retiring (%0d)", 
+                        inputs_valid, spots + num_retiring);
+                $finish;
+            end
+
+        assert (reset || num_retiring <= rob_debug.num_entries)
+            else begin
+                $error("num_retiring (%0d) exceeds num_entries (%0d)", 
+                        num_retiring, rob_debug.num_entries);
+                $finish;
+            end
+    end
 endmodule
