@@ -2,6 +2,8 @@
 // This file is included by the testbench to separate our main module checking code
 // SVA are relatively new to 470, feel free to use them in the final project if you like
 
+`include "verilog/sys_defs.svh"
+
 `ifndef ROB_SVA_SVH
 `define ROB_SVA_SVH
 

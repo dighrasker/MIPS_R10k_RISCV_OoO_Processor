@@ -4,6 +4,7 @@
 
 `include "sys_defs.svh"
 `include "test/rob_sva.svh"
+//`include "../verilog/rob.sv"
 `define DEBUG
 
 module ROB_test ();
@@ -28,9 +29,7 @@ module ROB_test ();
     // INSTANCE is from the sys_defs.svh file
     // it renames the module if SYNTH is defined in
     // order to rename the module to FIFO_svsim
-    ROB #(
-        .DEPTH(DEPTH)
-    ) dut (
+    rob dut (
         .clock         (clock),
         .reset         (reset),
         .rob_inputs    (rob_inputs),
@@ -42,9 +41,7 @@ module ROB_test ();
         .rob_debug     (rob_debug)
     );
 
-    bind dut ROB_sva #(
-        .DEPTH(DEPTH)) 
-    DUT_sva (.*);
+    bind dut ROB_sva DUT_sva (.*);
 
     always begin
         #(`CLOCK_PERIOD/2) clock = ~clock;

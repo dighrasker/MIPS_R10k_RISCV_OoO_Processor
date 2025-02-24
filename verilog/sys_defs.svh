@@ -24,24 +24,25 @@
 // superscalar width
 `define N 10
 `define CDB_SZ `N // This MUST match your superscalar width
+`define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]
 
 // sizes
 `define ROB_SZ 31
 `define RS_SZ xx
+`define ARCH_REG_SZ_R10K (32)
 `define PHYS_REG_SZ_P6 32
-`define PHYS_REG_SZ_R10K (32 + `ROB_SZ)
+`define PHYS_REG_SZ_R10K (`ARCH_REG_SZ_R10K + `ROB_SZ)
+
 
 // EDITED HERE
 
 
 `define ROB_ENTRY_ID_BITS $clog2(`ROB_SZ)
 `define PHYS_REG_ID_BITS $clog2(`PHYS_REG_SZ_R10K)
-`define PHYS_REG_ID_BITS_BIG $clog2(`PHYS_REG_SZ_R10K+1)
 `define ARCH_REG_ID_BITS $clog2(32) // Assuming # arch reg = 32
 
 typedef logic [`ROB_ENTRY_ID_BITS-1:0]      ROB_ENTRY_ID;
 typedef logic [`PHYS_REG_ID_BITS-1:0]       PHYS_REG_IDX;
-typedef logic [`PHYS_REG_ID_BITS_BIG-1:0]   PHYS_REG_IDX_BIG;
 typedef logic [`ARCH_REG_ID_BITS-1:0]       ARCH_REG_IDX;
 typedef logic [6:0]                         OPCODE;
 

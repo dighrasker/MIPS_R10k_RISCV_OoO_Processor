@@ -6,12 +6,13 @@ module FreeList #(
     input  logic                    reset,
 
     // -------- FROM RETIRE --------- //
-    input  PHYS_REG_IDX_BIG    [`N-1:0] inputs_retiring;
+    input PHYS_REG_IDX_BIG     [`N-1:0] inputs_retiring,    // phys reg indexes that are retiring (T_old)
+    input logic  [`NUM_SCALAR_BITS-1:0] num_retiring_valid, // number of retiring phys reg (T_old)
     
     // ------- TO/FROM DISPATCH -------- //
-    input  logic [$clog2(`N+1)-1:0] num_requested;
-    output logic [$clog2(`N+1)-1:0] num_available;
-    output PHYS_REG_IDX    [`N-1:0] regs_to_use;
+    input logic  [`NUM_SCALAR_BITS-1:0] num_requested,      // number of free phys reg taken for dispatch
+    output logic [`NUM_SCALAR_BITS-1:0] num_available,      // number of free pbys reg available
+    output PHYS_REG_IDX        [`N-1:0] regs_to_use         // vector of phys reg that dispatch can take from
 );
 
     //Free List outputs:

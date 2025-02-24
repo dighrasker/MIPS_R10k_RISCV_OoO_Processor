@@ -1,5 +1,4 @@
 module RS #(
-    localparam NUM_SCALAR_BITS = $clog2(`N+1)
 ) (
     input  logic                        clock, 
     input  logic                        reset,
@@ -17,14 +16,14 @@ module RS #(
     input  logic          [`RS_SZ-1:0] outputs_issuing, // One-hot bitvecotr of RS packets issued
     output logic          [`RS_SZ-1:0] outputs_valid,   // One-hot bitvector of output RS packets
     output RS_EXIT_PACKET [`RS_SZ-1:0] rs_outputs,      // Output RS packets data
-    
 );
+
     // Main RS Data Here
     RS_ENTRY_PACKET [`RS_SZ-1:0] RS;
     logic [`RS_SZ-1:0] RS_valid;
 
     always_comb begin
-    
+        
     end
 
     always_ff @(posedge clock) begin

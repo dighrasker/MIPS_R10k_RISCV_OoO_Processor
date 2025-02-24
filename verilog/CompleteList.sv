@@ -4,29 +4,30 @@ module CompleteList #(
 ) (
     input   clock,
     input   reset,
-    input  PHYS_REG_IDX_BIG    [`N-1:0] inputs_completing;
-    input  PHYS_REG_IDX_BIG    [`N-1:0] inputs_retiring;
-    output logic           [LENGTH-1:0] complete
+    input  PHYS_REG_IDX        [`N-1:0] inputs_completing,    // phys reg indexes that are being completed (T_new)
+    input  logic [`NUM_SCALAR_BITS-1:0] num_completing_valid, // number of retiring phys reg (T_New)
+    input  PHYS_REG_IDX        [`N-1:0] inputs_retiring,      // phy reg indexes that are being retired (T_old)
+    input  logic [`NUM_SCALAR_BITS-1:0] num_retiring_valid,   // number of retiring phys reg (T_old)
+    output logic           [LENGTH-1:0] complete_list         // bitvector of the phys reg that are complete
 );
 
-    logic [LENGTH-1:0] next_complete;
+    logic [LENGTH-1:0] next_complete_list;
 
-    always_comb begin
-        for (int i = 0; i < `PHYS_REG_SZ_R10K; ++i) begin
-            for (int j = 0; j < `N; ++j) begin
-                if (inputs_completing[j] == i) begin
-                    next_complete[i] = 1'b1;
-                end
-            end
-
-            for (int j = 0; j < `N; ++j) begin
-                if (inputs_retiring[j] == i) begin
-                    next_complete[i] = 1'b0;
-                end
+    generate 
+        next_complete = complete;
+        for (genvar i = 0; i < `N; ++i) begin
+            if (i < num_completing_valid) begin // TODO: build decoder if necessary
+                next_complete_list[inputs_completing[i]] = 1'b1;
             end
         end
-    end
 
+        for (genvar i = 0; i < `N; ++i) begin
+            if (i < num_retiring_valid) begin // TODO: build decoder if necessary
+                next_complete_list[inputs_retiring[i]] = 1'b0;
+            end
+        end
+    endgenerate
+    
     always_ff @(posedge clock) begin
         if (reset) begin
             complete <= '0;
