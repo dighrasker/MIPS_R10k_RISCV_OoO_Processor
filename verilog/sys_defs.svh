@@ -435,17 +435,7 @@ typedef struct packed {
     PHYS_REG_IDX    Source2;
     logic           Source2_ready;
     OPCODE          Op;
-} RS_ENTRY_PACKET;
-
-typedef struct packed {
-    // ADDR            PC;
-    
-    PHYS_REG_IDX    T_new; // Use as unique RS id
-    INST            inst;
-    PHYS_REG_IDX    Source1;
-    ARCH_REG_IDX    Source2;
-    OPCODE          Op;
-} RS_EXIT_PACKET;
+} RS_PACKET;
 
 typedef struct packed {
     // ADDR            PC;

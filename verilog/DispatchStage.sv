@@ -1,6 +1,8 @@
 module DispatchLogic #(
     
 ) (
+    input   logic                        clock,
+    input   logic                        reset,
     input   logic     [$clog2(`N+1)-1:0] regs_available,
     input   logic        [`ROB_BITS-1:0] rob_entries_available,
     input   logic         [`RS_BITS-1:0] rs_entries_available,
@@ -16,8 +18,31 @@ module DispatchLogic #(
     //^^maybe not??
     //Should have a decoder module inside here or maybe we decode in Fetch?
 
-    always_comb begin
+    PHYS_REG_IDX [`ARCH_REG_SZ_R10K] map_table_copy, next_map_table;
 
+    always_comb begin
+        next_map_table = map_table;
+        generate
+
+            for (genvar i; i < `N; ++i) begin
+                if(i < inst_valid) begin
+                    // Create rob/rs/branch-stack entries. probably will change this code
+                    source1_phys_reg[i] = next_map_table[source1_arch_reg[i]];
+                    source2_phys_reg[i] = next_map_table[source2_arch_reg[i]];
+                    // create the branch checkpoint
+
+                    next_map_table[dest_reg[i]] = free_regs[i];
+                end
+            end
+        endgenerate
+    end
+
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            map_table <= 0;
+        end else begin
+            map_table <= next_map_table;
+        end
     end
 
     //No sequential elements since this is a combinational stage

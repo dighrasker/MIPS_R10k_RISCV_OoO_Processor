@@ -37,7 +37,7 @@ module ROB_test ();
         .rob_outputs   (rob_outputs),
         .outputs_valid (outputs_valid),
         .num_retiring  (num_retiring),
-        .spots         (spots),
+        .rob_spots     (spots),
         .rob_debug     (rob_debug)
     );
     
@@ -49,7 +49,7 @@ module ROB_test ();
         .rob_outputs   (rob_outputs),
         .outputs_valid (outputs_valid),
         .num_retiring  (num_retiring),
-        .spots         (spots),
+        .rob_spots     (spots),
         .rob_debug     (rob_debug)
     );
     

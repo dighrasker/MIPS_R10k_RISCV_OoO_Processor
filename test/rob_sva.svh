@@ -17,7 +17,7 @@ module ROB_sva #(
     input  ROB_EXIT_PACKET     [`N-1:0] rob_outputs, // For retire to check eligibility
     input  logic  [NUM_SCALAR_BITS-1:0] outputs_valid, // If not all N rob entries are valid entries they should not be considered
     input  logic  [NUM_SCALAR_BITS-1:0] num_retiring, // Retire module tells the ROB how many entries can be cleared
-    input  logic  [NUM_SCALAR_BITS-1:0] spots,
+    input  logic  [NUM_SCALAR_BITS-1:0] rob_spots,
     input  ROB_DEBUG                    rob_debug
 );
 

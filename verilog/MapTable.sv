@@ -31,11 +31,11 @@ module MapTable #(
         endgenerate
     end
 
-        always_ff @(posedge clock) begin
+    always_ff @(posedge clock) begin
         if (reset) begin
             map_table <= 0;
         end else begin
-            map_table <= next_map_tavlebele;
+            map_table <= next_map_table;
         end
     end
 

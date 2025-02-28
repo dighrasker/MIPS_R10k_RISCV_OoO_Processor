@@ -5,7 +5,7 @@ module CompleteList #(
     input   clock,
     input   reset,
     input  PHYS_REG_IDX        [`N-1:0] inputs_completing,    // phys reg indexes that are being completed (T_new)
-    input  logic [`NUM_SCALAR_BITS-1:0] num_completing_valid, // number of retiring phys reg (T_New)
+    input  logic               [`N-1:0] completing_valid, // number of retiring phys reg (T_New)
     input  PHYS_REG_IDX        [`N-1:0] inputs_retiring,      // phy reg indexes that are being retired (T_old)
     input  logic [`NUM_SCALAR_BITS-1:0] num_retiring_valid,   // number of retiring phys reg (T_old)
     output logic           [LENGTH-1:0] complete_list         // bitvector of the phys reg that are complete
