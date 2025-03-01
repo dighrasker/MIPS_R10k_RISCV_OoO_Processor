@@ -1,13 +1,24 @@
-module DispatchLogic #(
+module Dispatch #(
     
 ) (
     input   logic                        clock,
     input   logic                        reset,
+
+    // ------------ FROM INSTRUCTION BUFFER ------------- //
+    input   logic                            instruction_packets,
+    input   logic                            instructions_valid,
+
+    // ------------ TO/FROM BRANCH STACK ------------- //
+    input   PHYS_REG_IDX [`ARCH_REG_SZ_R10K] map_table_restore,
+    input   logic                            restore_valid,
+
+    // ------------ TO/FROM ROB ------------- //
+    input   logic       [DEPTH_BITS-1:0] rob_tail,
+
     input   logic     [$clog2(`N+1)-1:0] regs_available,
     input   logic        [`ROB_BITS-1:0] rob_entries_available,
     input   logic         [`RS_BITS-1:0] rs_entries_available,
     input   PHYS_REG_IDX        [`N-1:0] regs_to_use,
-    output  logic     [$clog2(`N+1)-1:0] num_dispatched,
     output  ROB_ENTRY_PACKET    [`N-1:0] rob_entries,
     output  RS_ENTRY_PACKET     [`N-1:0] rs_entries
     //Need some output to send to Map table to cam for new mappings
