@@ -5,36 +5,40 @@
 `include "verilog/sys_defs.svh"
 
 module ROB_sva #(
-    parameter DEPTH = `ROB_SZ,
-    localparam DEPTH_BITS = $clog2(DEPTH),
-    localparam NUM_ENTRIES_BITS = $clog2(DEPTH + 1),
-    localparam NUM_SCALAR_BITS = $clog2(`N+1)
 ) (
-    input  logic                        clock, 
-    input  logic                        reset,
-    input  ROB_ENTRY_PACKET    [`N-1:0] rob_inputs, // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
-    input  logic  [NUM_SCALAR_BITS-1:0] inputs_valid, // To distinguish invalid instructions being passed in from Dispatch
-    input  ROB_EXIT_PACKET     [`N-1:0] rob_outputs, // For retire to check eligibility
-    input  logic  [NUM_SCALAR_BITS-1:0] outputs_valid, // If not all N rob entries are valid entries they should not be considered
-    input  logic  [NUM_SCALAR_BITS-1:0] num_retiring, // Retire module tells the ROB how many entries can be cleared
-    input  logic  [NUM_SCALAR_BITS-1:0] rob_spots,
-    input  ROB_DEBUG                    rob_debug
+    input logic                        clock, 
+    input logic                        reset,
+    input ROB_ENTRY_PACKET    [`N-1:0] rob_inputs, // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+    input logic [`NUM_SCALAR_BITS-1:0] rob_inputs_valid, // To distinguish invalid instructions being passed in from Dispatch
+    input logic [`NUM_SCALAR_BITS-1:0] rob_spots,
+    input logic     [`ROB_SZ_BITS-1:0] rob_tail,
+    input logic [`NUM_SCALAR_BITS-1:0] num_retiring, // Retire module tells the ROB how many entries can be cleared
+    input ROB_EXIT_PACKET     [`N-1:0] rob_outputs, // For retire to check eligibility
+    input logic [`NUM_SCALAR_BITS-1:0] rob_outputs_valid, // If not all N rob entries are valid entries they should not be considered
+    input logic                        tail_restore_valid,
+    input logic     [`ROB_SZ_BITS-1:0] tail_restore,
+    
+    input ROB_DEBUG                    rob_debug
 );
 
     int spots_manual;
-    assign spots_manual = rob_debug.Head == rob_debug.Tail && rob_debug.Spots == 0 && rob_debug.num_entries != 0
+    assign spots_manual = rob_debug.head == rob_debug.rob_tail && rob_debug.rob_spots == 0 && rob_debug.rob_num_entries != 0
                             ? 0
-                            : DEPTH - ((rob_debug.Tail - rob_debug.Head + DEPTH) % DEPTH) > `N 
+                            : `ROB_SZ - ((rob_debug.rob_tail - rob_debug.head + `ROB_SZ) % `ROB_SZ) > `N 
                                 ? `N
-                                : DEPTH - ((rob_debug.Tail - rob_debug.Head + DEPTH) % DEPTH);
+                                : `ROB_SZ - ((rob_debug.rob_tail - rob_debug.head + `ROB_SZ) % `ROB_SZ);
 
     logic [$bits(ROB_ENTRY_PACKET)-1:0] index;
+
+    logic [`ROB_SZ_BITS-1:0] previous_tail_restore;
 
     always_ff @(posedge clock) begin
         if (reset) begin
             index <= 0;
+            previous_tail_restore <= 0;
         end else begin
             index <= index + num_retiring;
+            previous_tail_restore <= tail_restore;
         end
     end
 
@@ -45,10 +49,16 @@ module ROB_sva #(
         end
     endtask
     
+    clocking cb @(posedge clock);
+        property tail_recovery;
+            (tail_restore_valid) |=> (rob_tail == previous_tail_restore);
+        endproperty
+    endclocking
+
     always @(posedge clock) begin
 
     // Check each valid output
-        for (int i = 0; i < outputs_valid; i++) begin
+        for (int i = 0; i < rob_outputs_valid; i++) begin
             assert (reset || rob_outputs[i] == (i + index))
                 else begin
                     $error("Mismatch on rob_outputs[%0d]: expected %0d, got %0d", 
@@ -58,26 +68,32 @@ module ROB_sva #(
         end
 
         // Check overall conditions
-        assert (reset || rob_debug.Spots == spots_manual)
+        assert (reset || rob_debug.rob_spots == spots_manual)
             else begin
                 $error("rob_debug.Spots (%0d) does not equal spots_manual (%0d)", 
-                        rob_debug.Spots, spots_manual);
+                        rob_debug.rob_spots, spots_manual);
                 $finish;
             end
         
-        assert (reset || {1'b0, inputs_valid} <= ({1'b0, spots} + {1'b0, num_retiring}))
+        assert (reset || {1'b0, rob_inputs_valid} <= ({1'b0, rob_spots} + {1'b0, num_retiring}))
             else begin
                 $error("inputs_valid (%0d) exceeds spots + num_retiring (%0d)", 
-                        inputs_valid, spots + num_retiring);
+                        rob_inputs_valid, rob_spots + num_retiring);
                 $finish;
             end
 
-        assert (reset || num_retiring <= rob_debug.num_entries)
+        assert (reset || num_retiring <= rob_debug.rob_num_entries)
             else begin
                 $error("num_retiring (%0d) exceeds num_entries (%0d)", 
-                        num_retiring, rob_debug.num_entries);
+                        num_retiring, rob_debug.rob_num_entries);
                 $finish;
             end
+
+        assert property (cb.tail_recovery)
+            else begin 
+                $error("Tail recovery failed: tail did not restore to checkpointed tail (%0d)", previous_tail_restore);
+                $finish;
+            end 
     end
 
 endmodule

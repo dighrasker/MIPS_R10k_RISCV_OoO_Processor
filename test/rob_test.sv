@@ -4,24 +4,22 @@
 
 `include "verilog/sys_defs.svh"
 `include "test/rob_sva.svh"
-//`include "../verilog/rob.sv"
+
 `define DEBUG
 
 module ROB_test ();
-
-    localparam DEPTH = `ROB_SZ;
-    localparam DEPTH_BITS = $clog2(DEPTH);
-    localparam NUM_ENTRIES_BITS = $clog2(DEPTH + 1);
-    localparam NUM_SCALAR_BITS = $clog2(`N+1);
-
     logic                        clock; 
     logic                        reset;
     ROB_ENTRY_PACKET    [`N-1:0] rob_inputs; // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
-    logic  [NUM_SCALAR_BITS-1:0] inputs_valid; // To distinguish invalid instructions being passed in from Dispatch
+    logic [`NUM_SCALAR_BITS-1:0] rob_inputs_valid; // To distinguish invalid instructions being passed in from Dispatch
+    logic [`NUM_SCALAR_BITS-1:0] rob_spots;
+    logic     [`ROB_SZ_BITS-1:0] rob_tail;
+    logic [`NUM_SCALAR_BITS-1:0] num_retiring; // Retire module tells the ROB how many entries can be cleared
     ROB_EXIT_PACKET     [`N-1:0] rob_outputs; // For retire to check eligibility
-    logic  [NUM_SCALAR_BITS-1:0] outputs_valid; // If not all N rob entries are valid entries they should not be considered
-    logic  [NUM_SCALAR_BITS-1:0] num_retiring; // Retire module tells the ROB how many entries can be cleared
-    logic  [NUM_SCALAR_BITS-1:0] spots;
+    logic [`NUM_SCALAR_BITS-1:0] rob_outputs_valid; // If not all N rob entries are valid entries they should not be considered
+    logic                        tail_restore_valid;
+    logic     [`ROB_SZ_BITS-1:0] tail_restore;
+    
     ROB_DEBUG                    rob_debug;
 
     logic [$bits(ROB_ENTRY_PACKET)-1:0] index;
@@ -30,27 +28,33 @@ module ROB_test ();
     // it renames the module if SYNTH is defined in
     // order to rename the module to FIFO_svsim
     rob dut (
-        .clock         (clock),
-        .reset         (reset),
-        .rob_inputs    (rob_inputs),
-        .inputs_valid  (inputs_valid), 
-        .rob_outputs   (rob_outputs),
-        .outputs_valid (outputs_valid),
-        .num_retiring  (num_retiring),
-        .rob_spots     (spots),
-        .rob_debug     (rob_debug)
+        .clock             (clock),
+        .reset             (reset),
+        .rob_inputs        (rob_inputs),
+        .rob_inputs_valid  (rob_inputs_valid), 
+        .rob_spots         (rob_spots),
+        .rob_tail          (rob_tail),
+        .num_retiring      (num_retiring),
+        .rob_outputs       (rob_outputs),
+        .rob_outputs_valid (rob_outputs_valid),
+        .tail_restore_valid(tail_restore_valid),
+        .tail_restore      (tail_restore),
+        .rob_debug         (rob_debug)
     );
     
     ROB_sva DUT_sva (
-        .clock         (clock),
-        .reset         (reset),
-        .rob_inputs    (rob_inputs),
-        .inputs_valid  (inputs_valid), 
-        .rob_outputs   (rob_outputs),
-        .outputs_valid (outputs_valid),
-        .num_retiring  (num_retiring),
-        .rob_spots     (spots),
-        .rob_debug     (rob_debug)
+        .clock             (clock),
+        .reset             (reset),
+        .rob_inputs        (rob_inputs),
+        .rob_inputs_valid  (rob_inputs_valid), 
+        .rob_spots         (rob_spots),
+        .rob_tail          (rob_tail),
+        .num_retiring      (num_retiring),
+        .rob_outputs       (rob_outputs),
+        .rob_outputs_valid (rob_outputs_valid),
+        .tail_restore_valid(tail_restore_valid),
+        .tail_restore      (tail_restore),
+        .rob_debug         (rob_debug)
     );
     
     always begin
@@ -71,7 +75,7 @@ module ROB_test ();
         if (reset) begin
             index <= 0;
         end else begin
-            index <= index + inputs_valid;
+            index <= index + rob_inputs_valid;
         end
     end
 
@@ -90,11 +94,13 @@ module ROB_test ();
 
         clock = 1;
         reset = 1;
-        inputs_valid = 0;
+        rob_inputs_valid = 0;
         num_retiring = 0;
+        tail_restore = 0;
+        tail_restore_valid = 0;
 
         $monitor("  %3d | inputs_valid: %d   outputs_valid: %d   num_retiring: %d,   spots: %d,   rob_head: %d,   tail: %d,   entries: %d",
-                  $time,  inputs_valid,      outputs_valid,      num_retiring,       spots,       rob_debug.Head, rob_debug.Tail, rob_debug.num_entries);
+                  $time,  rob_inputs_valid,      rob_outputs_valid,      num_retiring,       rob_spots,       rob_debug.head, rob_debug.rob_tail, rob_debug.rob_num_entries);
 
         // for (int Index = 0; Index < `N; ++Index) begin
         //     $monitor("Index: %b | rob_inputs: %b   rob_outputs: %b",
@@ -108,9 +114,9 @@ module ROB_test ();
         // ---------- Test 1 ---------- //
         $display("\nTest 1: Add/Retire 1 entry to/from the ROB");
         $display("Add 1 entry to the ROB");
-        inputs_valid = 1;
+        rob_inputs_valid = 1;
         @(negedge clock);
-        inputs_valid = 0;
+        rob_inputs_valid = 0;
 
         @(negedge clock);
 
@@ -124,9 +130,9 @@ module ROB_test ();
         // ---------- Test 2 ---------- //
         $display("\nTest 2: Add/Retire N entries to/from ROB");
 
-        inputs_valid = `N;
+        rob_inputs_valid = `N;
         @(negedge clock);
-        inputs_valid = 0;
+        rob_inputs_valid = 0;
         
         @(negedge clock);
 
@@ -137,48 +143,48 @@ module ROB_test ();
         // ---------- Test 3 ---------- //
         $display("\nTest 3: Simultaneuos Write and Retire");
         $display("Start with N Entries");
-        inputs_valid = `N;
+        rob_inputs_valid = `N;
         @(negedge clock);
-        inputs_valid = 0;
+        rob_inputs_valid = 0;
 
         $display("Write and Retire 1 values");
-        inputs_valid = 1;
+        rob_inputs_valid = 1;
         num_retiring = 1;
         @(negedge clock);
-        inputs_valid = 0;
+        rob_inputs_valid = 0;
         num_retiring = 0;
         @(negedge clock);
 
         $display("Write and Retire N values");
-        inputs_valid = `N;
+        rob_inputs_valid = `N;
         num_retiring = `N;
         @(negedge clock);
-        inputs_valid = 0;
+        rob_inputs_valid = 0;
         num_retiring = 0;
         @(negedge clock);
 
         // ---------- Test 4 ---------- //
         $display("\nTest 4: Write until full");
 
-        while (spots) begin // checking spots > 0
-           inputs_valid = spots;
+        while (rob_spots) begin // checking spots > 0
+           rob_inputs_valid = rob_spots;
            @(negedge clock);
         end
 
         // ---------- Test 5 ---------- //
         $display("\nTest 5: Simultaneous Write and Retire when full");
         $display("Write and Retire 1");
-        inputs_valid = 1;
+        rob_inputs_valid = 1;
         num_retiring = 1;
         @(negedge clock);
-        inputs_valid = 0;
+        rob_inputs_valid = 0;
         num_retiring = 0;
 
         $display("Write and Retire N");
-        inputs_valid = `N;
+        rob_inputs_valid = `N;
         num_retiring = `N;
         @(negedge clock); 
-        inputs_valid = 0;
+        rob_inputs_valid = 0;
         num_retiring = 0;
 
         // ---------- Test 6 ---------- //
@@ -189,23 +195,23 @@ module ROB_test ();
         num_retiring = 0;
 
         $display("Write and Retire 1");
-        inputs_valid = 1;
+        rob_inputs_valid = 1;
         num_retiring = 1;
         @(negedge clock);
-        inputs_valid = 0;
+        rob_inputs_valid = 0;
         num_retiring = 0;
 
         $display("Write and Retire N");
-        inputs_valid = `N;
+        rob_inputs_valid = `N;
         num_retiring = `N;
         @(negedge clock);
-        inputs_valid = 0;
+        rob_inputs_valid = 0;
         num_retiring = 0;
 
         // ---------- Test 7 ---------- //
         $display("\nTest 7: Retire until Empty");
-        while (outputs_valid) begin // checking spots > 0
-           num_retiring = outputs_valid;
+        while (rob_outputs_valid) begin // checking spots > 0
+           num_retiring = rob_outputs_valid;
            @(negedge clock);
            num_retiring = 0;
         end
@@ -215,10 +221,25 @@ module ROB_test ();
         @(negedge clock);
         for (int i=0; i <= 100; ++i) begin
             for (int j=0; j <= 100; ++j) begin
-                inputs_valid = $urandom_range(spots); 
-                num_retiring = $urandom_range(outputs_valid);
+                rob_inputs_valid = $urandom_range(rob_spots); 
+                num_retiring = $urandom_range(rob_outputs_valid);
                 @(negedge clock);
-                inputs_valid = 0;
+                rob_inputs_valid = 0;
+                num_retiring = 0;
+            end
+        end
+
+        // ---------- Test 9 ---------- //
+         $display("\nTest 9: Generic Tail Restore");
+         @(negedge clock);
+         for (int i=0; i <= 10; ++i) begin
+            for (int j=0; j <= 10; ++j) begin
+                rob_inputs_valid = $urandom_range(rob_spots); 
+                num_retiring = $urandom_range(rob_outputs_valid);
+                //tail_restore_valid = $urandom_range(1, 0);
+                //tail_restore = $urandom_range(rob_outputs_valid);
+                @(negedge clock);
+                rob_inputs_valid = 0;
                 num_retiring = 0;
             end
         end

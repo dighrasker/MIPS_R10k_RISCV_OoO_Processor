@@ -16,6 +16,7 @@
 ///////////////////////////////////
 // ---- Starting Parameters ---- //
 ///////////////////////////////////
+`define DEBUG //Comment out when synthesizing
 
 // some starting parameters that you should set
 // this is *your* processor, you decide these values (try analyzing which is best!)
@@ -31,6 +32,8 @@
 `define ROB_SZ_BITS $clog2(`ROB_SZ)
 `define ROB_NUM_ENTRIES_BITS $clog2(`ROB_SZ + 1)
 `define RS_SZ 32
+`define RS_SZ_BITS $clog2(`RS_SZ)
+`define RS_NUM_ENTRIES_BITS $clog2(`RS_SZ + 1)
 `define ARCH_REG_SZ_R10K (32)
 `define PHYS_REG_SZ_P6 32
 `define PHYS_REG_SZ_R10K (`ARCH_REG_SZ_R10K + `ROB_SZ)
@@ -439,17 +442,18 @@ typedef struct packed {
     PHYS_REG_IDX    Source2;
     logic           Source2_ready;
     OPCODE          Op;
+    B_MASK          b_mask;
 } RS_PACKET;
 
 typedef struct packed {
     // ADDR            PC;
-    ROB_ENTRY_PACKET  [`ROB_SZ-1:0] Entries; // Use as unique rob id
-    logic     [$clog2(`ROB_SZ)-1:0] Head;
-    logic     [$clog2(`ROB_SZ)-1:0] Tail;
-    logic [$clog2(`ROB_SZ + 1)-1:0] Spots;
-    logic                  [`N-1:0] Outputs_valid;
-    ROB_EXIT_PACKET        [`N-1:0] Rob_Outputs;
-    logic   [$clog2(`ROB_SZ + 1)-1:0] num_entries;
+    ROB_ENTRY_PACKET         [`N-1:0] rob_inputs; // Use as unique rob id
+    logic       [$clog2(`ROB_SZ)-1:0] head;
+    logic          [`ROB_SZ_BITS-1:0] rob_tail;
+    logic      [`NUM_SCALAR_BITS-1:0] rob_spots;
+    logic      [`NUM_SCALAR_BITS-1:0] rob_outputs_valid;
+    ROB_EXIT_PACKET          [`N-1:0] rob_outputs;
+    logic [`ROB_NUM_ENTRIES_BITS-1:0] rob_num_entries;
 } ROB_DEBUG;
 
 // TODO: UPDATE FU PACKETS
@@ -463,18 +467,28 @@ typedef struct packed {
 } ALU_PACKET;
 
 typedef struct packed {
+    DATA            immediate_val;
+    ALU_FUNC        alu_func;
+} ALU_FLAGS;
+
+/*
+typedef struct packed {
+    //any flags needed for mult?    
+} MULT_PACKET;
+*/
+
+typedef struct packed {
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg;
     B_MASK          bm;
-} MULT_PACKET;
+} MULT_FLAGS;
 
 typedef struct packed {
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg;       // not used but might be good for identification purposes
     B_MASK          bm;
-
     BRANCH_FUNC     branch_func;    // comparator used for branch
     B_MASK_MASK     bmm;            // this branch's corresponding mask
 } BRANCH_PACKET;
@@ -493,10 +507,11 @@ typedef struct packed {
     B_MASK          bm;
 } ST_PACKET;
 
+/*
 typedef struct packed {
     
 } BS_ENTRY_PACKET;
-
+*/
 // EDITED END
 
 `endif // __SYS_DEFS_SVH__
