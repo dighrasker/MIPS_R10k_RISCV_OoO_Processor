@@ -1,4 +1,3 @@
-
 /////////////////////////////////////////////////////////////////////////
 //                                                                     //
 //   Modulename :  sys_defs.svh                                        //
@@ -46,6 +45,9 @@ typedef logic [`ROB_ENTRY_ID_BITS-1:0]      ROB_ENTRY_ID;
 typedef logic [`PHYS_REG_ID_BITS-1:0]       PHYS_REG_IDX;
 typedef logic [`ARCH_REG_ID_BITS-1:0]       ARCH_REG_IDX;
 typedef logic [6:0]                         OPCODE;
+typedef logic [`B_MASK_WIDTH-1:0]           B_MASK;
+typedef logic [`B_MASK_WIDTH-1:0]           B_MASK_MASK;
+typedef logic [2:0]                         BRANCH_FUNC;
 
 // EDITED END
 
@@ -54,10 +56,11 @@ typedef logic [6:0]                         OPCODE;
 `define LSQ_SZ xx
 
 // functional units (you should decide if you want more or fewer types of FUs)
-`define NUM_FU_ALU xx
-`define NUM_FU_MULT xx
-`define NUM_FU_LOAD xx
-`define NUM_FU_STORE xx
+`define NUM_FU_BRANCH 1
+`define NUM_FU_ALU `N
+`define NUM_FU_MULT `N
+`define NUM_FU_LOAD `N
+`define NUM_FU_STORE `N
 
 // number of mult stages (2, 4) (you likely don't need 8)
 `define MULT_STAGES 4
@@ -449,38 +452,50 @@ typedef struct packed {
     logic   [$clog2(`ROB_SZ + 1)-1:0] num_entries;
 } ROB_DEBUG;
 
+// TODO: UPDATE FU PACKETS
+
 typedef struct packed {
-    // ADDR            PC;
-    ROB_ENTRY_PACKET  [`ROB_SZ-1:0] Entries; // Use as unique rob id
-    logic     [$clog2(`ROB_SZ)-1:0] Head;
-    logic     [$clog2(`ROB_SZ)-1:0] Tail;
-    logic [$clog2(`ROB_SZ + 1)-1:0] Spots;
-    logic                  [`N-1:0] Outputs_valid;
-    ROB_EXIT_PACKET        [`N-1:0] Rob_Outputs;
-    logic   [$clog2(`ROB_SZ + 1)-1:0] num_entries;
+    DATA            source_reg_1;
+    DATA            source_reg_2;
+    PHYS_REG_IDX    dest_reg;
+    B_MASK          bm;
+    ALU_FUNC        alu_func;
 } ALU_PACKET;
 
 typedef struct packed {
-    // ADDR            PC;
-    ROB_ENTRY_PACKET  [`ROB_SZ-1:0] Entries; // Use as unique rob id
-    logic     [$clog2(`ROB_SZ)-1:0] Head;
-    logic     [$clog2(`ROB_SZ)-1:0] Tail;
-    logic [$clog2(`ROB_SZ + 1)-1:0] Spots;
-    logic                  [`N-1:0] Outputs_valid;
-    ROB_EXIT_PACKET        [`N-1:0] Rob_Outputs;
-    logic   [$clog2(`ROB_SZ + 1)-1:0] num_entries;
+    DATA            source_reg_1;
+    DATA            source_reg_2;
+    PHYS_REG_IDX    dest_reg;
+    B_MASK          bm;
 } MULT_PACKET;
 
 typedef struct packed {
-    // ADDR            PC;
-    ROB_ENTRY_PACKET  [`ROB_SZ-1:0] Entries; // Use as unique rob id
-    logic     [$clog2(`ROB_SZ)-1:0] Head;
-    logic     [$clog2(`ROB_SZ)-1:0] Tail;
-    logic [$clog2(`ROB_SZ + 1)-1:0] Spots;
-    logic                  [`N-1:0] Outputs_valid;
-    ROB_EXIT_PACKET        [`N-1:0] Rob_Outputs;
-    logic   [$clog2(`ROB_SZ + 1)-1:0] num_entries;
+    DATA            source_reg_1;
+    DATA            source_reg_2;
+    PHYS_REG_IDX    dest_reg;       // not used but might be good for identification purposes
+    B_MASK          bm;
+
+    BRANCH_FUNC     branch_func;    // comparator used for branch
+    B_MASK_MASK     bmm;            // this branch's corresponding mask
 } BRANCH_PACKET;
+
+typedef struct packed {
+    DATA            source_reg_1;
+    DATA            source_reg_2;
+    PHYS_REG_IDX    dest_reg;
+    B_MASK          bm;
+} LD_PACKET;
+
+typedef struct packed {
+    DATA            source_reg_1;
+    DATA            source_reg_2;
+    PHYS_REG_IDX    dest_reg;       // not used?
+    B_MASK          bm;
+} ST_PACKET;
+
+typedef struct packed {
+    
+} BS_ENTRY_PACKET;
 
 // EDITED END
 

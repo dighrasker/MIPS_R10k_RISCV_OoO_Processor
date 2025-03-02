@@ -1,32 +1,43 @@
+`include "sys_defs.svh"
+
 module Dispatch #(
     
 ) (
-    input   logic                        clock,
-    input   logic                        reset,
+    input   logic                               clock,
+    input   logic                               reset,
 
     // ------------ FROM INSTRUCTION BUFFER ------------- //
-    input   logic                            instruction_packets,
-    input   logic                            instructions_valid,
+    input   logic                               instruction_packets,
+    input   logic                               instructions_valid,
 
     // ------------ TO/FROM BRANCH STACK ------------- //
-    input   PHYS_REG_IDX [`ARCH_REG_SZ_R10K] map_table_restore,
-    input   logic                            restore_valid,
+    input   PHYS_REG_IDX    [`ARCH_REG_SZ_R10K] map_table_restore,
+    input   logic                               restore_valid,
+    input   B_MASK                              b_mask_reg,
+    output  BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack_entries,
+    output  B_MASK                              branch_stack_entries_valid,
 
     // ------------ TO/FROM ROB ------------- //
-    input   logic       [DEPTH_BITS-1:0] rob_tail,
+    input   logic            [`ROB_SZ_BITS-1:0] rob_tail,
+    input   logic        [`NUM_SCALAR_BITS-1:0] rob_spots,
+    output  ROB_ENTRY_PACKET           [`N-1:0] rob_entries,
 
-    input   logic     [$clog2(`N+1)-1:0] regs_available,
-    input   logic        [`ROB_BITS-1:0] rob_entries_available,
-    input   logic         [`RS_BITS-1:0] rs_entries_available,
-    input   PHYS_REG_IDX        [`N-1:0] regs_to_use,
-    output  ROB_ENTRY_PACKET    [`N-1:0] rob_entries,
-    output  RS_ENTRY_PACKET     [`N-1:0] rs_entries
-    //Need some output to send to Map table to cam for new mappings
-    //based on dest regs of dispatched instructions.
+    // ------------ TO/FROM RS ------------- //
+    output  RS_PACKET                  [`N-1:0] rs_entries,
+    input   logic                [`RS_BITS-1:0] rs_entries_available,
+
+    // ------------ TO/FROM FREE LIST ------------- //
+    input   logic        [`NUM_SCALAR_BITS-1:0] num_regs_available,
+    input   PHYS_REG_IDX               [`N-1:0] regs_to_use,
+    input   logic       [`PHYS_REG_SZ_R10K-1:0] free_list_copy,
+    
+    // ------------ FROM ISSUE? ------------- //
+    output   logic       [`NUM_SCALAR_BITS-1:0] num_issuing,
+
+    // ------------ TO ALL DATA STRUCTURES ------------- //
+    output   logic       [`NUM_SCALAR_BITS-1:0] num_dispatched
 );
-    //Dispatch should probably handle the majority of the logic for checking structural hazards and selecting a well
-    //ordered set of instructions to send to the ROB/RS
-    //^^maybe not??
+
     //Should have a decoder module inside here or maybe we decode in Fetch?
 
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K] map_table_copy, next_map_table;
