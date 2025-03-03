@@ -189,7 +189,7 @@ GREP = grep -E --color=auto
 # ---- Modules to Test ---- #
 
 # TODO: add more modules here
-MODULES = cpu mult rob rs
+MODULES = cpu mult rob rs freddylist
 
 # TODO: update this if you add more header files
 ALL_HEADERS = $(CPU_HEADERS)
@@ -212,6 +212,12 @@ ROB_FILES = verilog/sys_defs.svh
 build/rob.simv: $(ROB_FILES)
 build/rob.cov: $(ROB_FILES)
 synth/rob.vg: $(ROB_FILES)
+
+# TODO: add any files required for the FreddyList here 
+FREDDYLIST_FILES = verilog/sys_defs.svh verilog/psel_gen.sv verilog/encoder.sv
+build/freddylist.simv: $(FREDDYLIST_FILES)
+build/freddylist.cov: $(FREDDYLIST_FILES)
+synth/freddylist.vg: $(FREDDYLIST_FILES)
 
 #################################
 # ---- Main CPU Definition ---- #

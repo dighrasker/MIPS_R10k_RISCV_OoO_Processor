@@ -76,10 +76,10 @@ module FreddyList #(
     
     always_ff @(posedge clock) begin
         if (reset) begin
-            complete_list[`PHYS_REG_SZ_R10K-1:`ARCH_REG_SZ_R10K] <= `0;
+            complete_list[`PHYS_REG_SZ_R10K-1:`ARCH_REG_SZ_R10K] <= 0;
             complete_list[`ARCH_REG_SZ_R10K-1:0] <= ~0;                 // Assumption: at reset, all mappings are restored to original, ex. reg1 -> pr1
             free_list[`PHYS_REG_SZ_R10K-1:`ARCH_REG_SZ_R10K] <= ~0;
-            free_list[`ARCH_REG_SZ_R10K-1:0] <= `0;
+            free_list[`ARCH_REG_SZ_R10K-1:0] <= 0;
             // entries <= `0;
         end else begin
             complete_list <= next_complete_list;
@@ -89,23 +89,7 @@ module FreddyList #(
     end
 endmodule
 
-module encoder #(
-)(
-    input  wire [`PHYS_REG_SZ_R10K-1:0] in,                    // N-bit input
-    output reg  [`PHYS_REG_ID_BITS-1:0] out,                   // Encoded output
-);
 
-    integer i;
-    
-    always @(*) begin
-        out   = 0;
-        for (i = 0; i < `PHYS_REG_SZ_R10K; ++i) begin
-            if (in[i]) begin
-                out   = i[`PHYS_REG_ID_BITS-1:0];  // Assign the index as output
-            end
-        end
-    end
-endmodule
 
 // module CompleteList #(
 //     parameter LENGTH = `PHYS_REG_SZ_R10K,

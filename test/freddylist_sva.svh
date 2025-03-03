@@ -64,7 +64,7 @@ module FreddyList_sva #(
 
         // Check restore
         for (int i = 0; i < `PHYS_REG_SZ_R10K; i++) begin
-            bool skip_flag = 0;
+            logic skip_flag = 0;
             for (int j = 0; j < num_retiring_valid; j++) begin
                 if (i == phys_reg_retiring[j]) begin
                     skip_flag = 1;
@@ -92,7 +92,7 @@ module FreddyList_sva #(
 
         // Check non-completing phys reg after updating completing phys reg
         for (int i = 0; i < `PHYS_REG_SZ_R10K; i++) begin
-            bool skip_flag = 0;
+            logic skip_flag = 0;
             for (int j = 0; j < `N; j++) begin
                 if (completing_valid[j] && phys_reg_completing[j] == i) begin
                     skip_flag = 1;

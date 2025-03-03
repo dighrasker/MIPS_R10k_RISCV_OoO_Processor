@@ -3,7 +3,7 @@
 // Correctness checking is in FIFO_sva.svh
 
 `include "verilog/sys_defs.svh"
-`include "test/rob_sva.svh"
+`include "test/freddylist_sva.svh"
 
 `define DEBUG
 
@@ -27,8 +27,6 @@ module FreddyList_test ();
     logic   [`PHYS_REG_SZ_R10K-1:0] free_list;              // bitvector of the phys reg that are complete
     // ------------- TO ISSUE -------------- //
     logic   [`PHYS_REG_SZ_R10K-1:0] complete_list;           // bitvector of the phys reg that are complete
-
-    logic   [`PHYS_REG_SZ_R10K-1:0] counter;
 
     // INSTANCE is from the sys_defs.svh file
     // it renames the module if SYNTH is defined in
@@ -70,7 +68,6 @@ module FreddyList_test ();
     end
 
     // logic [`N-1:0] [$bits(ROB_ENTRY_PACKET)-`PHYS_REG_ID_BITS-1:0] temp;
-    logic [`N-1:0] [`PHYS_REG_ID_BITS - 1:0] T_new;
     //Generate random numbers for our write data on each cycle
     // always_ff @(negedge clock) begin
     //     //std::randomize(wr_data);
@@ -79,36 +76,26 @@ module FreddyList_test ();
     //     end
     // end
 
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            counter <= 0;
-        end else begin
-            counter <= counter + `N;
-        end
-    end
+    // always_comb begin : generateRobInputs 
+    //     for(int i = 0; i < `N; ++i) begin
+    //         // T_new[i] = (rob_debug.Tail + i)%DEPTH;
+    //         // rob_inputs[i].T_new = {T_new[i], temp[i]}; 
+    //         rob_inputs[i] = index + i; 
+    //         // $display(" rob_inputs[%0d]: %0d, index %d",
+    //         //       i,    (i + index),   rob_inputs[i], index);
+    //     end
+    // end
 
-    always_comb begin : generateRobInputs 
-        for(int i = 0; i < `N; ++i) begin
-            // T_new[i] = (rob_debug.Tail + i)%DEPTH;
-            // rob_inputs[i].T_new = {T_new[i], temp[i]}; 
-            rob_inputs[i] = index + i; 
-            // $display(" rob_inputs[%0d]: %0d, index %d",
-            //       i,    (i + index),   rob_inputs[i], index);
-        end
-    end
+    PHYS_REG_IDX index;
 
     initial begin
         $display("\nStart Testbench");
 
         clock = 1;
         reset = 1;
-        rob_inputs_valid = 0;
-        num_retiring = 0;
-        tail_restore = 0;
-        tail_restore_valid = 0;
 
-        $monitor("  %3d | retiring_valid: %0d   num_dispatched: %0d,   restore_flag: %0d,   free_list: %b,   updated_free_list: %b",
-                  $time,  num_retiring_valid,  num_dispatched,      restore_flag,       free_list,       updated_free_list);
+        $monitor("  %3d | retiring_valid: %0d   restore_flag: %0d,   free_list: %b,   updated_free_list: %b",
+                  $time,  num_retiring_valid,      restore_flag,       free_list,       updated_free_list);
 
         // for (int Index = 0; Index < `N; ++Index) begin
         //     $monitor("Index: %b | rob_inputs: %b   rob_outputs: %b",
@@ -124,12 +111,13 @@ module FreddyList_test ();
         $display("Randomize updated_free_list input");
         restore_flag = 0;
         num_retiring_valid = 0;
-        for(int i = 0; i < 1000; ++i) begin
-            for(int i = 0; i < `PHYS_REG_SZ_R10K; i += 32) begin
-                if(i+31 > `PHYS_REG_SZ_R10K) begin
-                    updated_free_list[`PHYS_REG_SZ_R10K-1:i] = {$urandom};
+        for (int outer_i = 0; outer_i < 1000; ++outer_i) begin
+            for (int i = 0; i < `PHYS_REG_SZ_R10K; i += 32) begin
+                if(i + 31 >= `PHYS_REG_SZ_R10K) begin
+                    // Use a variable part-select that adjusts for the remaining bits if needed
+                    updated_free_list[`PHYS_REG_SZ_R10K - 1 -: (`PHYS_REG_SZ_R10K - i)] = {$urandom};
                 end else begin
-                    updated_free_list[i+31:i] = {$urandom};
+                    updated_free_list[i +: 32] = {$urandom};
                 end
             end
             @(negedge clock);
@@ -143,7 +131,8 @@ module FreddyList_test ();
         $display("\nTest 2: Updated_free_list and num_retiring_valid interaction");
         updated_free_list = 0;
         @(negedge clock);
-        int index = 0;
+
+        index = 0;
         num_retiring_valid = `N;
 
         while (index < `PHYS_REG_SZ_R10K) begin
@@ -244,70 +233,7 @@ module FreddyList_test ();
             @(negedge clock);
         end
 
-
-
-
-        while (rob_spots) begin // checking spots > 0
-           rob_inputs_valid = rob_spots;
-           @(negedge clock);
-        end
-
-        // ---------- Test 6 ---------- //
-        $display("\nTest 6: Simultaneous Write and Retire when one less than Full");
-        $display("Retire 1");
-        num_retiring = 1;
         @(negedge clock);
-        num_retiring = 0;
-
-        $display("Write and Retire 1");
-        rob_inputs_valid = 1;
-        num_retiring = 1;
-        @(negedge clock);
-        rob_inputs_valid = 0;
-        num_retiring = 0;
-
-        $display("Write and Retire N");
-        rob_inputs_valid = `N;
-        num_retiring = `N;
-        @(negedge clock);
-        rob_inputs_valid = 0;
-        num_retiring = 0;
-
-        // ---------- Test 7 ---------- //
-        $display("\nTest 7: Retire until Empty");
-        while (rob_outputs_valid) begin // checking spots > 0
-           num_retiring = rob_outputs_valid;
-           @(negedge clock);
-           num_retiring = 0;
-        end
-
-        // ---------- Test 8 ---------- //
-        $display("\nTest 8: Write and Retire randon number of values");
-        @(negedge clock);
-        for (int i=0; i <= 100; ++i) begin
-            for (int j=0; j <= 100; ++j) begin
-                rob_inputs_valid = $urandom_range(rob_spots); 
-                num_retiring = $urandom_range(rob_outputs_valid);
-                @(negedge clock);
-                rob_inputs_valid = 0;
-                num_retiring = 0;
-            end
-        end
-
-        // ---------- Test 9 ---------- //
-         $display("\nTest 9: Generic Tail Restore");
-         @(negedge clock);
-         for (int i=0; i <= 10; ++i) begin
-            for (int j=0; j <= 10; ++j) begin
-                rob_inputs_valid = $urandom_range(rob_spots); 
-                num_retiring = $urandom_range(rob_outputs_valid);
-                //tail_restore_valid = $urandom_range(1, 0);
-                //tail_restore = $urandom_range(rob_outputs_valid);
-                @(negedge clock);
-                rob_inputs_valid = 0;
-                num_retiring = 0;
-            end
-        end
 
         $display("\n\033[32m@@@ Passed\033[0m\n");
 
