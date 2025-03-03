@@ -26,13 +26,46 @@ module FreddyList_sva #(
     input  logic   [`PHYS_REG_SZ_R10K-1:0] free_list,              // bitvector of the phys reg that are complete
     // ------------- TO ISSUE -------------- //
     input  logic   [`PHYS_REG_SZ_R10K-1:0] complete_list           // bitvector of the phys reg that are complete
-
 );
 
     logic only_updated;
     logic   [`PHYS_REG_SZ_R10K-1:0] prev_complete_list;
+    logic   [`PHYS_REG_SZ_R10K-1:0] prev_updated_list;
+
+    logic   [`PHYS_REG_SZ_R10K-1:0] retiring_list;
+    logic   [`PHYS_REG_SZ_R10K-1:0] prev_retiring_list;
+
+    logic   [`PHYS_REG_SZ_R10K-1:0] FL_restore_to_check;
+    logic   [`PHYS_REG_SZ_R10K-1:0] prev_FL_restore_to_check;
+
+    logic   [`PHYS_REG_SZ_R10K-1:0] completing_list;
+    logic   [`PHYS_REG_SZ_R10K-1:0] prev_completing_list;
+    logic completing;
+
+    assign completing = |completing_valid;
 
     assign only_updated = ~restore_flag & (num_retiring_valid == 0);
+
+    always_comb begin 
+        retiring_list = 0;
+        for (int i = 0; i < num_retiring_valid; i++) begin
+            retiring_list[phys_reg_retiring[i]] = 1;
+        end
+    end
+
+    always_comb begin 
+        FL_restore_to_check = free_list_restore;
+        for (int i = 0; i < num_retiring_valid; i++) begin
+            FL_restore_to_check[phys_reg_retiring[i]] = 0;
+        end
+    end
+
+    always_comb begin 
+        completing_list = 0;
+        for (int i = 0; i < `N; i++) begin
+                completing_list[phys_reg_completing[i]] = completing_valid[i];
+        end
+    end
 
 
     task exit_on_error;
@@ -41,11 +74,45 @@ module FreddyList_sva #(
             $finish;
         end
     endtask
+
+    always_ff @(posedge clock) begin
+        prev_updated_list <= updated_free_list;
+        prev_retiring_list <= retiring_list;
+        prev_FL_restore_to_check <= FL_restore_to_check;
+        prev_completing_list <= completing_list;
+        prev_complete_list <= complete_list;
+    end
+
+    clocking FL_prop @(posedge clock);
+        property only_updating;
+            (only_updated) |=> (prev_updated_list == free_list);
+        endproperty
+
+        property not_only_updating;
+            (~only_updated) |=> ((prev_retiring_list & free_list) == prev_retiring_list);
+        endproperty
+
+        property FL_restore;
+            (restore_flag) |=> ((prev_FL_restore_to_check & free_list) == prev_FL_restore_to_check);
+        endproperty
+    endclocking
+
+    // TODO: update
+    clocking complete_prop @(posedge clock);
+        property something_completing;
+            (completing) |=> (prev_completing_list & complete_list == prev_completing_list);
+        endproperty
+
+        property prev_complete_maintained;
+            // TODO: might not want to check all the time. Choose a better condition to check
+            (~reset) |=> ((~prev_complete_list & ~complete_list) == ~prev_complete_list);
+        endproperty
+    endclocking
     
     always @(posedge clock) begin
 
     // Check for only_updated, free_list = updated_free_list
-        assert (reset || ~only_updated || (updated_free_list == free_list))
+        assert property (FL_prop.only_updating)
             else begin
                 $error("Mismatch on free_list and updated_list: expected %b, got %b", 
                     updated_free_list,     free_list);
@@ -53,61 +120,36 @@ module FreddyList_sva #(
             end
 
     // Check for num_retiring_valid and updated_free_list => free_list
-        for (int i = 0; i < num_retiring_valid; i++) begin
-            assert (reset || free_list[phys_reg_retiring[i]])
-                else begin
-                    $error("Free_list didn't free retiring register %d", 
-                        phys_reg_retiring[i]);
-                    $finish;
-                end
-        end
+        assert property (FL_prop.not_only_updating)
+            else begin
+                $error("Free_list didn't free a retiring register: expected %b, got %b",
+                    prev_retiring_list,   prev_retiring_list & free_list);
+                $finish;
+            end
 
         // Check restore
-        for (int i = 0; i < `PHYS_REG_SZ_R10K; i++) begin
-            logic skip_flag = 0;
-            for (int j = 0; j < num_retiring_valid; j++) begin
-                if (i == phys_reg_retiring[j]) begin
-                    skip_flag = 1;
-                end
+        assert property (FL_prop.FL_restore)
+            else begin
+                $error("Free_list didn't restore correctly");
+                $finish;
             end
-            
-            assert (reset || ~restore_flag || free_list[i] == free_list_restore[i] || skip_flag)
-                else begin
-                    $error("Free_list didn't restore correctly");
-                    $finish;
-                end 
-        end
 
         // Check completing phys reg
-        for (int i = 0; i < `N; i++) begin
-            if (completing_valid[i]) begin
-                assert (reset || complete_list[phys_reg_completing[i]])
-                    else begin
-                        $error("Complete_list didn't complete completing register %d", 
-                            phys_reg_completing[i]);
-                        $finish;
-                    end
+
+        assert property (complete_prop.something_completing)
+            else begin
+                $error("Complete_list didn't complete a completing register: expected %b, got %b",
+                    prev_completing_list,   prev_completing_list & complete_list);
+                $finish;
             end
-        end
 
         // Check non-completing phys reg after updating completing phys reg
-        for (int i = 0; i < `PHYS_REG_SZ_R10K; i++) begin
-            logic skip_flag = 0;
-            for (int j = 0; j < `N; j++) begin
-                if (completing_valid[j] && phys_reg_completing[j] == i) begin
-                    skip_flag = 1;
+        assert property (complete_prop.prev_complete_maintained)
+            else begin
+                    $error("Complete_list didn't properly maintain previous state");
+                    $finish;
                 end
-            end
-            if (~prev_complete_list[i]) begin
-                assert (reset || ~complete_list[i] || skip_flag)
-                    else begin
-                        $error("Complete_list didn't properly maintain previous state");
-                        $finish;
-                    end
-            end
-        end
 
-        prev_complete_list = complete_list;
         
     end
 

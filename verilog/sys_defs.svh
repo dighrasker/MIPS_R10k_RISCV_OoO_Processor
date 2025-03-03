@@ -52,6 +52,12 @@ typedef logic [6:0]                         OPCODE;
 typedef logic [`B_MASK_WIDTH-1:0]           B_MASK;
 typedef logic [`B_MASK_WIDTH-1:0]           B_MASK_MASK;
 typedef logic [2:0]                         BRANCH_FUNC;
+typedef enum logic [1:0] {
+    ALU   = 2'h0,
+    MULT   = 2'h1,
+    BU   = 2'h2,
+    LDST = 2'h3
+} FU_TYPE;
 
 // EDITED END
 
@@ -444,6 +450,8 @@ typedef struct packed {
     logic           Source2_ready;
     OPCODE          Op;
     B_MASK          b_mask;
+    B_MASK_MASK     b_mask_mask;
+    FU_TYPE         FU_type;
 } RS_PACKET;
 
 typedef struct packed {
@@ -456,6 +464,11 @@ typedef struct packed {
     ROB_EXIT_PACKET          [`N-1:0] rob_outputs;
     logic [`ROB_NUM_ENTRIES_BITS-1:0] rob_num_entries;
 } ROB_DEBUG;
+
+typedef struct packed {
+    logic [`RS_SZ-1:0] rs_valid;
+    logic [`RS_SZ-1:0] rs_reqs;
+} RS_DEBUG;
 
 // TODO: UPDATE FU PACKETS
 

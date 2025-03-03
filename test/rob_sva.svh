@@ -22,6 +22,7 @@ module ROB_sva #(
 );
 
     int spots_manual;
+    //update to include tail recovery logic
     assign spots_manual = rob_debug.head == rob_debug.rob_tail && rob_debug.rob_spots == 0 && rob_debug.rob_num_entries != 0
                             ? 0
                             : `ROB_SZ - ((rob_debug.rob_tail - rob_debug.head + `ROB_SZ) % `ROB_SZ) > `N 
@@ -41,13 +42,6 @@ module ROB_sva #(
             previous_tail_restore <= tail_restore;
         end
     end
-
-    task exit_on_error;
-        begin
-            $display("\n\033[31m@@@ Failed at time %4d\033[0m\n", $time);
-            $finish;
-        end
-    endtask
     
     clocking cb @(posedge clock);
         property tail_recovery;
@@ -94,6 +88,7 @@ module ROB_sva #(
                 $error("Tail recovery failed: tail did not restore to checkpointed tail (%0d)", previous_tail_restore);
                 $finish;
             end 
+            
     end
 
 endmodule

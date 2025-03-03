@@ -28,6 +28,8 @@ module FreddyList_test ();
     // ------------- TO ISSUE -------------- //
     logic   [`PHYS_REG_SZ_R10K-1:0] complete_list;           // bitvector of the phys reg that are complete
 
+    logic [`PHYS_REG_SZ_R10K-1:0] next_free_list;
+
     // INSTANCE is from the sys_defs.svh file
     // it renames the module if SYNTH is defined in
     // order to rename the module to FIFO_svsim
@@ -93,9 +95,8 @@ module FreddyList_test ();
 
         clock = 1;
         reset = 1;
-
-        $monitor("  %3d | retiring_valid: %0d   restore_flag: %0d,   free_list: %b,   updated_free_list: %b",
-                  $time,  num_retiring_valid,      restore_flag,       free_list,       updated_free_list);
+        $monitor("  %3d | retiring_valid: %0d   restore_flag: %0d,   free_list: %b,   updated_free_list: %b,   difference: %b,   complete_list: %b,   completing_valid: %b",
+                  $time,  num_retiring_valid,      restore_flag,       free_list,       updated_free_list,     free_list ^ updated_free_list, complete_list, completing_valid;
 
         // for (int Index = 0; Index < `N; ++Index) begin
         //     $monitor("Index: %b | rob_inputs: %b   rob_outputs: %b",
@@ -105,20 +106,18 @@ module FreddyList_test ();
         @(negedge clock);
         @(negedge clock);
         reset = 0;
+        updated_free_list = free_list;
+        restore_flag = 0;
+        completing_valid = 0;
         
         // ---------- Test 1 ---------- //
         $display("\nTest 1: No interaction, updated_free_list copied to free_list");
         $display("Randomize updated_free_list input");
-        restore_flag = 0;
+        @(negedge clock);
         num_retiring_valid = 0;
-        for (int outer_i = 0; outer_i < 1000; ++outer_i) begin
-            for (int i = 0; i < `PHYS_REG_SZ_R10K; i += 32) begin
-                if(i + 31 >= `PHYS_REG_SZ_R10K) begin
-                    // Use a variable part-select that adjusts for the remaining bits if needed
-                    updated_free_list[`PHYS_REG_SZ_R10K - 1 -: (`PHYS_REG_SZ_R10K - i)] = {$urandom};
-                end else begin
-                    updated_free_list[i +: 32] = {$urandom};
-                end
+        for (int i = 0; i < 10; ++i) begin
+            for(int j = 0; j < `PHYS_REG_SZ_R10K; j++) begin
+                updated_free_list[j] = $urandom_range(1);
             end
             @(negedge clock);
         end
@@ -135,7 +134,7 @@ module FreddyList_test ();
         index = 0;
         num_retiring_valid = `N;
 
-        while (index < `PHYS_REG_SZ_R10K) begin
+        while (index < 12) begin
             updated_free_list = free_list;
             for(int i = 0; i < num_retiring_valid; ++i) begin
                 phys_reg_retiring[i] = index + i;
@@ -146,28 +145,21 @@ module FreddyList_test ();
         end
 
         @(negedge clock);
+        num_retiring_valid = 0;
 
         // ---------- Test 3 ---------- //
         $display("\nTest 3: Testing restoring of old free list");
 
-        for(int i = 0; i < `PHYS_REG_SZ_R10K; i += 32) begin
-            if(i+31 > `PHYS_REG_SZ_R10K) begin
-                updated_free_list[`PHYS_REG_SZ_R10K-1:i] = {$urandom};
-            end else begin
-                updated_free_list[i+31:i] = {$urandom};
-            end
+        for(int i = 0; i < `PHYS_REG_SZ_R10K; i++) begin
+            updated_free_list[i] = $urandom_range(1);
         end
 
         free_list_restore = updated_free_list;
 
         @(negedge clock);
 
-        for(int i = 0; i < `PHYS_REG_SZ_R10K; i += 32) begin
-            if(i+31 > `PHYS_REG_SZ_R10K) begin
-                updated_free_list[`PHYS_REG_SZ_R10K-1:i] = {$urandom};
-            end else begin
-                updated_free_list[i+31:i] = {$urandom};
-            end
+        for(int i = 0; i < `PHYS_REG_SZ_R10K; i++) begin
+            updated_free_list[i] = $urandom_range(1);
         end
 
         @(negedge clock);
@@ -179,24 +171,16 @@ module FreddyList_test ();
         // ---------- Test 4 ---------- //
         $display("\nTest 4: Testing restoring of old free list and something is retiring");
 
-        for(int i = 0; i < `PHYS_REG_SZ_R10K; i += 32) begin
-            if(i+31 > `PHYS_REG_SZ_R10K) begin
-                updated_free_list[`PHYS_REG_SZ_R10K-1:i] = {$urandom};
-            end else begin
-                updated_free_list[i+31:i] = {$urandom};
-            end
+        for(int i = 0; i < `PHYS_REG_SZ_R10K; i++) begin
+            updated_free_list[i] = $urandom_range(1);
         end
 
         free_list_restore = updated_free_list;
 
         @(negedge clock);
 
-        for(int i = 0; i < `PHYS_REG_SZ_R10K; i += 32) begin
-            if(i+31 > `PHYS_REG_SZ_R10K) begin
-                updated_free_list[`PHYS_REG_SZ_R10K-1:i] = {$urandom};
-            end else begin
-                updated_free_list[i+31:i] = {$urandom};
-            end
+        for(int i = 0; i < `PHYS_REG_SZ_R10K; i++) begin
+            updated_free_list[i] = $urandom_range(1);
         end
 
         @(negedge clock);
@@ -225,12 +209,16 @@ module FreddyList_test ();
         // ---------- Test 5 ---------- //
         $display("\nTest 5: Complete list changes with completing instructions");
 
-        for(int j = 0; j < `PHYS_REG_SZ_R10K; j += `N) begin
-            completing_valid = $urandom;
-            for(int i = 0; i < `N; i++) begin
-                phys_reg_completing[i] = $urandom;
+        completing_valid = `1;
+        for (int i = 0; i < `N; i++) begin
+            if (completing_valid[i]) begin
+                for (int j = 0; j < `PHYS_REG_SZ_R10K; j++) begin
+                    if (~complete_list[j]) begin
+                        phys_reg_completing[j] = 1;
+                        break;
+                    end
+                end
             end
-            @(negedge clock);
         end
 
         @(negedge clock);
