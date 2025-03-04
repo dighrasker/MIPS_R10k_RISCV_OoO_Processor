@@ -16,7 +16,7 @@ module RS_sva #(
 
     // --------- FROM: CDB ------------ //
     input  PHYS_REG_IDX        [`N-1:0] CDB_tags,            // Tags that are broadcasted from the CDB
-    input  logic [`NUM_SCALAR_BITS-1:0] CDB_valid,           // 1 is the broadcast is valid
+    input  logic               [`N-1:0] CDB_valid,           // 1 is the broadcast is valid
     
     // ------- TO/FROM: ISSUE --------- //
     input  logic           [`RS_SZ-1:0] rs_data_issuing,      // bit vector of rs_data that is being issued by issue stage
@@ -33,7 +33,7 @@ module RS_sva #(
     logic        b_mm_mispred_prev;
     logic [`B_MASK_WIDTH-1:0] b_mask_temp;
     logic [`RS_NUM_ENTRIES_BITS-1:0] rs_spots_c;
-    assign rs_spots_c = ($countones(rob_debug.rs_reqs) > `N) ? `N : $countones(rob_debug.rs_reqs);
+    assign rs_spots_c = ($countones(rs_debug.rs_reqs) > `N) ? `N : $countones(rs_debug.rs_reqs);
 
     always_ff @(posedge clock) begin
         if (reset) begin
@@ -47,15 +47,15 @@ module RS_sva #(
     
     clocking cb @(posedge clock);
         property squashing(i);
-            (b_mm_mispred && RS_valid[i] && (RS_data[i].b_mask & b_mm_resolve)) |-> (RS_valid_next[i] == 0);
+            (b_mm_mispred && rs_debug.rs_valid[i] && (RS_data[i].b_mask & b_mm_resolve)) |-> (RS_valid_next[i] == 0);
         endproperty
 
         property cammingSrc1(i, j);
-            (RS_valid[i] && CDB_valid[j] && (CDB_tags[j] == RS_data[i].Source1)) |=> (RS_data[i].Source1_ready);
+            (rs_debug.rs_valid[i] && CDB_valid[j] && (CDB_tags[j] == RS_data[i].Source1)) |=> (RS_data[i].Source1_ready);
         endproperty
 
         property cammingSrc2(i, j);
-            (RS_valid[i] && CDB_valid[j] && (CDB_tags[j] == RS_data[i].Source2)) |=> (RS_data[i].Source2_ready);
+            (rs_debug.rs_valid[i] && CDB_valid[j] && (CDB_tags[j] == RS_data[i].Source2)) |=> (RS_data[i].Source2_ready);
         endproperty
     endclocking
 
@@ -65,58 +65,65 @@ module RS_sva #(
             else begin
                 $error("RS_spots (%0d) not equal to number of invalid entries (%0d).", 
                 rs_spots, rs_spots_c);
-                $finsish
+                $finish;
             end
 
         //testing b_mask values after resolving (no mispred)
         //should be checking RS_data[i].b_mask
         for (int i = 0; i < `RS_SZ; ++ i) begin // for each RS entry
-            if(RS_debug.rs_valid[i]) begin
+            if(rs_debug.rs_valid[i]) begin
                 assert(reset || !(RS_data[i].b_mask & b_mm_resolve_prev))
                     else begin
                         $error("RS entry #%0d did not properly set b_mask idx to zero - Current B_mask(%0d) - Prev B_mask_mask(%0d).", 
                         i, RS_data[i].b_mask, b_mm_resolve_prev);
-                        $finsish
+                        $finish;
                     end
             end
         end
-        for(int i = 0; i < `RS_SZ; ++i) begin
-            assert property (cb.squashing(i))
-                else begin
-                    $error("RS entry #%0d did not properly squash when it should have - Current B_mask(%0d) - b_mm_resolve(%0d).", 
-                        i, RS_data[i].b_mask, b_mm_resolve_prev);
-                    $finish
-                end
-        end
-        for(int i = 0; i < `RS_SZ; ++i) begin
-            for(int j = 0; j < `N; ++j) begin
-                assert property (cb.cammingSrc1(i, j))
-                    else begin
-                        $error("RS entry #%0d did not properly match the cdb to src 1 when it should have - Current cdb idx(%0d) - RS entry src 1(%0d).", 
-                        i, CDB_tags[j], RS_data[i].Source1);
-                        $finish
-                    end
-                assert property (cb.cammingSrc2(i, j))
-                    else begin
-                        $error("RS entry #%0d did not properly match the cdb to src 2 when it should have - Current cdb idx(%0d) - RS entry src 2(%0d).", 
-                        i, CDB_tags[j], RS_data[i].Source2);
-                        $finish
-                    end
-            end
-        end
-        assert(num_dispatched <= rs_spots)
+        assert(reset || num_dispatched <= rs_spots)
             else begin
                 $error("invalid number dispatching(%0d), greater than rs_spots(%0d)",
-                num_dispatching, rs_spots);
-                $finish
+                num_dispatched, rs_spots);
+                $finish;
             end
-        assert(num_dispatched <= `N)
+        assert(reset || num_dispatched <= `N)
             else begin
                 $error("invalid number dispatching(%0d), greater than N(%0d)",
-                num_dispatching, `N);
-                $finish
+                num_dispatched, `N);
+                $finish;
             end
     end
+
+    generate
+        genvar i;
+            for(i = 0; i < `RS_SZ; ++i) begin
+                assert property (cb.squashing(i))
+                    else begin
+                        $error("RS entry #%0d did not properly squash when it should have - Current B_mask(%0d) - b_mm_resolve(%0d).", 
+                            i, RS_data[i].b_mask, b_mm_resolve_prev);
+                        $finish;
+                    end
+            end
+    endgenerate
+    generate
+        genvar k, j;
+            for(k = 0; k < `RS_SZ; ++k) begin
+                for(j = 0; j < `N; ++j) begin
+                    assert property (cb.cammingSrc1(k, j))
+                        else begin
+                            $error("RS entry #%0d did not properly match the cdb to src 1 when it should have - Current cdb idx(%0d) - RS entry src 1(%0d).", 
+                            k, CDB_tags[j], RS_data[k].Source1);
+                            $finish;
+                        end
+                    assert property (cb.cammingSrc2(k, j))
+                        else begin
+                            $error("RS entry #%0d did not properly match the cdb to src 2 when it should have - Current cdb idx(%0d) - RS entry src 2(%0d).", 
+                            k, CDB_tags[j], RS_data[k].Source2);
+                            $finish;
+                        end
+                end
+            end
+    endgenerate
 
 endmodule
 

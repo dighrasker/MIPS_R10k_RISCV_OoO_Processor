@@ -1,6 +1,5 @@
-// ROB module testbench
+// freddylist module testbench
 // This module generates the test vectors
-// Correctness checking is in FIFO_sva.svh
 
 `include "verilog/sys_defs.svh"
 `include "test/freddylist_sva.svh"
@@ -214,7 +213,7 @@ module FreddyList_test ();
         @(negedge clock);
         
         for (int i = 0; i < 100; i++) begin
-            // for(int j = 0; j < `PHYS_REG_SZ_R10K; j++) begin // essentially dispatching
+            // for(int j = 0; j < `PHYS_REG_SZ_R10K; j++) begin // essentially dispatching random stuff but it doesn't work because you can't dispatch phys regs that are completing
             //     updated_free_list[j] = $urandom_range(1);
             // end
             temp_complete_list = complete_list;

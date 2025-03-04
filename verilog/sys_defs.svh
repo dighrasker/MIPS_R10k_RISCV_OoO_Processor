@@ -443,16 +443,19 @@ typedef struct packed {
 //TODO: CHANGE FOR RS
 typedef struct packed {
     // ADDR            PC;
-
     PHYS_REG_IDX    T_new; // Use as unique RS id ???
     PHYS_REG_IDX    Source1;
     logic           Source1_ready;
     PHYS_REG_IDX    Source2;
     logic           Source2_ready;
-    OPCODE          Op;
+    OPCODE          Op;         //do we need opcode?
     B_MASK          b_mask;
     B_MASK_MASK     b_mask_mask;
     FU_TYPE         FU_type;
+    /*ALU_PACKET      alu_packet;
+    MULT_PACKET     mult_packet;
+    BRANCH_PACKET   branch_packet;
+    LDST_PACKET     ldst_packet;*/
 } RS_PACKET;
 
 typedef struct packed {
@@ -481,25 +484,24 @@ typedef struct packed {
     ALU_FUNC        alu_func;
 } ALU_PACKET;
 
-typedef struct packed {
+typedef struct {
     DATA            immediate_val;
     ALU_FUNC        alu_func;
 } ALU_FLAGS;
 
-/*
-typedef struct packed {
-    //any flags needed for mult?    
-} MULT_PACKET;
-*/
-
-typedef struct packed {
+typedef struct {
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg;
     B_MASK          bm;
+    //MULT_FLAGS      mult_flags;   
+} MULT_PACKET;
+
+typedef struct {
+    MULT_FUNC   mult_func;
 } MULT_FLAGS;
 
-typedef struct packed {
+typedef struct {
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg;       // not used but might be good for identification purposes
@@ -508,20 +510,21 @@ typedef struct packed {
     B_MASK_MASK     bmm;            // this branch's corresponding mask
 } BRANCH_PACKET;
 
-typedef struct packed {
+typedef struct {
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg;
     B_MASK          bm;
-} LD_PACKET;
+} LDST_PACKET;
 
+/*
 typedef struct packed {
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg;       // not used?
     B_MASK          bm;
 } ST_PACKET;
-
+*/
 
 typedef struct packed {
     ADDR                               recovery_PC;
