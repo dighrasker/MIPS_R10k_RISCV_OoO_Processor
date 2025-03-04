@@ -14,9 +14,11 @@ module MapTable #(
     input logic     [`NUM_SCALAR_BITS-1:0] dest_reg_valid,
     output PHYS_REG_IDX           [`N-1:0] source1_phys_reg, // 
     output PHYS_REG_IDX           [`N-1:0] source2_phys_reg
+    // input: map_table_restore
+    // output: map_table_checkpoint
 );
 
-    PHYS_REG_IDX [`ARCH_REG_SZ_R10K] map_table, next_map_table;
+    PHYS_REG_IDX [`ARCH_REG_SZ_R10K:0] map_table, next_map_table;
 
     always_comb begin
         next_map_table = map_table;

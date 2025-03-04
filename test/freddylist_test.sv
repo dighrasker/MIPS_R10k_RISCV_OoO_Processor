@@ -30,6 +30,8 @@ module FreddyList_test ();
 
     logic [`PHYS_REG_SZ_R10K-1:0] next_free_list;
 
+    logic   [`PHYS_REG_SZ_R10K-1:0] temp_complete_list;
+
     // INSTANCE is from the sys_defs.svh file
     // it renames the module if SYNTH is defined in
     // order to rename the module to FIFO_svsim
@@ -96,7 +98,7 @@ module FreddyList_test ();
         clock = 1;
         reset = 1;
         $monitor("  %3d | retiring_valid: %0d   restore_flag: %0d,   free_list: %b,   updated_free_list: %b,   difference: %b,   complete_list: %b,   completing_valid: %b",
-                  $time,  num_retiring_valid,      restore_flag,       free_list,       updated_free_list,     free_list ^ updated_free_list, complete_list, completing_valid;
+                  $time,  num_retiring_valid,      restore_flag,       free_list,       updated_free_list,     free_list ^ updated_free_list, complete_list, completing_valid);
 
         // for (int Index = 0; Index < `N; ++Index) begin
         //     $monitor("Index: %b | rob_inputs: %b   rob_outputs: %b",
@@ -208,17 +210,28 @@ module FreddyList_test ();
 
         // ---------- Test 5 ---------- //
         $display("\nTest 5: Complete list changes with completing instructions");
-
-        completing_valid = `1;
-        for (int i = 0; i < `N; i++) begin
-            if (completing_valid[i]) begin
-                for (int j = 0; j < `PHYS_REG_SZ_R10K; j++) begin
-                    if (~complete_list[j]) begin
-                        phys_reg_completing[j] = 1;
-                        break;
+        
+        @(negedge clock);
+        
+        for (int i = 0; i < 100; i++) begin
+            // for(int j = 0; j < `PHYS_REG_SZ_R10K; j++) begin // essentially dispatching
+            //     updated_free_list[j] = $urandom_range(1);
+            // end
+            temp_complete_list = complete_list;
+            completing_valid = ~0;
+            for (int j = 0; j < `N; j++) begin
+                if (completing_valid[j]) begin
+                    for (int k = 0; k < `PHYS_REG_SZ_R10K; k++) begin
+                        if (~temp_complete_list[k]) begin
+                            phys_reg_completing[j] = k;
+                            temp_complete_list[k] = 1;
+                            break;
+                        end
                     end
                 end
             end
+
+            @(negedge clock);
         end
 
         @(negedge clock);

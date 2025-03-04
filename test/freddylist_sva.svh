@@ -30,7 +30,7 @@ module FreddyList_sva #(
 
     logic only_updated;
     logic   [`PHYS_REG_SZ_R10K-1:0] prev_complete_list;
-    logic   [`PHYS_REG_SZ_R10K-1:0] prev_updated_list;
+    logic   [`PHYS_REG_SZ_R10K-1:0] prev_updated_free_list;
 
     logic   [`PHYS_REG_SZ_R10K-1:0] retiring_list;
     logic   [`PHYS_REG_SZ_R10K-1:0] prev_retiring_list;
@@ -76,7 +76,7 @@ module FreddyList_sva #(
     endtask
 
     always_ff @(posedge clock) begin
-        prev_updated_list <= updated_free_list;
+        prev_updated_free_list <= updated_free_list;
         prev_retiring_list <= retiring_list;
         prev_FL_restore_to_check <= FL_restore_to_check;
         prev_completing_list <= completing_list;
@@ -85,29 +85,37 @@ module FreddyList_sva #(
 
     clocking FL_prop @(posedge clock);
         property only_updating;
-            (only_updated) |=> (prev_updated_list == free_list);
+            (only_updated) |=> (prev_updated_free_list == free_list);
         endproperty
 
         property not_only_updating;
             (~only_updated) |=> ((prev_retiring_list & free_list) == prev_retiring_list);
         endproperty
 
+        property not_only_updating_others;
+            (~only_updated & ~restore_flag) |=> ((~prev_retiring_list & free_list) == (~prev_retiring_list & prev_updated_free_list));
+        endproperty
+
         property FL_restore;
             (restore_flag) |=> ((prev_FL_restore_to_check & free_list) == prev_FL_restore_to_check);
         endproperty
+        
     endclocking
 
     // TODO: update
     clocking complete_prop @(posedge clock);
         property something_completing;
-            (completing) |=> (prev_completing_list & complete_list == prev_completing_list);
+            (completing) |=> ((prev_completing_list & complete_list) == prev_completing_list);
         endproperty
 
         property prev_complete_maintained;
             // TODO: might not want to check all the time. Choose a better condition to check
-            (~reset) |=> ((~prev_complete_list & ~complete_list) == ~prev_complete_list);
+            (~reset) |=> ((~prev_complete_list & ~complete_list & ~prev_completing_list) == (~prev_complete_list & ~prev_completing_list));
         endproperty
     endclocking
+    
+
+
     
     always @(posedge clock) begin
 
@@ -124,6 +132,13 @@ module FreddyList_sva #(
             else begin
                 $error("Free_list didn't free a retiring register: expected %b, got %b",
                     prev_retiring_list,   prev_retiring_list & free_list);
+                $finish;
+            end
+
+        assert property (FL_prop.not_only_updating_others)
+            else begin
+                $error("Missmatch on free_list and updated_list when retiring : expected %b, got %b",
+                    (~prev_retiring_list & prev_updated_free_list),  (~prev_retiring_list & free_list));
                 $finish;
             end
 

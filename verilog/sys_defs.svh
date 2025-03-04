@@ -24,6 +24,7 @@
 // superscalar width
 `define N 3
 `define B_MASK_WIDTH 4
+`define NUM_B_MASK_BITS $clog2(`B_MASK_WIDTH + 1)
 `define CDB_SZ `N // This MUST match your superscalar width
 `define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]
 
@@ -521,11 +522,15 @@ typedef struct packed {
     B_MASK          bm;
 } ST_PACKET;
 
-/*
+
 typedef struct packed {
-    
+    ADDR                               recovery_PC;
+    logic           [`ROB_SZ_BITS-1:0] rob_tail;
+    logic      [`PHYS_REG_SZ_R10K-1:0] free_list;
+    PHYS_REG_IDX [`ARCH_REG_SZ_R10K:0] map_table;
+    B_MASK                             b_m;
+    // lsq_tail
+    // branch prediction repair
 } BS_ENTRY_PACKET;
-*/
-// EDITED END
 
 `endif // __SYS_DEFS_SVH__
