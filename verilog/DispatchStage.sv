@@ -15,7 +15,7 @@ module Dispatch #(
     input   logic                               restore_valid,
     input   B_MASK                              b_mask_reg,
     output  BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack_entries,
-    output  B_MASK                              branch_stack_entries_valid,
+    // output  B_MASK                              branch_stack_entries_valid, might not need
 
     // ------------ TO/FROM ROB ------------- //
     input   logic            [`ROB_SZ_BITS-1:0] rob_tail,

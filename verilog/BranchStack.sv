@@ -26,18 +26,21 @@ module BranchStack #(
     // ------------- TO LSQ ------------------ //
     // output logic                                 lsq_tail_restore  //<--- STILL NEED TO UPDATE THIS
     // branch prediction repair?
+`ifdef DEBUG
+    , output BS_DEBUG                            bs_debug
+`endif
 ); 
 
     BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack, next_branch_stack;
     
     B_MASK b_mask_reg;
     
-    logic [`NUM_B_MASK_BITS-1:0] next_branch_stack_spots;
+    logic [`NUM_B_MASK_BITS-1:0] next_branch_stack_spots; // might not care
 
     always_comb begin
         next_branch_stack_spots = 0;
         // Just counting spots. Maybe could be done better? Also, consider genvar but genvar doesn't work in comb block apparently. More research needs to be done
-        for (i = 0; i < `B_MASK_WIDTH; i++) begin
+        for (int i = 0; i < `B_MASK_WIDTH; i++) begin
             next_branch_stack_spots += ~next_b_mask[i];
         end
     end
@@ -46,12 +49,11 @@ module BranchStack #(
         next_branch_stack = branch_stack;
         b_mask_combinational = b_mask_reg;
         for (int i = 0; i < `B_MASK_WIDTH; i++) begin
-            if ((b_mm_mispred & (branch_stack[i].b_m & b_mm_resolve != 0)) | b_mm_resolve[i]) begin
+            if ((b_mm_mispred & ((branch_stack[i].b_m & b_mm_resolve) != 0)) | b_mm_resolve[i]) begin
                 b_mask_combinational[i] = 0;
                 next_branch_stack[i] = 0;
-            end else if (!b_mm_mispred & (branch_stack[i].b_m & b_mm_resolve != 0)) begin
+            end else begin
                 next_branch_stack[i].b_m = branch_stack[i].b_m & ~b_mm_resolve;
-                b_mask_combinational[i] = 1;
             end
         end
     end
@@ -90,8 +92,16 @@ module BranchStack #(
         end else begin
             branch_stack_spots <= next_branch_stack_spots;
             b_mask_reg <= next_b_mask;
-            branch_stack[i] <= next_branch_stack[i] | branch_stack_entries[i];
+            for (int i = 0; i < `B_MASK_WIDTH; i++) begin
+                branch_stack[i] <= next_branch_stack[i] | branch_stack_entries[i];
+            end
         end
     end
+
+`ifdef DEBUG
+    assign bs_debug.branch_stack = branch_stack;
+    assign bs_debug.b_mask_reg = b_mask_reg;
+    assign bs_debug.next_branch_stack = next_branch_stack;
+`endif
 
 endmodule

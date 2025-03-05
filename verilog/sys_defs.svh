@@ -459,6 +459,16 @@ typedef struct packed {
 } RS_PACKET;
 
 typedef struct packed {
+    ADDR                               recovery_PC;
+    logic           [`ROB_SZ_BITS-1:0] rob_tail;
+    logic      [`PHYS_REG_SZ_R10K-1:0] free_list;
+    PHYS_REG_IDX [`ARCH_REG_SZ_R10K:0] map_table;
+    B_MASK                             b_m;
+    // lsq_tail
+    // branch prediction repair
+} BS_ENTRY_PACKET;
+
+typedef struct packed {
     // ADDR            PC;
     ROB_ENTRY_PACKET         [`N-1:0] rob_inputs; // Use as unique rob id
     logic       [$clog2(`ROB_SZ)-1:0] head;
@@ -473,6 +483,12 @@ typedef struct packed {
     logic [`RS_SZ-1:0] rs_valid;
     logic [`RS_SZ-1:0] rs_reqs;
 } RS_DEBUG;
+
+typedef struct packed {
+    BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack;
+    BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] next_branch_stack;
+    B_MASK b_mask_reg;
+} BS_DEBUG;
 
 // TODO: UPDATE FU PACKETS
 
@@ -525,15 +541,5 @@ typedef struct packed {
     B_MASK          bm;
 } ST_PACKET;
 */
-
-typedef struct packed {
-    ADDR                               recovery_PC;
-    logic           [`ROB_SZ_BITS-1:0] rob_tail;
-    logic      [`PHYS_REG_SZ_R10K-1:0] free_list;
-    PHYS_REG_IDX [`ARCH_REG_SZ_R10K:0] map_table;
-    B_MASK                             b_m;
-    // lsq_tail
-    // branch prediction repair
-} BS_ENTRY_PACKET;
 
 `endif // __SYS_DEFS_SVH__
