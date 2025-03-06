@@ -107,40 +107,28 @@ module RS_test ();
         rs_spots_random <= $urandom_range(rs_spots);
     end*/
     
-    /*
+    
     always_comb begin : generateRSInputs
-        if (!manual_mode) begin
-            b_mm_mispred = b_mm_mispred_rand;
+       for (int k = 0; k <= 1000; ++k) begin
+            std::randomize(rs_data_issuing);
+            b_mm_resolve_idx = $urandom_range(0, `B_MASK_WIDTH);
+            //std::randomize(b_mm_mispred);
+            b_mm_mispred = (k % 10) == 0;
+            std::randomize(CDB_valid);
+            for(int i = 0; i < `N; ++i) begin
+                logic [$bits(RS_PACKET)-1:0] temp_rand;
+                logic [$bits(PHYS_REG_IDX)-1:0] temp_CDB_rand;
+                std::randomize(temp_CDB_rand);
+                std::randomize(temp_rand);
+                CDB_tags[i] = temp_CDB_rand;
+                rs_entries[i] = temp_rand;
+            end
+            rs_spots_random = $urandom_range(rs_spots);
             num_dispatched = b_mm_mispred ? 0 : rs_spots_random;
             b_mm_resolve = 1 << b_mm_resolve_idx;
-            rs_data_issuing = rs_data_issuing_rand;
-            CDB_valid = CDB_valid_rand;
-            //randomizing tags in the CDB
-            for(int i = 0; i < `N; ++i) begin
-                CDB_tags[i] = temp_CDB[i];
-            end
-            //randomizing rs_entry packets
+            // $display("\n\033[32m@@@ Reached check #1\033[0m\n");
+            // //randomizing rs_entry packets
             for(int i = 0; i < `N; ++i) begin  
-                rs_entries[i] = temp[i];
-                for(int j = 0; j < `N; ++j) begin
-                    if(CDB_tags[j] == rs_entries[i].Source1) rs_entries[i].Source1_ready = '1;
-                    if(CDB_tags[j] == rs_entries[i].Source2) rs_entries[i].Source2_ready = '1;
-                end
-                rs_entries[i].b_mask &= ~b_mm_resolve;
-            end 
-        end else begin
-            b_mm_mispred = b_mm_mispred_manual;
-            num_dispatched = b_mm_mispred ? 0 : num_dispatched_manual;
-            b_mm_resolve = b_mm_resolve_manual;
-            rs_data_issuing = rs_data_issuing_manual;
-            CDB_valid = CDB_valid_manual;
-            //randomizing tags in the CDB
-            for(int i = 0; i < `N; ++i) begin
-                CDB_tags[i] = CDB_tags_manual[i];
-            end
-            //randomizing rs_entry packets
-            for(int i = 0; i < `N; ++i) begin  
-                rs_entries[i] = rs_entries_manual[i];
                 for(int j = 0; j < `N; ++j) begin
                     if(CDB_tags[j] == rs_entries[i].Source1) rs_entries[i].Source1_ready = '1;
                     if(CDB_tags[j] == rs_entries[i].Source2) rs_entries[i].Source2_ready = '1;
@@ -148,8 +136,7 @@ module RS_test ();
                 rs_entries[i].b_mask &= ~b_mm_resolve;
             end 
         end
-
-    end*/
+    end
 
     /*
     Variables that can be independent (truly randomized)
@@ -245,31 +232,6 @@ module RS_test ();
         // ---------- Test 1 ---------- //
         $display("\nTest 1: Randomize many times");
         for (int k = 0; k <= 1000; ++k) begin
-            std::randomize(rs_data_issuing);
-            b_mm_resolve_idx = $urandom_range(0, `B_MASK_WIDTH);
-            //std::randomize(b_mm_mispred);
-            b_mm_mispred = (k % 10) == 0;
-            std::randomize(CDB_valid);
-            for(int i = 0; i < `N; ++i) begin
-                logic [$bits(RS_PACKET)-1:0] temp_rand;
-                logic [$bits(PHYS_REG_IDX)-1:0] temp_CDB_rand;
-                std::randomize(temp_CDB_rand);
-                std::randomize(temp_rand);
-                CDB_tags[i] = temp_CDB_rand;
-                rs_entries[i] = temp_rand;
-            end
-            rs_spots_random = $urandom_range(rs_spots);
-            num_dispatched = b_mm_mispred ? 0 : rs_spots_random;
-            b_mm_resolve = 1 << b_mm_resolve_idx;
-            // $display("\n\033[32m@@@ Reached check #1\033[0m\n");
-            // //randomizing rs_entry packets
-            for(int i = 0; i < `N; ++i) begin  
-                for(int j = 0; j < `N; ++j) begin
-                    if(CDB_tags[j] == rs_entries[i].Source1) rs_entries[i].Source1_ready = '1;
-                    if(CDB_tags[j] == rs_entries[i].Source2) rs_entries[i].Source2_ready = '1;
-                end
-                rs_entries[i].b_mask &= ~b_mm_resolve;
-            end 
             $display("\n\033[32m@@@ Reached check #2\033[0m\n");
             @(negedge clock);
             $display("\n\033[32m@@@ Reached check #3\033[0m\n");

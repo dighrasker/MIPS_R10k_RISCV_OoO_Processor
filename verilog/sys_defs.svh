@@ -24,7 +24,6 @@
 // superscalar width
 `define N 3
 `define B_MASK_WIDTH 4
-`define MIN_B_MASK_AND_N $min(`N,`B_MASK_WIDTH)
 `define NUM_B_MASK_BITS $clog2(`B_MASK_WIDTH + 1)
 `define CDB_SZ `N // This MUST match your superscalar width
 `define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]
@@ -429,7 +428,7 @@ typedef struct packed {
 
 typedef struct packed {
     // ADDR            PC;
-
+    logic           has_dest;
     PHYS_REG_IDX    T_new; // Use as unique rob id
     PHYS_REG_IDX    T_old;
     ARCH_REG_IDX    Arch_reg;
@@ -437,7 +436,7 @@ typedef struct packed {
 
 typedef struct packed {
     // ADDR            PC;
-    
+    logic           has_dest;
     PHYS_REG_IDX    T_new; // Use as unique rob id
     PHYS_REG_IDX    T_old;
     ARCH_REG_IDX    Arch_reg;
@@ -445,17 +444,30 @@ typedef struct packed {
 
 //TODO: CHANGE FOR RS
 typedef struct packed {
+    INST  inst;
+    logic valid; // when low, ignore inst. Output will look like a NOP
+    ALU_OPA_SELECT opa_select;
+    ALU_OPB_SELECT opb_select;
+    logic          has_dest; // if there is a destination register
+    ALU_FUNC       alu_func;
+    logic          mult;
+    logic          rd_mem;
+    logic          wr_mem;
+    logic          cond_branch;
+    logic          uncond_branch;
+    logic          csr_op; // used for CSR operations, we only use this as a cheap way to get the return code out
+    logic          halt;   // non-zero on a halt
+    logic          illegal; // non-zero on an illegal instruction
     ADDR            PC;
+    ADDR            NPC;
     PHYS_REG_IDX    T_new; // Use as unique RS id ???
     PHYS_REG_IDX    Source1;
     logic           Source1_ready;
     PHYS_REG_IDX    Source2;
     logic           Source2_ready;
-    OPCODE          Op;         //do we need opcode?
     B_MASK          b_mask;
     B_MASK_MASK     b_mask_mask;
     FU_TYPE         FU_type;
-
     // ALU_PACKET      alu_packet;
     // MULT_PACKET     mult_packet;
     // BRANCH_PACKET   branch_packet;
@@ -545,5 +557,14 @@ typedef struct packed {
     B_MASK          bm;
 } ST_PACKET;
 */
+
+typedef struct packed {
+    INST            inst;
+    ADDR            PC;
+} FETCH_PACKET;
+
+typdef struct packed {
+
+} 
 
 `endif // __SYS_DEFS_SVH__
