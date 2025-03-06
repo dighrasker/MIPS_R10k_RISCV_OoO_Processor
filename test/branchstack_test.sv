@@ -10,23 +10,21 @@ module BranchStack_test ();
 
     logic                                clock; 
     logic                                reset;
+
+    logic                                restore_valid;
     // ------------- TO FETCH -------------- //
     ADDR                                 PC_restore;
-    logic                                PC_restore_valid;
     // ------------- FROM COMPLETE -------------- //
     B_MASK_MASK                          b_mm_resolve;
     logic                                b_mm_mispred;
     // ------------- TO ROB ------------------- //
     logic             [`ROB_SZ_BITS-1:0] rob_tail_restore;
-    logic                                rob_tail_restore_valid;
     // ------------- TO FREDDY LIST ----------- //
     logic        [`PHYS_REG_SZ_R10K-1:0] freelist_restore;
-    logic                                freelist_restore_valid;
     // ------------- TO/FROM DISPATCH -------------- //
     BS_ENTRY_PACKET  [`B_MASK_WIDTH-1:0] branch_stack_entries;
     logic            [`B_MASK_WIDTH-1:0] next_b_mask;
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore;
-    logic                                map_table_restore_valid;
     B_MASK                               b_mask_combinational;
     BS_DEBUG                             bs_debug;
 
@@ -34,17 +32,14 @@ module BranchStack_test ();
         .clock(clock),
         .reset(reset),
         .PC_restore(PC_restore),
-        .PC_restore_valid(PC_restore_valid),
         .b_mm_resolve(b_mm_resolve),
         .b_mm_mispred(b_mm_mispred),
         .rob_tail_restore(rob_tail_restore),
-        .rob_tail_restore_valid(rob_tail_restore_valid),
+        .restore_valid(restore_valid),
         .freelist_restore(freelist_restore),
-        .freelist_restore_valid(freelist_restore_valid),
         .branch_stack_entries(branch_stack_entries),
         .next_b_mask(next_b_mask),
         .map_table_restore(map_table_restore),
-        .map_table_restore_valid(map_table_restore_valid),
         .b_mask_combinational(b_mask_combinational),
         .bs_debug(bs_debug)
     );
@@ -53,17 +48,14 @@ module BranchStack_test ();
         .clock(clock),
         .reset(reset),
         .PC_restore(PC_restore),
-        .PC_restore_valid(PC_restore_valid),
+        .restore_valid(restore_valid),
         .b_mm_resolve(b_mm_resolve),
         .b_mm_mispred(b_mm_mispred),
         .rob_tail_restore(rob_tail_restore),
-        .rob_tail_restore_valid(rob_tail_restore_valid),
         .freelist_restore(freelist_restore),
-        .freelist_restore_valid(freelist_restore_valid),
         .branch_stack_entries(branch_stack_entries),
         .next_b_mask(next_b_mask),
         .map_table_restore(map_table_restore),
-        .map_table_restore_valid(map_table_restore_valid),
         .b_mask_combinational(b_mask_combinational),
         .bs_debug(bs_debug)
     );

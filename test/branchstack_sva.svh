@@ -4,23 +4,21 @@ module BranchStack_sva #(
 ) (
     input   logic                                clock, 
     input   logic                                reset,
+
+    input  logic                                restore_valid,
     // ------------- TO FETCH -------------- //
     input  ADDR                                 PC_restore,
-    input  logic                                PC_restore_valid,
     // ------------- FROM COMPLETE -------------- //
     input   B_MASK_MASK                          b_mm_resolve,
     input   logic                                b_mm_mispred,
     // ------------- TO ROB ------------------- //
     input  logic             [`ROB_SZ_BITS-1:0] rob_tail_restore,
-    input  logic                                rob_tail_restore_valid,
     // ------------- TO FREDDY LIST ----------- //
     input  logic        [`PHYS_REG_SZ_R10K-1:0] freelist_restore,
-    input  logic                                freelist_restore_valid,
     // ------------- TO/FROM DISPATCH -------------- //
     input   BS_ENTRY_PACKET  [`B_MASK_WIDTH-1:0] branch_stack_entries,
     input   logic            [`B_MASK_WIDTH-1:0] next_b_mask,
     input  PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore,     // exit packet: recovery_PC, rob_tail, map_table, freelist
-    input  logic                                map_table_restore_valid,
     input  B_MASK                               b_mask_combinational,
     input  logic         [`NUM_B_MASK_BITS-1:0] branch_stack_spots,
     // ------------- TO LSQ ------------------ //

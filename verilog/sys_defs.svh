@@ -24,6 +24,7 @@
 // superscalar width
 `define N 3
 `define B_MASK_WIDTH 4
+`define MIN_B_MASK_AND_N $min(`N,`B_MASK_WIDTH)
 `define NUM_B_MASK_BITS $clog2(`B_MASK_WIDTH + 1)
 `define CDB_SZ `N // This MUST match your superscalar width
 `define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]
@@ -44,6 +45,7 @@
 // EDITED HERE
 `define ROB_ENTRY_ID_BITS $clog2(`ROB_SZ)
 `define PHYS_REG_ID_BITS $clog2(`PHYS_REG_SZ_R10K)
+`define B_MASK_ID_BITS $clog2(`B_MASK_WIDTH)
 `define ARCH_REG_ID_BITS $clog2(32) // Assuming # arch reg = 32
 
 typedef logic [`ROB_ENTRY_ID_BITS-1:0]      ROB_ENTRY_ID;
@@ -89,6 +91,7 @@ typedef enum logic [1:0] {
 // word and register sizes
 typedef logic [31:0] ADDR;
 typedef logic [31:0] DATA;
+typedef logic [19:0] IMM;
 typedef logic [4:0] REG_IDX;
 
 // the zero register
@@ -442,7 +445,7 @@ typedef struct packed {
 
 //TODO: CHANGE FOR RS
 typedef struct packed {
-    // ADDR            PC;
+    ADDR            PC;
     PHYS_REG_IDX    T_new; // Use as unique RS id ???
     PHYS_REG_IDX    Source1;
     logic           Source1_ready;
@@ -452,10 +455,11 @@ typedef struct packed {
     B_MASK          b_mask;
     B_MASK_MASK     b_mask_mask;
     FU_TYPE         FU_type;
-    /*ALU_PACKET      alu_packet;
-    MULT_PACKET     mult_packet;
-    BRANCH_PACKET   branch_packet;
-    LDST_PACKET     ldst_packet;*/
+
+    // ALU_PACKET      alu_packet;
+    // MULT_PACKET     mult_packet;
+    // BRANCH_PACKET   branch_packet;
+    // LDST_PACKET     ldst_packet;
 } RS_PACKET;
 
 typedef struct packed {
@@ -501,7 +505,7 @@ typedef struct packed {
 } ALU_PACKET;
 
 typedef struct {
-    DATA            immediate_val;
+    IMM             immediate_val;
     ALU_FUNC        alu_func;
 } ALU_FLAGS;
 

@@ -47,7 +47,7 @@ module FreddyList_test ();
         // .num_dispatched         (num_dispatched),
         .phys_regs_to_use       (phys_regs_to_use),
         .free_list              (free_list),
-        .complete_list          (complete_list)
+        .debug_complete_list          (complete_list)
     );
     
     FreddyList_sva DUT_sva (

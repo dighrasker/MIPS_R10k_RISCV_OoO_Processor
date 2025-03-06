@@ -19,10 +19,16 @@ module FreddyList #(
     // output logic    [`NUM_SCALAR_BITS-1:0] free_list_spots,        // how many physical registers are free
     output logic   [`PHYS_REG_SZ_R10K-1:0] free_list,              // bitvector of the phys reg that are complete
     // ------------- TO ISSUE -------------- //
-    output logic   [`PHYS_REG_SZ_R10K-1:0] complete_list           // bitvector of the phys reg that are complete
+    output logic   [`PHYS_REG_SZ_R10K-1:0] next_complete_list,           // bitvector of the phys reg that are complete
+    output logic   [`PHYS_REG_SZ_R10K-1:0] prev_complete_list
+`ifdef DEBUG
+    , output logic   [`PHYS_REG_SZ_R10K-1:0] debug_complete_list
+`endif
+    
 );
 
-    logic [`PHYS_REG_SZ_R10K-1:0] next_complete_list;
+    logic [`PHYS_REG_SZ_R10K-1:0] complete_list;
+    logic [`PHYS_REG_SZ_R10K-1:0] prev_complete_list;
     logic [`PHYS_REG_SZ_R10K-1:0] next_free_list;
 
     // psel shit
@@ -51,7 +57,13 @@ module FreddyList #(
     genvar i;
     generate
         for(i = 0; i < `N; ++i) begin: encoderblock
-            encoder u_encoder (psel_output[i], phys_regs_to_use[i]);
+            encoder #(
+                .INPUT_LENGTH(`PHYS_REG_SZ_R10K),
+                .OUTPUT_LENGTH(`PHYS_REG_ID_BITS)
+            ) u_encoder (
+                .in(psel_output[i]), 
+                .out(phys_regs_to_use[i])
+            );
         end
     endgenerate
 
@@ -83,8 +95,13 @@ module FreddyList #(
             // entries <= `0;
         end else begin
             complete_list <= next_complete_list;
+            prev_complete_list <= complete_list;
             free_list <= restore_flag ? next_free_list | free_list_restore : next_free_list;
             // entries <= next_entries;
         end
     end
+
+`ifdef DEBUG
+    assign debug_complete_list = complete_list;
+`endif
 endmodule
