@@ -44,6 +44,8 @@ module Dispatch_test ();
     // ------------ TO ALL DATA STRUCTURES ------------- //
     logic       [`NUM_SCALAR_BITS-1:0] num_dispatched;
 
+    DISPATCH_DEBUG                 dispatch_debug;
+
     Dispatch dut (
         .clock                (clock),
         .reset                (reset),
@@ -65,7 +67,8 @@ module Dispatch_test ();
         .free_list_copy       (free_list_copy),
         .updated_free_list    (updated_free_list),
         .num_issuing          (num_issuing),
-        .num_dispatched       (num_dispatched)
+        .num_dispatched       (num_dispatched),
+        .dispatch_debug       (dispatch_debug)
     );
     
     RS_sva DUT_sva (
@@ -89,7 +92,8 @@ module Dispatch_test ();
         .free_list_copy       (free_list_copy),
         .updated_free_list    (updated_free_list),
         .num_issuing          (num_issuing),
-        .num_dispatched       (num_dispatched)
+        .num_dispatched       (num_dispatched),
+        .dispatch_debug       (dispatch_debug)
     );
     
     always begin

@@ -224,6 +224,11 @@ build/branchstack.simv: $(BRANCHSTACK_FILES)
 build/branchstack.cov: $(BRANCHSTACK_FILES)
 synth/branchstack.vg: $(BRANCHSTACK_FILES)
 
+RETIRE_FILES = verilog/sys_defs.svh
+build/retire.simv: $(RETIRE_FILES)
+build/retire.cov: $(RETIRE_FILES)
+synth/retire.vg: $(RETIRE_FILES)
+
 #################################
 # ---- Main CPU Definition ---- #
 #################################

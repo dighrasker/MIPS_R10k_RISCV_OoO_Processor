@@ -429,49 +429,45 @@ typedef struct packed {
 typedef struct packed {
     // ADDR            PC;
     logic           has_dest;
+    logic           halt;
     PHYS_REG_IDX    T_new; // Use as unique rob id
     PHYS_REG_IDX    T_old;
     ARCH_REG_IDX    Arch_reg;
-} ROB_ENTRY_PACKET;
+} ROB_PACKET;
 
-typedef struct packed {
-    // ADDR            PC;
-    logic           has_dest;
-    PHYS_REG_IDX    T_new; // Use as unique rob id
-    PHYS_REG_IDX    T_old;
-    ARCH_REG_IDX    Arch_reg;
-} ROB_EXIT_PACKET;
 
-//TODO: CHANGE FOR RS
-typedef struct packed {
-    INST  inst;
-    logic valid; // when low, ignore inst. Output will look like a NOP
+typedef struct packed{
+    INST           inst;
+    logic          valid; // when low, ignore inst. Output will look like a NOP
+    ADDR           PC;
+    ADDR           NPC;
     ALU_OPA_SELECT opa_select;
     ALU_OPB_SELECT opb_select;
     logic          has_dest; // if there is a destination register
     ALU_FUNC       alu_func;
-    logic          mult;
-    logic          rd_mem;
-    logic          wr_mem;
-    logic          cond_branch;
+    logic          mult; 
+    logic          rd_mem; 
+    logic          wr_mem; 
+    logic          cond_branch; 
     logic          uncond_branch;
     logic          csr_op; // used for CSR operations, we only use this as a cheap way to get the return code out
     logic          halt;   // non-zero on a halt
     logic          illegal; // non-zero on an illegal instruction
-    ADDR            PC;
-    ADDR            NPC;
-    PHYS_REG_IDX    T_new; // Use as unique RS id ???
-    PHYS_REG_IDX    Source1;
-    logic           Source1_ready;
-    PHYS_REG_IDX    Source2;
-    logic           Source2_ready;
-    B_MASK          b_mask;
-    B_MASK_MASK     b_mask_mask;
-    FU_TYPE         FU_type;
-    // ALU_PACKET      alu_packet;
-    // MULT_PACKET     mult_packet;
-    // BRANCH_PACKET   branch_packet;
-    // LDST_PACKET     ldst_packet;
+    FU_TYPE        FU_type;
+} DECODE_PACKET;
+
+//TODO: CHANGE FOR RS
+typedef struct packed {  
+    DECODE_PACKET decoded_signals;
+
+    //Added during dispatch
+    PHYS_REG_IDX   T_new; // Use as unique RS id ???
+    PHYS_REG_IDX   Source1;
+    logic          Source1_ready;
+    PHYS_REG_IDX   Source2;
+    logic          Source2_ready;
+    B_MASK         b_mask;
+    B_MASK_MASK    b_mask_mask;
 } RS_PACKET;
 
 typedef struct packed {
@@ -486,12 +482,12 @@ typedef struct packed {
 
 typedef struct packed {
     // ADDR            PC;
-    ROB_ENTRY_PACKET         [`N-1:0] rob_inputs; // Use as unique rob id
+    ROB_PACKET         [`N-1:0] rob_inputs; // Use as unique rob id
     logic       [$clog2(`ROB_SZ)-1:0] head;
     logic          [`ROB_SZ_BITS-1:0] rob_tail;
     logic      [`NUM_SCALAR_BITS-1:0] rob_spots;
     logic      [`NUM_SCALAR_BITS-1:0] rob_outputs_valid;
-    ROB_EXIT_PACKET          [`N-1:0] rob_outputs;
+    ROB_PACKET          [`N-1:0] rob_outputs;
     logic [`ROB_NUM_ENTRIES_BITS-1:0] rob_num_entries;
 } ROB_DEBUG;
 
@@ -508,6 +504,15 @@ typedef struct packed {
 
 // TODO: UPDATE FU PACKETS
 
+typedef struct {
+    IMM             immediate_val;
+    ALU_FUNC        alu_func;
+} ALU_FLAGS;
+
+typedef struct {
+    MULT_FUNC   mult_func;
+} MULT_FLAGS;
+
 typedef struct packed {
     DATA            source_reg_1;
     DATA            source_reg_2;
@@ -517,21 +522,12 @@ typedef struct packed {
 } ALU_PACKET;
 
 typedef struct {
-    IMM             immediate_val;
-    ALU_FUNC        alu_func;
-} ALU_FLAGS;
-
-typedef struct {
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg;
     B_MASK          bm;
     //MULT_FLAGS      mult_flags;   
 } MULT_PACKET;
-
-typedef struct {
-    MULT_FUNC   mult_func;
-} MULT_FLAGS;
 
 typedef struct {
     DATA            source_reg_1;
@@ -549,22 +545,15 @@ typedef struct {
     B_MASK          bm;
 } LDST_PACKET;
 
-/*
-typedef struct packed {
-    DATA            source_reg_1;
-    DATA            source_reg_2;
-    PHYS_REG_IDX    dest_reg;       // not used?
-    B_MASK          bm;
-} ST_PACKET;
-*/
-
 typedef struct packed {
     INST            inst;
     ADDR            PC;
 } FETCH_PACKET;
 
-typdef struct packed {
-
-} 
+typedef struct packed {
+    PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table;
+    PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] next_map_table;
+    FU_TYPE                     [`N-1:0] fu_type;
+} DISPATCH_DEBUG;
 
 `endif // __SYS_DEFS_SVH__

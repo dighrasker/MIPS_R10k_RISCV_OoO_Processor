@@ -40,85 +40,74 @@ module Dispatch_sva #(
     input   logic       [`NUM_SCALAR_BITS-1:0] num_issuing,
 
     // ------------ TO ALL DATA STRUCTURES ------------- //
-    input   logic       [`NUM_SCALAR_BITS-1:0] num_dispatched
+    input   logic       [`NUM_SCALAR_BITS-1:0] num_dispatched,
+
+    input DISPATCH_DEBUG                 dispatch_debug
 );
 
-    B_MASK_MASK  b_mm_resolve_prev;       
-    logic        b_mm_mispred_prev;
-    logic [`B_MASK_WIDTH-1:0] b_mask_temp;
-    logic [`RS_NUM_ENTRIES_BITS-1:0] rs_spots_c;
-    assign rs_spots_c = ($countones(rs_debug.rs_reqs) > `N) ? `N : $countones(rs_debug.rs_reqs);
+    PHYS_REG_IDX [`ARCH_REG_SZ_R10K] prev_map_table_restore;
+
+    logic       [`PHYS_REG_SZ_R10K-1:0] prev_updated_free_list;
+    logic       [`PHYS_REG_SZ_R10K-1:0] prev_updated_free_list;
+    logic       [`PHYS_REG_SZ_R10K-1:0] dispatching_list;
+    logic       [`PHYS_REG_SZ_R10K-1:0] prev_dispatching_list;
+
+    PHYS_REG_IDX               [`N-1:0] prev_regs_to_use;
+
+    /*
+    int branch_count;
+    always_comb begin
+        for(int i = 0; i < `N; ++i) begin
+            if
+        end
+    end
+    */
+
+    assign num_dispatched_c = restore_valid ? 0 : $min(rs_spots+num_issuing, rob_spots, instructions_valid);
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            b_mm_resolve_prev <= '0;         
-            b_mm_mispred_prev <= 0;
+            prev_map_table_restore <= '0;
+            prev_regs_to_use <= 0;
+            prev_dispatching_list <= 0;
         end else begin
-            b_mm_resolve_prev <= b_mm_resolve;
-            b_mm_mispred_prev <= b_mm_mispred;
+            prev_map_table_restore <= map_table_restore;
+            prev_regs_to_use <= regs_to_use;
+            prev_dispatching_list <= dispatching_list;
+        end
+    end
+
+    always_comb begin
+        dispatching_list = 0;
+        for (int i = 0; i < num_dispatched; i++) begin
+            dispatching_list[regs_to_use[i]] = 1;
         end
     end
     
     clocking cb @(posedge clock);
-        property squashing(i);
-            (b_mm_mispred && rs_debug.rs_valid[i] && (RS_data[i].b_mask & b_mm_resolve)) |-> (RS_valid_next[i] == 0);
+        property map_table_restore;
+            (reset || restore_valid) |=> (dispatch_debug.map_table == prev_map_table_restore);
         endproperty
 
-        property cammingSrc1(i, j);
-            (rs_debug.rs_valid[i] && CDB_valid[j] && (CDB_tags[j] == RS_data[i].Source1)) |=> (RS_data[i].Source1_ready);
+        property updated_free_list_is_correct (int i);
+            (i < num_dispatched) |=> (~prev_updated_free_list[prev_regs_to_use[i]]);
         endproperty
 
-        property cammingSrc2(i, j);
-            (rs_debug.rs_valid[i] && CDB_valid[j] && (CDB_tags[j] == RS_data[i].Source2)) |=> (RS_data[i].Source2_ready);
+        property updated_free_list_only_changes_dispatched;
+            (~reset) |=> ((prev_free_list & ~dispatching_list) == (prev_updated_free_list_copy));
         endproperty
+
     endclocking
 
     always @(posedge clock) begin
-        //Check that rs_spots is properly calculated
-        assert(reset || rs_spots == rs_spots_c)
+        //Check that num_dispatched is properly calculated
+        assert(reset || num_dispatched == num_dispatched_c)
             else begin
-                $error("RS_spots (%0d) not equal to number of invalid entries (%0d).", 
-                rs_spots, rs_spots_c);
-                $finish;
-            end
-
-        //testing b_mask values after resolving (no mispred)
-        //should be checking RS_data[i].b_mask
-        for (int i = 0; i < `RS_SZ; ++ i) begin // for each RS entry
-            if(rs_debug.rs_valid[i]) begin
-                assert(reset || !(RS_data[i].b_mask & b_mm_resolve_prev))
-                    else begin
-                        $error("RS entry #%0d did not properly set b_mask idx to zero - Current B_mask(%0d) - Prev B_mask_mask(%0d).", 
-                        i, RS_data[i].b_mask, b_mm_resolve_prev);
-                        $finish;
-                    end
-            end
-        end
-        assert(reset || num_dispatched <= rs_spots)
-            else begin
-                $error("invalid number dispatching(%0d), greater than rs_spots(%0d)",
-                num_dispatched, rs_spots);
-                $finish;
-            end
-        assert(reset || num_dispatched <= `N)
-            else begin
-                $error("invalid number dispatching(%0d), greater than N(%0d)",
-                num_dispatched, `N);
+                $error("num_dispatched (%0d) not equal to min (rs_spots(%0d) + num_issuing(%0d), rob_spots(%0d), instructions_valid(%0d)).", 
+                num_dispatched, rs_spots, num_issuing, rob_spots, instructions_valid);
                 $finish;
             end
     end
-
-    generate
-        genvar i;
-            for(i = 0; i < `RS_SZ; ++i) begin
-                assert property (cb.squashing(i))
-                    else begin
-                        $error("RS entry #%0d did not properly squash when it should have - Current B_mask(%0d) - b_mm_resolve(%0d).", 
-                            i, RS_data[i].b_mask, b_mm_resolve_prev);
-                        $finish;
-                    end
-            end
-    endgenerate
     generate
         genvar k, j;
             for(k = 0; k < `RS_SZ; ++k) begin
@@ -138,6 +127,5 @@ module Dispatch_sva #(
                 end
             end
     endgenerate
-
 endmodule
 

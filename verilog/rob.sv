@@ -6,7 +6,7 @@ module rob #(
     input   logic                        reset,
 
     // ------------ TO/FROM DISPATCH ------------- //
-    input   ROB_ENTRY_PACKET     [`N-1:0] rob_inputs,        // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+    input   ROB_PACKET     [`N-1:0] rob_inputs,        // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
     input   logic  [`NUM_SCALAR_BITS-1:0] rob_inputs_valid,  // To distinguish invalid instructions being passed in from Dispatch (A number, NOT one hot)
     output  logic  [`NUM_SCALAR_BITS-1:0] rob_spots,         //number of spots available, saturated at N
     output  logic      [`ROB_SZ_BITS-1:0] rob_tail,
@@ -25,7 +25,7 @@ module rob #(
 ); 
 
     // Main ROB Data Here
-    ROB_ENTRY_PACKET    [`ROB_SZ-1:0] rob_entries;
+    ROB_PACKET    [`ROB_SZ-1:0] rob_entries;
 
     logic          [`ROB_SZ_BITS-1:0] head, next_head;
     logic          [`ROB_SZ_BITS-1:0] next_tail;

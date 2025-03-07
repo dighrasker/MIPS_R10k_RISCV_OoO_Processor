@@ -10,7 +10,7 @@
 module ROB_test ();
     logic                        clock; 
     logic                        reset;
-    ROB_ENTRY_PACKET    [`N-1:0] rob_inputs; // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+    ROB_PACKET    [`N-1:0] rob_inputs; // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
     logic [`NUM_SCALAR_BITS-1:0] rob_inputs_valid; // To distinguish invalid instructions being passed in from Dispatch
     logic [`NUM_SCALAR_BITS-1:0] rob_spots;
     logic     [`ROB_SZ_BITS-1:0] rob_tail;

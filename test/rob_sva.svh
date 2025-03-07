@@ -8,7 +8,7 @@ module ROB_sva #(
 ) (
     input logic                        clock, 
     input logic                        reset,
-    input ROB_ENTRY_PACKET    [`N-1:0] rob_inputs, // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+    input ROB_PACKET    [`N-1:0] rob_inputs, // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
     input logic [`NUM_SCALAR_BITS-1:0] rob_inputs_valid, // To distinguish invalid instructions being passed in from Dispatch
     input logic [`NUM_SCALAR_BITS-1:0] rob_spots,
     input logic     [`ROB_SZ_BITS-1:0] rob_tail,

@@ -6,9 +6,16 @@ module Dispatch #(
     input   logic                               clock,
     input   logic                               reset,
 
-    // ------------ FROM INSTRUCTION BUFFER ------------- //
-    input   FETCH_PACKET                        instruction_packets,
+    // ------------ FROM FETCH BUFFER ------------- //
     input   logic        [`NUM_SCALAR_BITS-1:0] instructions_valid,
+
+    // ------------ FROM DECODER ------------- //
+    input   DECODE_PACKET              [`N-1:0] decoder_out,
+    input   logic                      [`N-1:0] is_rs1_used,
+    input   logic                      [`N-1:0] is_rs2_used,
+    input   ARCH_REG_IDX               [`N-1:0] source1_arch_reg,
+    input   ARCH_REG_IDX               [`N-1:0] source2_arch_reg,
+    input   ARCH_REG_IDX               [`N-1:0] dest_arch_reg,
 
     // ------------ TO/FROM BRANCH STACK ------------- //
     input   PHYS_REG_IDX    [`ARCH_REG_SZ_R10K] map_table_restore,
@@ -20,7 +27,7 @@ module Dispatch #(
     // ------------ TO/FROM ROB ------------- //
     input   logic            [`ROB_SZ_BITS-1:0] rob_tail,
     input   logic        [`NUM_SCALAR_BITS-1:0] rob_spots,
-    output  ROB_ENTRY_PACKET           [`N-1:0] rob_entries,
+    output  ROB_PACKET                 [`N-1:0] rob_entries,
 
     // ------------ TO/FROM RS ------------- //
     output  RS_PACKET                  [`N-1:0] rs_entries,
@@ -34,86 +41,22 @@ module Dispatch #(
     output  logic       [`PHYS_REG_SZ_R10K-1:0] updated_free_list,
     
     // ------------ FROM ISSUE? ------------- //
-    input   logic       [`NUM_SCALAR_BITS-1:0] num_issuing,
+    input   logic        [`NUM_SCALAR_BITS-1:0] num_issuing,
 
     // ------------ TO ALL DATA STRUCTURES ------------- //
     output   logic       [`NUM_SCALAR_BITS-1:0] num_dispatched
+    `ifdef DEBUG
+        , output DISPATCH_DEBUG                 dispatch_debug
+    `endif
 );
-
-    //Should have a decoder module inside here or maybe we decode in Fetch?
 
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table, next_map_table;
 
-    //insert decoder module here
-    //N Inputs are raw instruction 32 bit data from front of fetch buffer
-    //Outputs are fully decoded packets which should go straight into an RS packet
-    // TODO: Replace every "decoder_out" when decoder is done
-    
     // For BS entry ordering
-
-    
     logic bs_empty;
     logic [`B_MASK_WIDTH-1:0] gnt;
     logic [`B_MASK_ID_BITS-1:0] empty_bs_index;
     logic [`B_MASK_WIDTH-1:0] psel_output; // might be useless
-
-    /* -------------------- DECODER ---------------------------*/
-
-    INST           [`N-1:0] inst;      
-    logic          [`N-1:0] valid; // when low, ignore inst. Output will look like a NOP
-   
-    for(i = 0; i < `N; ++i) begin
-        assign inst[i] = instruction_packets[i].inst;
-        assign valid[i] = (i < instructions_valid) ? 1 : 0;
-    end
-
-    ADDR           [`N-1:0] PC;
-    ADDR           [`N-1:0] NPC; //Only use one or the other
-
-    ALU_OPA_SELECT [`N-1:0] opa_select;
-    ALU_OPB_SELECT [`N-1:0] opb_select;
-    logic          [`N-1:0] has_dest; // if there is a destination register
-    ALU_FUNC       [`N-1:0] alu_func;
-    logic          [`N-1:0] mult, rd_mem, wr_mem, cond_branch, uncond_branch;
-    logic          [`N-1:0] csr_op; // used for CSR operations, we only use this as a cheap way to get the return code out
-    logic          [`N-1:0] halt;   // non-zero on a halt
-    logic          [`N-1:0] illegal; // non-zero on an illegal instruction
-
-    decoder decoder_inst [`N-1:0](
-        .inst(inst),
-        .valid(valid),
-        .opa_select(opa_select),
-        .opb_select(opb_select),
-        .has_dest(has_dest),
-        .alu_func(alu_func),
-        .mult(mult),
-        .rd_mem(rd_mem),
-        .wr_mem(wr_mem),
-        .cond_branch(cond_branch),
-        .uncond_branch(uncond_branch),
-        .csr_op(csr_op),
-        .halt(halt),
-        .illegal(illegal)
-    );
-
-    logic [`N-1:0] is_rs1_used, is_rs2_used;
-    ARCH_REG_IDX [`N-1:0] source1_arch_reg, source2_arch_reg, dest_arch_reg;
-    FU_TYPE [`N-1:0] fu_type;
-
-    for(int i = 0; i < `N; ++i) begin
-        assign is_rs1_used[i] = cond_branch[i] || (opa_select[i] == OPA_IS_RS1);
-        assign is_rs2_used[i] = cond_branch[i] || wr_mem[i] || (opb_select[i] == OPB_IS_RS2);
-        assign source1_arch_reg[i] = inst[i].r.rs1;
-        assign source2_arch_reg[i] = inst[i].r.rs2;
-        assign dest_arch_reg[i] = inst[i].r.rd;
-
-        assign fu_type[i] = (cond_branch[i] || uncond_branch[i]) ? BU :
-                                        (rd_mem[i] || wr_mem[i]) ? LDST :
-                                                       (mult[i]) ? MULT :
-                                                                   ALU;
-    end
-
-/*-------------------------------------------------------*/
 
     psel_gen #(
          .WIDTH(`B_MASK_WIDTH),  // The width of the request bus
@@ -142,7 +85,7 @@ module Dispatch #(
 
     assign i_num_dispatched = restore_valid ? 0 : min; //if not restoring, num_dispatching = min (rs_entries, rob_entries, free_list)
     
-    
+
     always_comb begin
         branch_stack_entries = '0;
         next_b_mask = b_mask_combinational;
@@ -151,26 +94,10 @@ module Dispatch #(
         updated_free_list = free_list_copy;
         for (int i = 0; i < `N; ++i) begin
             if(i < i_num_dispatched) begin
-                
-                // Create rob/rs/branch-stack entries. probably will change this code
+                // Create rob/rs/branch-stack entries
                 
                 //Create RS Packet
-                rs_entries[i].inst = instruction_packets[i].inst;
-                rs_entries[i].valid = valid[i];
-                rs_entries[i].opa_select = opa_select[i];
-                rs_entries[i].opb_select = opb_select[i];
-                rs_entries[i].has_dest = has_dest[i];
-                rs_entries[i].alu_func = alu_func[i];
-                rs_entries[i].mult = mult[i];
-                rs_entries[i].rd_mem = rd_mem[i];
-                rs_entries[i].wr_mem = wr_mem[i];
-                rs_entries[i].cond_branch = cond_branch[i];
-                rs_entries[i].uncond_branch = uncond_branch[i];
-                rs_entries[i].csr_op = csr_op[i];
-                rs_entries[i].halt = halt[i];
-                rs_entries[i].illegal = illegal[i];
-                rs_entries[i].PC = instruction_packets[i].PC;
-                rs_entries[i].NPC = instruction_packets[i].PC + 4;
+                rs_entries[i].decoder_out = decoder_out[i];
                 rs_entries[i].T_new = regs_to_use[i];
                 rs_entries[i].Source1 = next_map_table[source1_arch_reg[i]];
                 rs_entries[i].Source1_ready = is_rs1_used[i] ? next_complete_list[rs_entries[i].Source1] : 1;
@@ -178,7 +105,6 @@ module Dispatch #(
                 rs_entries[i].Source2_ready = is_rs2_used[i] ? next_complete_list[rs_entries[i].Source2] : 1;
                 rs_entries[i].b_mask = next_b_mask;
                 rs_entries[i].b_mask_mask = '0;
-                rs_entries[i].FU_type = fu_type[i];
 
                 //Create ROB Packet
                 /*
@@ -187,20 +113,21 @@ module Dispatch #(
                     ARCH_REG_IDX    Arch_reg;
                 */
                 rob_entries[i].T_new = regs_to_use[i];                          //this should be the output from freddy
-                rob_entries[i].has_dest = has_dest[i];
+                rob_entries[i].has_dest = decoder_out[i].has_dest;
+                rob_entries[i].halt = decoder_out[i].halt;
                 rob_entries[i].Arch_reg = dest_arch_reg[i];         //this should come from instruction dest_reg
-                rob_entries[i].T_old = has_dest[i] ? next_map_table[dest_arch_reg[i]] : 0;      //this should be coming from map table
+                rob_entries[i].T_old = decoder_out[i].has_dest ? next_map_table[dest_arch_reg[i]] : 0;      //this should be coming from map table
 
 
                 // create the branch checkpoint
-                if(cond_branch[i] || uncond_branch[i])begin // TODO: need to check 'branch' to an actual flag
+                if(decoder_out[i].cond_branch || decoder_out[i].uncond_branch) begin // TODO: need to check 'branch' to an actual flag
                     if(~bs_empty) begin // checking that there is room in the BS
                     //allocate BS entry (snapshotting recovery PC, map table, rob_tail, free_list, b_m)
                     // empty_bs_index -> the index of the empty bs to put in smth
                         updated_free_list[regs_to_use[i]] = 0;
-                        next_map_table[arch_dest_reg[i]] = has_dest[i] ? regs_to_use[i] : next_map_table[arch_dest_reg[i]];
+                        next_map_table[dest_arch_reg[i]] = decoder_out[i].has_dest ? regs_to_use[i] : next_map_table[dest_arch_reg[i]];
 
-                        branch_stack_entries[empty_bs_index].recovery_PC = instruction_packets[i].PC; // TODO: change to instruction PC
+                        branch_stack_entries[empty_bs_index].recovery_PC = decoder_out[i].PC; // TODO: change to instruction PC
                         branch_stack_entries[empty_bs_index].rob_tail = (rob_tail + i) % `ROB_SZ;
                         branch_stack_entries[empty_bs_index].free_list = updated_free_list;
                         branch_stack_entries[empty_bs_index].map_table = next_map_table;
@@ -215,7 +142,7 @@ module Dispatch #(
                 end
                 
                 updated_free_list[regs_to_use[i]] = 0;
-                next_map_table[arch_dest_reg[i]] = has_dest[i] ? regs_to_use[i] : next_map_table[arch_dest_reg[i]];
+                next_map_table[dest_arch_reg[i]] = decoder_out[i].has_dest ? regs_to_use[i] : next_map_table[dest_arch_reg[i]];
 
                 num_dispatched = i;
 
@@ -233,6 +160,12 @@ module Dispatch #(
         end
     end
 
-    //No sequential elements since this is a combinational stage
+    `ifdef DEBUG
+        assign dispatch_debug = {
+            map_table:      map_table,
+            next_map_table: next_map_table,
+            fu_type:        fu_type
+        };
+    `endif
 
 endmodule
