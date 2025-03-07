@@ -17,6 +17,7 @@ module retire (
     //send Told back to free list
 always_comb begin
     num_retiring = 0;
+    // phys_regs_retiring = 0;
     for (int i = 0; i < rob_outputs_valid; i++) begin
         if (complete_list_exposed[rob_outputs[i].T_new]) begin
             phys_regs_retiring[i] = rob_outputs[i].has_dest ? rob_outputs[i].T_old : rob_outputs[i].T_new;

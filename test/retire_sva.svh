@@ -32,28 +32,28 @@ module retire_sva #(
 
     clocking retire_prop @(posedge clock);
         property all_retiring_complete (int i);
-            ~(~reset && (i < num_retiring)) || (complete_list_exposed[rob_outputs[i].T_new]);
+            (~reset) |=> ((complete_list_exposed[rob_outputs[i].T_new]) || (i >= num_retiring));
         endproperty
 
         property check_break_works (int i);
-            ~(~reset & (i == num_retiring) & (num_retiring < rob_outputs_valid)) || (~complete_list_exposed[rob_outputs[i].T_new]);
+            (~reset) |=> ((~complete_list_exposed[rob_outputs[i].T_new]) || (i != num_retiring) || (num_retiring == rob_outputs_valid)) ;
         endproperty
 
         property never_retiring_0 (int i);
-            ~(~reset & (i < num_retiring)) || (phys_regs_retiring[i] != 0);
+            (~reset) |=> ((phys_regs_retiring[i] != 0) || (i >= num_retiring));
         endproperty
 
         property retiring_has_dest (int i);
-            ~(~reset & (i < num_retiring) & rob_outputs[i].has_dest) || (phys_regs_retiring[i] == rob_outputs[i].T_old);
+            (~reset & rob_outputs[i].has_dest) |=> ((phys_regs_retiring[i] == rob_outputs[i].T_old) || (i >= num_retiring) || ~rob_outputs[i].has_dest);
         endproperty
         
         property retiring_does_not_have_dest (int i);
-            ~(~reset & (i < num_retiring) & ~rob_outputs[i].has_dest) || (phys_regs_retiring[i] == rob_outputs[i].T_new);
+            (~reset & ~rob_outputs[i].has_dest) |=> ((phys_regs_retiring[i] == rob_outputs[i].T_new) || (i >= num_retiring) || rob_outputs[i].has_dest);
         endproperty
 
-        // property num_retiring_must_lt_rob_outputs_valid;
-        //     reset || (num_retiring <= rob_outputs_valid);
-        // endproperty
+        property num_retiring_must_lt_rob_outputs_valid;
+            (~reset) |=> (num_retiring <= rob_outputs_valid);
+        endproperty
     endclocking
     
 
@@ -73,8 +73,8 @@ module retire_sva #(
         // Check if num_retiring is less than rob_outputs_valid, it must be due to next one being not complete
             assert property (retire_prop.check_break_works(i))
                 else begin
-                    $error("At index %d, rob_outputs should have retired (complete is high), but didn't",
-                        i);
+                    $error("At index %d, rob_outputs should have retired (complete is high), but didn't, num_retiring: %d",
+                        i, num_retiring);
                     $finish;
                 end
 
@@ -87,7 +87,7 @@ module retire_sva #(
 
             assert property (retire_prop.retiring_has_dest(i))
                 else begin
-                    $error("Rob outputs at index %d did not retire the correct register, has dest", i);
+                    $error("Rob outputs at index %d did not retire the correct register, has dest, %d, %d, %d", i, phys_regs_retiring[i],rob_outputs[i].T_old, num_retiring);
                     $finish;
                 end
 
@@ -101,13 +101,13 @@ module retire_sva #(
     end
     endgenerate
 
-    // always @(posedge clock) begin
-    //     assert property (retire_prop.num_retiring_must_lt_rob_outputs_valid)
-    //         else begin
-    //             $error("num_retiring is greater than rob_outputs_valid");
-    //                 $finish;
-    //         end
-    // end
+    always @(posedge clock) begin
+        assert property (retire_prop.num_retiring_must_lt_rob_outputs_valid)
+            else begin
+                $error("num_retiring is greater than rob_outputs_valid");
+                    $finish;
+            end
+    end
 
 endmodule
 
