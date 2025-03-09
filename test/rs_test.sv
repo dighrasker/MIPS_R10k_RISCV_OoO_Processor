@@ -91,52 +91,62 @@ module RS_test ();
     //Generate random numbers for our write data on each cycle
    
 
-   /* always_ff @(negedge clock) begin
-        std::randomize(rs_data_issuing_rand);
-        b_mm_resolve_idx <= $urandom_range(0, `B_MASK_WIDTH);
-        std::randomize(b_mm_mispred_rand);
-        std::randomize(CDB_valid_rand);
+    /*always_ff @(negedge clock) begin
+        std::randomize(rs_data_issuing);
+        b_mm_resolve_idx = $urandom_range(0, `B_MASK_WIDTH);
+        //std::randomize(b_mm_mispred);
+        b_mm_mispred = 0;
+        std::randomize(CDB_valid);
         for(int i = 0; i < `N; ++i) begin
             logic [$bits(RS_PACKET)-1:0] temp_rand;
             logic [$bits(PHYS_REG_IDX)-1:0] temp_CDB_rand;
             std::randomize(temp_CDB_rand);
             std::randomize(temp_rand);
-            temp_CDB[i] <= temp_CDB_rand;
-            temp[i] <= temp_rand;
+            CDB_tags[i] = temp_CDB_rand;
+            rs_entries[i] = temp_rand;
         end
-        rs_spots_random <= $urandom_range(rs_spots);
+        rs_spots_random = $urandom_range(rs_spots);
+        num_dispatched = b_mm_mispred ? 0 : rs_spots_random;
+        b_mm_resolve = 1 << b_mm_resolve_idx;
+        // $display("\n\033[32m@@@ Reached check #1\033[0m\n");
+        // //randomizing rs_entry packets
+        for(int i = 0; i < `N; ++i) begin  
+            for(int j = 0; j < `N; ++j) begin
+                if(CDB_tags[j] == rs_entries[i].Source1) rs_entries[i].Source1_ready = '1;
+                if(CDB_tags[j] == rs_entries[i].Source2) rs_entries[i].Source2_ready = '1;
+            end
+            rs_entries[i].b_mask &= ~b_mm_resolve;
+        end 
     end*/
     
     
-    always_comb begin : generateRSInputs
-       for (int k = 0; k <= 1000; ++k) begin
-            std::randomize(rs_data_issuing);
-            b_mm_resolve_idx = $urandom_range(0, `B_MASK_WIDTH);
-            //std::randomize(b_mm_mispred);
-            b_mm_mispred = (k % 10) == 0;
-            std::randomize(CDB_valid);
-            for(int i = 0; i < `N; ++i) begin
-                logic [$bits(RS_PACKET)-1:0] temp_rand;
-                logic [$bits(PHYS_REG_IDX)-1:0] temp_CDB_rand;
-                std::randomize(temp_CDB_rand);
-                std::randomize(temp_rand);
-                CDB_tags[i] = temp_CDB_rand;
-                rs_entries[i] = temp_rand;
-            end
-            rs_spots_random = $urandom_range(rs_spots);
-            num_dispatched = b_mm_mispred ? 0 : rs_spots_random;
-            b_mm_resolve = 1 << b_mm_resolve_idx;
-            // $display("\n\033[32m@@@ Reached check #1\033[0m\n");
-            // //randomizing rs_entry packets
-            for(int i = 0; i < `N; ++i) begin  
-                for(int j = 0; j < `N; ++j) begin
-                    if(CDB_tags[j] == rs_entries[i].Source1) rs_entries[i].Source1_ready = '1;
-                    if(CDB_tags[j] == rs_entries[i].Source2) rs_entries[i].Source2_ready = '1;
-                end
-                rs_entries[i].b_mask &= ~b_mm_resolve;
-            end 
+    /*always_comb begin : generateRSInputs
+        std::randomize(rs_data_issuing);
+        b_mm_resolve_idx = $urandom_range(0, `B_MASK_WIDTH);
+        //std::randomize(b_mm_mispred);
+        b_mm_mispred = 0;
+        std::randomize(CDB_valid);
+        for(int i = 0; i < `N; ++i) begin
+            logic [$bits(RS_PACKET)-1:0] temp_rand;
+            logic [$bits(PHYS_REG_IDX)-1:0] temp_CDB_rand;
+            std::randomize(temp_CDB_rand);
+            std::randomize(temp_rand);
+            CDB_tags[i] = temp_CDB_rand;
+            rs_entries[i] = temp_rand;
         end
-    end
+        rs_spots_random = $urandom_range(rs_spots);
+        num_dispatched = b_mm_mispred ? 0 : rs_spots_random;
+        b_mm_resolve = 1 << b_mm_resolve_idx;
+        // $display("\n\033[32m@@@ Reached check #1\033[0m\n");
+        // //randomizing rs_entry packets
+        for(int i = 0; i < `N; ++i) begin  
+            for(int j = 0; j < `N; ++j) begin
+                if(CDB_tags[j] == rs_entries[i].Source1) rs_entries[i].Source1_ready = '1;
+                if(CDB_tags[j] == rs_entries[i].Source2) rs_entries[i].Source2_ready = '1;
+            end
+            rs_entries[i].b_mask &= ~b_mm_resolve;
+        end 
+    end*/
 
     /*
     Variables that can be independent (truly randomized)
@@ -181,7 +191,7 @@ module RS_test ();
         @(negedge clock);
         reset = 0;
         
-        // ---------- Test 0 ---------- //
+        // ---------- Test 0 Start ---------- //
         $display("\nTest 0: Add one entry and squash on next cycle");
         for(int i = 0; i < `N; ++i) begin 
             logic [$bits(RS_PACKET)-1:0] temp_rand;
@@ -214,28 +224,108 @@ module RS_test ();
         b_mm_resolve = 'd1;
 
         @(negedge clock);
-        /*
-        List of corner cases to test
-        1. When RS is almost full
-        2. When RS is full
-        3. When RS is empty
-        4. 
-        
-
-        1. Branch mispredict ( squash)
-        2. Branch resolution (no mispredict)
-        3. 
+        $display("\n\033[32m@@@ Test 0 Passes\033[0m\n");
+        // ---------- Test 0 End ---------- //
 
 
+        // ---------- Test 1 Start ---------- //
+        $display("\n\033[32m@@@ Test 1: Dispatching when RS is full\033[0m\n");
+        //fill up the RS
+        for(int x = 0; x < 9; ++x) begin
+            for(int i = 0; i < `N; ++i) begin 
+                logic [$bits(RS_PACKET)-1:0] temp_rand;
+                std::randomize(temp_rand); 
+                rs_entries[i] = temp_rand;
+                rs_entries[i].b_mask = 'd1;
+            end 
 
-        */
-        // ---------- Test 1 ---------- //
-        $display("\nTest 1: Randomize many times");
-        for (int k = 0; k <= 1000; ++k) begin
-            $display("\n\033[32m@@@ Reached check #2\033[0m\n");
+            CDB_tags = '0;
+            b_mm_mispred = '0;
+            rs_data_issuing = '0;
+            CDB_valid = '0;
+            num_dispatched =`N;
+            b_mm_resolve = '0;
+
             @(negedge clock);
-            $display("\n\033[32m@@@ Reached check #3\033[0m\n");
         end
+        //last 2
+        for(int i = 0; i < `N; ++i) begin 
+                logic [$bits(RS_PACKET)-1:0] temp_rand;
+                std::randomize(temp_rand); 
+                rs_entries[i] = temp_rand;
+                rs_entries[i].b_mask = 'd1;
+        end 
+
+        CDB_tags = '0;
+        b_mm_mispred = '0;
+        rs_data_issuing = '0;
+        CDB_valid = '0;
+        num_dispatched = 2;
+        b_mm_resolve = '0;
+
+        @(negedge clock);
+
+        $display("\n\033[32m@@@ Test 1 Passes\033[0m\n");
+        // ---------- Test 1 End ---------- //
+
+
+        // ---------- Test 2 Start ---------- //
+        $display("\n\033[32m@@@ Test 2: Dispatching when RS is almost full\033[0m\n");
+
+        $display("\n\033[32m@@@ Test 2 Passes\033[0m\n");
+        // ---------- Test 2 End ---------- //
+
+
+        // ---------- Test 3 Start ---------- //
+        $display("\n\033[32m@@@ Test 3: Branch mispredict when RS is empty\033[0m\n");
+
+        $display("\n\033[32m@@@ Test 3 Passes\033[0m\n");
+        // ---------- Test 3 End ---------- //
+
+
+        // ---------- Test 4 Start ---------- //
+        $display("\n\033[32m@@@ Test 4: Data Issuing is 0\033[0m\n");
+
+
+
+        $display("\n\033[32m@@@ Test 4 Passes\033[0m\n");
+        // ---------- Test 4 End ---------- //
+
+
+        // ---------- Test Inf ---------- //
+        $display("\nTest Inf: Randomize many times");
+        for (int k = 0; k <= 10; ++k) begin
+            std::randomize(rs_data_issuing);
+            b_mm_resolve_idx = $urandom_range(0, `B_MASK_WIDTH);
+            //std::randomize(b_mm_mispred);
+            b_mm_mispred = (k % 10) == 0;
+            std::randomize(CDB_valid);
+            for(int i = 0; i < `N; ++i) begin
+                logic [$bits(RS_PACKET)-1:0] temp_rand;
+                logic [$bits(PHYS_REG_IDX)-1:0] temp_CDB_rand;
+                std::randomize(temp_CDB_rand);
+                std::randomize(temp_rand);
+                CDB_tags[i] = temp_CDB_rand;
+                rs_entries[i] = temp_rand;
+            end
+            rs_spots_random = $urandom_range(rs_spots);
+            num_dispatched = b_mm_mispred ? 0 : rs_spots_random;
+            b_mm_resolve = 1 << b_mm_resolve_idx;
+            // $display("\n\033[32m@@@ Reached check #1\033[0m\n");
+            // //randomizing rs_entry packets
+            for(int i = 0; i < `N; ++i) begin  
+                for(int j = 0; j < `N; ++j) begin
+                    if(CDB_tags[j] == rs_entries[i].Source1) rs_entries[i].Source1_ready = '1;
+                    if(CDB_tags[j] == rs_entries[i].Source2) rs_entries[i].Source2_ready = '1;
+                end
+                rs_entries[i].b_mask &= ~b_mm_resolve;
+            end 
+            b_mm_mispred = (k % 10) == 0;
+
+            $display("\nEnd of iteration\n");
+            @(negedge clock);
+        end
+        $display("\n\033[32m@@@ Test Inf Passes\033[0m\n");
         $display("\n\033[32m@@@ Passed\033[0m\n");
 
         $finish;

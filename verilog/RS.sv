@@ -10,8 +10,8 @@ module RS #(
     // ------ TO/FROM: DISPATCH ------- //
     input  logic   [`NUM_SCALAR_BITS:0] num_dispatched,      // Number of input RS packets actually coming from dispatch
     input  RS_PACKET           [`N-1:0] rs_entries,          // Input RS packets data
-    output logic [`NUM_SCALAR_BITS-1:0] rs_spots,            // Number of spots <-- Coded       
-
+    output logic [`NUM_SCALAR_BITS-1:0] rs_spots,            // Number of spots
+    
     // --------- FROM: CDB ------------ //
     input  PHYS_REG_IDX        [`N-1:0] CDB_tags,            // Tags that are broadcasted from the CDB
     input  logic               [`N-1:0] CDB_valid,           // 1 is the broadcast is valid
