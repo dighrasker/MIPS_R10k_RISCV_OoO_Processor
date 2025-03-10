@@ -6,14 +6,14 @@ module rob #(
     input   logic                        reset,
 
     // ------------ TO/FROM DISPATCH ------------- //
-    input   ROB_PACKET     [`N-1:0] rob_inputs,        // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+    input   ROB_PACKET           [`N-1:0] rob_inputs,        // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
     input   logic  [`NUM_SCALAR_BITS-1:0] rob_inputs_valid,  // To distinguish invalid instructions being passed in from Dispatch (A number, NOT one hot)
     output  logic  [`NUM_SCALAR_BITS-1:0] rob_spots,         //number of spots available, saturated at N
     output  logic      [`ROB_SZ_BITS-1:0] rob_tail,
 
     // ------------- TO/FROM RETIRE -------------- //
     input   logic  [`NUM_SCALAR_BITS-1:0] num_retiring,      // Retire module tells the ROB how many entries can be cleared
-    output  ROB_EXIT_PACKET      [`N-1:0] rob_outputs,       // For retire to check eligibility
+    output  ROB_PACKET           [`N-1:0] rob_outputs,       // For retire to check eligibility
     output  logic  [`NUM_SCALAR_BITS-1:0] rob_outputs_valid, // If not all N rob entries are valid entries they should not be considered
 
     // ------------- FROM BRANCH STACK -------------- //

@@ -10,19 +10,19 @@
 module ROB_test ();
     logic                        clock; 
     logic                        reset;
-    ROB_PACKET    [`N-1:0] rob_inputs; // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+    ROB_PACKET          [`N-1:0] rob_inputs; // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
     logic [`NUM_SCALAR_BITS-1:0] rob_inputs_valid; // To distinguish invalid instructions being passed in from Dispatch
     logic [`NUM_SCALAR_BITS-1:0] rob_spots;
     logic     [`ROB_SZ_BITS-1:0] rob_tail;
     logic [`NUM_SCALAR_BITS-1:0] num_retiring; // Retire module tells the ROB how many entries can be cleared
-    ROB_EXIT_PACKET     [`N-1:0] rob_outputs; // For retire to check eligibility
+    ROB_PACKET          [`N-1:0] rob_outputs; // For retire to check eligibility
     logic [`NUM_SCALAR_BITS-1:0] rob_outputs_valid; // If not all N rob entries are valid entries they should not be considered
     logic                        tail_restore_valid;
     logic     [`ROB_SZ_BITS-1:0] tail_restore;
     
     ROB_DEBUG                    rob_debug;
 
-    logic [$bits(ROB_ENTRY_PACKET)-1:0] index;
+    logic [$bits(ROB_PACKET)-1:0] index;
 
     // INSTANCE is from the sys_defs.svh file
     // it renames the module if SYNTH is defined in
@@ -230,19 +230,26 @@ module ROB_test ();
         end
 
         // ---------- Test 9 ---------- //
-         $display("\nTest 9: Generic Tail Restore");
-         @(negedge clock);
-         for (int i=0; i <= 10; ++i) begin
-            for (int j=0; j <= 10; ++j) begin
-                rob_inputs_valid = $urandom_range(rob_spots); 
-                num_retiring = $urandom_range(rob_outputs_valid);
-                //tail_restore_valid = $urandom_range(1, 0);
-                //tail_restore = $urandom_range(rob_outputs_valid);
-                @(negedge clock);
-                rob_inputs_valid = 0;
-                num_retiring = 0;
-            end
+        $display("\nTest 9a: Tail Restore With Full ROB to same tail (Branch is at current tail)");
+        @(negedge clock);
+        //fill the rob
+        while (rob_spots) begin // checking spots > 0
+            rob_inputs_valid = rob_spots;
+            num_retiring = 0;
+            @(negedge clock);
         end
+        rob_inputs_valid = 0;
+        num_retiring = 0;
+        tail_restore_valid = 1;
+        tail_restore = rob_tail;
+        
+        
+        $display("\nTest 9b: Tail Restore With Full ROB to older tail");
+        @(negedge clock);
+        rob_inputs_valid = 0;
+        num_retiring = 1;
+        tail_restore_valid = 1;
+        tail_restore = (rob_tail == 0) ? '1 : (rob_tail - 1);
 
         $display("\n\033[32m@@@ Passed\033[0m\n");
 

@@ -8,12 +8,12 @@ module ROB_sva #(
 ) (
     input logic                        clock, 
     input logic                        reset,
-    input ROB_PACKET    [`N-1:0] rob_inputs, // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+    input ROB_PACKET          [`N-1:0] rob_inputs, // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
     input logic [`NUM_SCALAR_BITS-1:0] rob_inputs_valid, // To distinguish invalid instructions being passed in from Dispatch
     input logic [`NUM_SCALAR_BITS-1:0] rob_spots,
     input logic     [`ROB_SZ_BITS-1:0] rob_tail,
     input logic [`NUM_SCALAR_BITS-1:0] num_retiring, // Retire module tells the ROB how many entries can be cleared
-    input ROB_EXIT_PACKET     [`N-1:0] rob_outputs, // For retire to check eligibility
+    input ROB_PACKET          [`N-1:0] rob_outputs, // For retire to check eligibility
     input logic [`NUM_SCALAR_BITS-1:0] rob_outputs_valid, // If not all N rob entries are valid entries they should not be considered
     input logic                        tail_restore_valid,
     input logic     [`ROB_SZ_BITS-1:0] tail_restore,
@@ -29,7 +29,7 @@ module ROB_sva #(
                                 ? `N
                                 : `ROB_SZ - ((rob_debug.rob_tail - rob_debug.head + `ROB_SZ) % `ROB_SZ);
 
-    logic [$bits(ROB_ENTRY_PACKET)-1:0] index;
+    logic [$bits(ROB_PACKET)-1:0] index;
 
     logic [`ROB_SZ_BITS-1:0] previous_tail_restore;
 
