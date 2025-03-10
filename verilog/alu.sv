@@ -1,13 +1,36 @@
 module alu (
-    input DATA     opa,
-    input DATA     opb,
-    input ALU_FUNC alu_func,
-
+    input ALU_PACKET alu_packet,
     output DATA result
 );
 
+    DATA opa, opb;
+
+    // ALU opA mux
     always_comb begin
-        case (alu_func)
+        case (alu_packet.opa_select)
+            OPA_IS_RS1:  opa = alu_packet.source_reg_1;
+            OPA_IS_NPC:  opa = alu_packet.NPC;
+            OPA_IS_PC:   opa = alu_packet.PC;
+            OPA_IS_ZERO: opa = 0;
+            default:     opa = 32'hdeadface; // dead face
+        endcase
+    end
+
+    // ALU opB mux
+    always_comb begin
+        case (alu_packet.opb_select)
+            OPB_IS_RS2:   opb = alu_packet.source_reg_2;
+            OPB_IS_I_IMM: opb = `RV32_signext_Iimm(alu_packet.inst);
+            OPB_IS_S_IMM: opb = `RV32_signext_Simm(alu_packet.inst);
+            OPB_IS_B_IMM: opb = `RV32_signext_Bimm(alu_packet.inst);
+            OPB_IS_U_IMM: opb = `RV32_signext_Uimm(alu_packet.inst);
+            OPB_IS_J_IMM: opb = `RV32_signext_Jimm(alu_packet.inst);
+            default:      opb = 32'hfacefeed; // face feed
+        endcase
+    end
+
+    always_comb begin
+        case (alu_packet.alu_flags.alu_func)
             ALU_ADD:  result = opa + opb;
             ALU_SUB:  result = opa - opb;
             ALU_AND:  result = opa & opb;

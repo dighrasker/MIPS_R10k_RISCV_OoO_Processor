@@ -514,25 +514,44 @@ typedef struct {
 } MULT_FLAGS;
 
 typedef struct packed {
+    INST inst;
+    ADDR PC;
+    ADDR NPC; // PC + 4
+
+    ALU_OPA_SELECT opa_select; // ALU opa mux select (ALU_OPA_xxx *)
+    ALU_OPB_SELECT opb_select; // ALU opb mux select (ALU_OPB_xxx *)
+    
     DATA            source_reg_1;
     DATA            source_reg_2;
-    PHYS_REG_IDX    dest_reg;
+    PHYS_REG_IDX    dest_reg_idx;
     B_MASK          bm;
-    ALU_FUNC        alu_func;
+    ALU_FLAGS       alu_flags;
 } ALU_PACKET;
 
 typedef struct {
+    logic           valid;
+
     DATA            source_reg_1;
     DATA            source_reg_2;
-    PHYS_REG_IDX    dest_reg;
+    PHYS_REG_IDX    dest_reg_idx;
     B_MASK          bm;
-    //MULT_FLAGS      mult_flags;   
+    MULT_FUNC       mult_func;   
 } MULT_PACKET;
 
 typedef struct {
+    INST inst;
+    ADDR PC;
+    ADDR NPC; // PC + 4
+
+    DATA rs1_value; // reg A value
+    DATA rs2_value; // reg B value
+
+    ALU_OPA_SELECT opa_select; // ALU opa mux select (ALU_OPA_xxx *)
+    ALU_OPB_SELECT opb_select; // ALU opb mux select (ALU_OPB_xxx *)
+
     DATA            source_reg_1;
     DATA            source_reg_2;
-    PHYS_REG_IDX    dest_reg;       // not used but might be good for identification purposes
+    PHYS_REG_IDX    dest_reg_idx;       // not used but might be good for identification purposes
     B_MASK          bm;
     BRANCH_FUNC     branch_func;    // comparator used for branch
     B_MASK_MASK     bmm;            // this branch's corresponding mask
@@ -541,7 +560,7 @@ typedef struct {
 typedef struct {
     DATA            source_reg_1;
     DATA            source_reg_2;
-    PHYS_REG_IDX    dest_reg;
+    PHYS_REG_IDX    dest_reg_idx;
     B_MASK          bm;
 } LDST_PACKET;
 

@@ -33,7 +33,7 @@ endmodule // correct_mult
 
 module testbench;
 
-    logic clock, start, reset, done, failed;
+    logic clock, reset, valid_in, valid_out, cdb_en, en, failed;
     DATA r1, r2, correct_r, mul_r;
     MULT_FUNC f;
 
@@ -42,10 +42,10 @@ module testbench;
     mult dut(
         .clock(clock),
         .reset(reset),
-        .start(start),
-        .rs1(r1),
-        .rs2(r2),
-        .func(f),
+        .valid_in(valid_in),
+        .source_reg_1(r1),
+        .source_reg_2(r2),
+        .dest_reg_idx(),
         .result(mul_r),
         .done(done)
     );

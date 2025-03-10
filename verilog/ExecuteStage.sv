@@ -1,12 +1,44 @@
 module ExecuteStage (
-    input MULT_PACKET       [`N-1:0] MULT_packets_issuing,
-    input ALU_PACKET        [`N-1:0] ALU_packets_issuing,
-    input BRANCH_PACKET              BRANCH_packets_issuing,
+    input   logic                               clock,
+    input   logic                               reset,
 
+    // --------------- TO/FROM ISSUE REGISTER --------------- //
+    input MULT_PACKET       [`N-1:0] next_mult_packets_issuing, 
+    input ALU_PACKET        [`N-1:0] next_alu_packets_issuing,
+    input BRANCH_PACKET              next_branch_packets_issuing,
+    output logic [`N-1:0] mult_en,
+    output logic [`N-1:0] alu_en,
+    output logic [`N-1:0] branch_en,
+
+    // ------------ TO ALL DATA STRUCTURES ------------- //
     output DATA             [`N-1:0] cdb_completing_results,
     output PHYS_REG_IDX     [`N-1:0] cdb_completing_phys_regs,
     output                  [`N-1:0] cdb_completing_valid,
 );
+
+    MULT_PACKET   mult_packets_issuing;
+    ALU_PACKET    alu_packets_issuing;
+    BRANCH_PACKET branch_packets_issuing;
+
+    always_ff @(posedge clock) begin
+        for (int i = 0; i < `N; ++i) begin
+            if (mult_en[i] == 1'b1) begin
+                mult_packets_issuing[i] = next_mult_packets_issuing[i];
+            end
+        end
+
+        for (int i = 0; i < `N; ++i) begin
+            if (alu_en[i] == 1'b1) begin
+                alu_packets_issuing[i] = next_alu_packets_issuing[i];
+            end
+        end
+
+        for (int i = 0; i < `N; ++i) begin
+            if (branch_en[i] == 1'b1) begin
+                branch_packets_issuing[i] = next_branch_packets_issuing[i];
+            end
+        end
+    end
 
     DATA alu_result, mult_result, opa_mux_out, opb_mux_out;
     logic take_conditional;
@@ -35,47 +67,22 @@ module ExecuteStage (
     // We split the alu and mult here since they will be split in the final project
     assign ex_packet.alu_result = (id_ex_reg.mult) ? mult_result : alu_result;
 
-    // ALU opA mux
-    always_comb begin
-        case (id_ex_reg.opa_select)
-            OPA_IS_RS1:  opa_mux_out = id_ex_reg.rs1_value;
-            OPA_IS_NPC:  opa_mux_out = id_ex_reg.NPC;
-            OPA_IS_PC:   opa_mux_out = id_ex_reg.PC;
-            OPA_IS_ZERO: opa_mux_out = 0;
-            default:     opa_mux_out = 32'hdeadface; // dead face
-        endcase
-    end
-
-    // ALU opB mux
-    always_comb begin
-        case (id_ex_reg.opb_select)
-            OPB_IS_RS2:   opb_mux_out = id_ex_reg.rs2_value;
-            OPB_IS_I_IMM: opb_mux_out = `RV32_signext_Iimm(id_ex_reg.inst);
-            OPB_IS_S_IMM: opb_mux_out = `RV32_signext_Simm(id_ex_reg.inst);
-            OPB_IS_B_IMM: opb_mux_out = `RV32_signext_Bimm(id_ex_reg.inst);
-            OPB_IS_U_IMM: opb_mux_out = `RV32_signext_Uimm(id_ex_reg.inst);
-            OPB_IS_J_IMM: opb_mux_out = `RV32_signext_Jimm(id_ex_reg.inst);
-            default:      opb_mux_out = 32'hfacefeed; // face feed
-        endcase
-    end
-
     // Instantiate the ALU
     alu [`N-1:0] alus (
         // Inputs
-        .opa(opa_mux_out),
-        .opb(opb_mux_out),
-        .alu_func(id_ex_reg.alu_func),
+        .alu_packet(alu_packets_issuing),
 
         // Output
         .result(alu_result)
     );
 
     // Instantiate the multiplier
-    mult_no_pipeline [`N-1:0] mult_0 (
+    mult [`N-1:0] mult_0 (
         // Inputs
-        .rs1(id_ex_reg.rs1_value),
-        .rs2(id_ex_reg.rs2_value),
-        .func(id_ex_reg.inst.r.funct3), // which mult operation to perform
+        .clock(clock),
+        .reset(reset),
+
+        .mult_packet(mult_packets_issuing),
 
         // Output
         .result(mult_result)
@@ -84,9 +91,7 @@ module ExecuteStage (
     // Instantiate the conditional branch module
     conditional_branch conditional_branch_0 (
         // Inputs
-        .rs1(id_ex_reg.rs1_value),
-        .rs2(id_ex_reg.rs2_value),
-        .func(id_ex_reg.inst.b.funct3), // Which branch condition to check
+        .branch_packet(branch_packets_issuing),
 
         // Output
         .take(take_conditional)
