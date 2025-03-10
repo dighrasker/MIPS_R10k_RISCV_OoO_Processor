@@ -1,6 +1,6 @@
 `include "verilog/sys_defs.svh"
 
-module BranchStack #(
+module branchstack #(
 ) (
     input   logic                                clock, 
     input   logic                                reset,

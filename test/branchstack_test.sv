@@ -28,7 +28,7 @@ module BranchStack_test ();
     B_MASK                               b_mask_combinational;
     BS_DEBUG                             bs_debug;
 
-    BranchStack dut (
+    branchstack dut (
         .clock(clock),
         .reset(reset),
         .PC_restore(PC_restore),

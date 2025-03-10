@@ -2,7 +2,7 @@
 `include "CountOnes.sv"
 `include "psel_gen.sv"
 
-module RS #(
+module rs #(
 ) (
     input  logic                        clock, 
     input  logic                        reset,

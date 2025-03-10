@@ -15,6 +15,7 @@ module retire (
 
 //start at head and identify up to n instructions that are complete
     //send Told back to free list
+/*
 always_comb begin
     num_retiring = 0;
     // phys_regs_retiring = 0;
@@ -25,6 +26,19 @@ always_comb begin
             break;
         end
         num_retiring = num_retiring + 1'b1;
+    end
+end*/
+
+always_comb begin
+    num_retiring = 0;
+    phys_regs_retiring = '0;
+    for (int i = 0; i < `N; i++) begin
+        if (i < rob_outputs_valid && complete_list_exposed[rob_outputs[i].T_new]) begin
+            phys_regs_retiring[num_retiring] = rob_outputs[i].has_dest ? rob_outputs[i].T_old : rob_outputs[i].T_new;
+            num_retiring = num_retiring + 1'b1;
+        end else begin
+            break;
+        end
     end
 end
 

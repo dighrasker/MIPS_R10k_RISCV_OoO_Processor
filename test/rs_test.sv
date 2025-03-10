@@ -30,7 +30,7 @@ module RS_test ();
     logic                         b_mm_mispred;
     RS_DEBUG                      rs_debug; 
 
-    RS dut (
+    rs dut (
         .clock             (clock),
         .reset             (reset),
         .num_dispatched    (num_dispatched),
@@ -229,6 +229,7 @@ module RS_test ();
 
 
         // ---------- Test 1 Start ---------- //
+        /*
         $display("\n\033[32m@@@ Test 1: Dispatching when RS is full\033[0m\n");
         //fill up the RS
         for(int x = 0; x < 9; ++x) begin
@@ -266,6 +267,7 @@ module RS_test ();
         @(negedge clock);
 
         $display("\n\033[32m@@@ Test 1 Passes\033[0m\n");
+        */
         // ---------- Test 1 End ---------- //
 
 

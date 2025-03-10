@@ -27,14 +27,14 @@ module FreddyList_test ();
     // ------------- TO ISSUE -------------- //
     logic   [`PHYS_REG_SZ_R10K-1:0] complete_list;           // bitvector of the phys reg that are complete
 
-    logic [`PHYS_REG_SZ_R10K-1:0] next_free_list;
+    logic   [`PHYS_REG_SZ_R10K-1:0] next_free_list;
 
     logic   [`PHYS_REG_SZ_R10K-1:0] temp_complete_list;
 
     // INSTANCE is from the sys_defs.svh file
     // it renames the module if SYNTH is defined in
     // order to rename the module to FIFO_svsim
-    FreddyList dut (
+    freddylist dut (
         .clock                  (clock),
         .reset                  (reset),
         .phys_reg_completing    (phys_reg_completing),

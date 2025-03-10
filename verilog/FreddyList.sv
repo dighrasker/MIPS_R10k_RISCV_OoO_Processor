@@ -1,6 +1,6 @@
 `include "verilog/sys_defs.svh"
 
-module FreddyList #(
+module freddylist #(
 ) (
     input   clock,
     input   reset,
