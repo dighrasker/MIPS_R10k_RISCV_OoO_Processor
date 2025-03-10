@@ -28,6 +28,14 @@
 `define CDB_SZ `N // This MUST match your superscalar width
 `define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]
 
+// functional units (you should decide if you want more or fewer types of FUs)
+`define NUM_FU_BRANCH 1
+`define NUM_FU_ALU `N
+`define NUM_FU_MULT `N
+`define NUM_FU_LDST `N
+`define NUM_FU_LOAD `N
+`define NUM_FU_STORE `N
+
 // sizes
 `define ROB_SZ 32
 `define ROB_SZ_BITS $clog2(`ROB_SZ)
@@ -39,6 +47,7 @@
 `define PHYS_REG_SZ_P6 32
 `define PHYS_REG_SZ_R10K (`ARCH_REG_SZ_R10K + `ROB_SZ)
 `define PHYS_REG_NUM_ENTRIES_BITS $clog2(`PHYS_REG_SZ_R10K + 1)
+`define CDB_ARBITER_SZ `RS_SZ + `NUM_FU_MULT + `NUM_FU_LDST - 1
 
 
 // EDITED HERE
@@ -66,13 +75,6 @@ typedef enum logic [1:0] {
 // worry about these later
 `define BRANCH_PRED_SZ xx
 `define LSQ_SZ xx
-
-// functional units (you should decide if you want more or fewer types of FUs)
-`define NUM_FU_BRANCH 1
-`define NUM_FU_ALU `N
-`define NUM_FU_MULT `N
-`define NUM_FU_LOAD `N
-`define NUM_FU_STORE `N
 
 // number of mult stages (2, 4) (you likely don't need 8)
 `define MULT_STAGES 4
@@ -504,12 +506,12 @@ typedef struct packed {
 
 // TODO: UPDATE FU PACKETS
 
-typedef struct {
+typedef struct packed {
     IMM             immediate_val;
     ALU_FUNC        alu_func;
 } ALU_FLAGS;
 
-typedef struct {
+typedef struct packed {
     MULT_FUNC   mult_func;
 } MULT_FLAGS;
 
@@ -528,7 +530,7 @@ typedef struct packed {
     ALU_FLAGS       alu_flags;
 } ALU_PACKET;
 
-typedef struct {
+typedef struct packed {
     logic           valid;
 
     DATA            source_reg_1;
@@ -538,7 +540,7 @@ typedef struct {
     MULT_FUNC       mult_func;   
 } MULT_PACKET;
 
-typedef struct {
+typedef struct packed {
     INST inst;
     ADDR PC;
     ADDR NPC; // PC + 4
@@ -557,7 +559,7 @@ typedef struct {
     B_MASK_MASK     bmm;            // this branch's corresponding mask
 } BRANCH_PACKET;
 
-typedef struct {
+typedef struct packed {
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;
