@@ -6,9 +6,9 @@ module ExecuteStage (
     input MULT_PACKET       [`N-1:0] next_mult_packets_issuing, 
     input ALU_PACKET        [`N-1:0] next_alu_packets_issuing,
     input BRANCH_PACKET              next_branch_packets_issuing,
-    output logic [`N-1:0] mult_en,
-    output logic [`N-1:0] alu_en,
-    output logic [`N-1:0] branch_en,
+
+    output logic [`NUM_FU_MULT-1:0] mult_free,
+    output logic [`NUM_FU_LDST] ldst_free,
 
     // ------------ TO ALL DATA STRUCTURES ------------- //
     output DATA             [`N-1:0] cdb_completing_results,
@@ -19,6 +19,14 @@ module ExecuteStage (
     MULT_PACKET   mult_packets_issuing;
     ALU_PACKET    alu_packets_issuing;
     BRANCH_PACKET branch_packets_issuing;
+    logic [`NUM_FU_MULT-1:0] mult_cdb_valid;
+    logic [`NUM_FU_LDST-1:0] ldst_cdb_valid;
+
+    logic [`NUM_FU_MULT-1:0] mult_cdb_en;
+    logic [`NUM_FU_LDST-1:0] ldst_cdb_en;
+
+    logic [`NUM_FU_MULT-1:0] mult_fu_free;
+    logic [`NUM_FU_LDST-1:0] ldst_fu_free;
 
     always_ff @(posedge clock) begin
         for (int i = 0; i < `N; ++i) begin
@@ -68,7 +76,7 @@ module ExecuteStage (
     assign ex_packet.alu_result = (id_ex_reg.mult) ? mult_result : alu_result;
 
     // Instantiate the ALU
-    alu [`N-1:0] alus (
+    alu [`NUM_FU_ALU-1:0] alu_fus (
         // Inputs
         .alu_packet(alu_packets_issuing),
 
@@ -77,19 +85,21 @@ module ExecuteStage (
     );
 
     // Instantiate the multiplier
-    mult [`N-1:0] mult_0 (
+    mult [`NUM_FU_MULT-1:0] mult_fus (
         // Inputs
         .clock(clock),
         .reset(reset),
-
         .mult_packet(mult_packets_issuing),
+        .cdb_en(mult_cdb_en),
 
         // Output
+        .fu_free(mult_fu_free),
+        .mult_cdb_valid(mult_cdb_valid),
         .result(mult_result)
     );
 
     // Instantiate the conditional branch module
-    conditional_branch conditional_branch_0 (
+    conditional_branch [`NUM_FU_BRANCH-1:0] conditional_branch_fus (
         // Inputs
         .branch_packet(branch_packets_issuing),
 

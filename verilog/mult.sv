@@ -16,9 +16,9 @@ module mult # (
     input logic         cdb_en,
     
     // TODO: make sure the outputs are correct
-    output logic        en, // tells execute if it should apply backpressure on this FU
-    output logic        valid_out, // tells cdb this FU has a valid inst
-    output DATA         result
+    output logic        fu_free, // tells execute if it should apply backpressure on this FU
+    output logic        cdb_valid, // tells cdb this FU has a valid inst
+    output DATA         result,
 );
 
     typedef struct {
@@ -33,9 +33,10 @@ module mult # (
 
     INTERNAL_MULT_PACKET [`MULT_STAGES-2:0] internal_mult_packets;
     INTERNAL_MULT_PACKET internal_mult_packet_in, internal_mult_packet_out;
-    logic [`MULT_STAGES-2:0] internal_en;
 
-    assign valid_out = internal_mult_packet_in[`MULT_STAGES-2].valid;
+    logic [`MULT_STAGES-2:0] internal_free;
+
+    assign cdb_valid = internal_mult_packet_in[`MULT_STAGES-3].valid;
 
     assign internal_mult_packet_in.valid        = mult_packet_in.valid;
     assign internal_mult_packet_in.prev_sum     = 64'h0;
@@ -60,9 +61,10 @@ module mult # (
     mult_stage mstage [`MULT_STAGES-1:0] (
         .clock (clock),
         .reset (reset),
-        .en_in ({cdb_en, internal_en}),
+        .is_last_stage ({1'b1, `MULT_STAGES-1'b0})
+        .next_stage_free ({cdb_en, internal_free}),
         .internal_mult_packet_in ({internal_mult_packets, internal_mult_packet_in})
-        .en_out ({internal_en, en})
+        .current_stage_free ({internal_free, fu_free})
         .internal_mult_packet_out ({internal_mult_packet_out, internal_mult_packets})
     );
 
@@ -75,10 +77,11 @@ endmodule // mult
 module mult_stage (
     input logic clock,
     input logic reset, 
-    input logic en_in,
+    input logic is_last_stage,
+    input logic next_stage_free,
     input INTERNAL_MULT_PACKET internal_mult_packet_in,
 
-    output logic en_out,
+    output logic current_stage_free,
     output INTERNAL_MULT_PACKET internal_mult_packet_out,
 );
 
@@ -93,11 +96,11 @@ module mult_stage (
     assign next_internal_mult_packet.bm           = internal_mult_packet_in.bm;
     assign next_internal_mult_packet.func         = internal_mult_packet_in.func;
 
-    assign en_out = en_in | ~internal_mult_packet_in.valid;                   // Either the next stage is enabled, or the current stage doesn't have anything
+    assign current_stage_free = next_stage_free || (~internal_mult_packet_in.valid && ~is_last_stage); // Either the next stage is free, or the current stage doesn't have anything
 
     always_ff @(posedge clock) begin
-        // use en_in because we are deciding whether we should update the next mult stage
-        if (en_in) begin
+        // use next_stage_free because we are deciding whether we should update the next mult stage, if in last stage, just forward the packet unconditionally
+        if (next_stage_free || is_last_stage) begin
             internal_mult_packet_out <= next_internal_mult_packet;
         end
     end

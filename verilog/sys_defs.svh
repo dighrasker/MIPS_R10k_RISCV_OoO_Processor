@@ -35,6 +35,7 @@
 `define NUM_FU_LDST `N
 `define NUM_FU_LOAD `N
 `define NUM_FU_STORE `N
+`define NUM_FU_TOTAL `NUM_FU_ALU + `NUM_FU_MULT + `NUM_FU_BRANCH +`NUM_FU_LDST
 
 // sizes
 `define ROB_SZ 32
@@ -507,18 +508,10 @@ typedef struct packed {
 // TODO: UPDATE FU PACKETS
 
 typedef struct packed {
-    IMM             immediate_val;
-    ALU_FUNC        alu_func;
-} ALU_FLAGS;
-
-typedef struct packed {
-    MULT_FUNC   mult_func;
-} MULT_FLAGS;
-
-typedef struct packed {
-    INST inst;
-    ADDR PC;
-    ADDR NPC; // PC + 4
+    INST            inst;
+    logic           valid;
+    ADDR            PC;
+    ADDR            NPC; // PC + 4
 
     ALU_OPA_SELECT opa_select; // ALU opa mux select (ALU_OPA_xxx *)
     ALU_OPB_SELECT opb_select; // ALU opb mux select (ALU_OPB_xxx *)
@@ -527,8 +520,26 @@ typedef struct packed {
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;
     B_MASK          bm;
-    ALU_FLAGS       alu_flags;
-} ALU_PACKET;
+} ALU_ENTRY_PACKET;
+
+typedef struct packed {
+    logic           valid;
+    PHYS_REG_IDX    dest_reg_idx;
+    B_MASK          bm;
+} ALU_EXIT_PACKET;
+
+const ALU_PACKET NOP_ALU_PACKET = '{
+    inst:          NOP   // Assuming 0 represents a NOP instruction
+    valid:         '0,
+    PC:            '0,   // No valid program counter
+    NPC:           '0,   // No valid next PC
+    opa_select:    ALU_OPA_ZERO, // Assuming ALU_OPA_ZERO means no operation
+    opb_select:    ALU_OPB_ZERO, // Assuming ALU_OPB_ZERO means no operation
+    source_reg_1:  '0,   // No valid source register
+    source_reg_2:  '0,   // No valid source register
+    dest_reg_idx:  '0,   // No valid destination register
+    bm:            '0,   // No valid branch mask
+};
 
 typedef struct packed {
     logic           valid;
@@ -539,6 +550,19 @@ typedef struct packed {
     B_MASK          bm;
     MULT_FUNC       mult_func;   
 } MULT_PACKET;
+
+const ALU_PACKET NOP_MULT_PACKET = '{
+    inst:          NOP   // Assuming 0 represents a NOP instruction
+    valid:         '0,
+    PC:            '0,   // No valid program counter
+    NPC:           '0,   // No valid next PC
+    opa_select:    ALU_OPA_ZERO, // Assuming ALU_OPA_ZERO means no operation
+    opb_select:    ALU_OPB_ZERO, // Assuming ALU_OPB_ZERO means no operation
+    source_reg_1:  '0,   // No valid source register
+    source_reg_2:  '0,   // No valid source register
+    dest_reg_idx:  '0,   // No valid destination register
+    bm:            '0,   // No valid branch mask
+};
 
 typedef struct packed {
     INST inst;
