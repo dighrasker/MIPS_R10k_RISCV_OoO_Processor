@@ -34,7 +34,7 @@ always_comb begin
     phys_regs_retiring = '0;
     for (int i = 0; i < `N; i++) begin
         if (i < rob_outputs_valid && complete_list_exposed[rob_outputs[i].T_new]) begin
-            phys_regs_retiring[num_retiring] = rob_outputs[i].has_dest ? rob_outputs[i].T_old : rob_outputs[i].T_new;
+            phys_regs_retiring[num_retiring] = rob_outputs[i].T_new;
             num_retiring = num_retiring + 1'b1;
         end else begin
             break;

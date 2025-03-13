@@ -21,14 +21,19 @@ module freddylist #(
     // output logic    [`NUM_SCALAR_BITS-1:0] free_list_spots,        // how many physical registers are free
     output logic   [`PHYS_REG_SZ_R10K-1:0] free_list,              // bitvector of the phys reg that are complete
     // ------------- TO ISSUE -------------- //
-    output logic   [`PHYS_REG_SZ_R10K-1:0] complete_list           // bitvector of the phys reg that are complete
+    output logic   [`PHYS_REG_SZ_R10K-1:0] next_complete_list,           // bitvector of the phys reg that are complete
+    output logic   [`PHYS_REG_SZ_R10K-1:0] complete_list
+`ifdef DEBUG
+    , output logic   [`PHYS_REG_SZ_R10K-1:0] debug_complete_list
+`endif
+    
 );
 
-    logic [`PHYS_REG_SZ_R10K-1:0] next_complete_list;
     logic [`PHYS_REG_SZ_R10K-1:0] next_free_list;
 
     // psel shit
     logic [`N-1:0] [`PHYS_REG_SZ_R10K-1:0] psel_output;
+    logic [`PHYS_REG_SZ_R10K-1:0] gnt;
     logic empty;
 
     logic [`PHYS_REG_SZ_R10K-1:0] dispatched_reg;
@@ -44,6 +49,7 @@ module freddylist #(
          .REQS(`N)            // The number of requests that can be simultaenously granted
     ) psel_inst (
          .req(free_list),          // Input request bus
+         .gnt(gnt),          // Output with all granted requests on a bus
          .gnt_bus(psel_output),  // Output bus for each request
          .empty(empty)       // Output asserted when there are no requests
     );
@@ -51,7 +57,13 @@ module freddylist #(
     genvar i;
     generate
         for(i = 0; i < `N; ++i) begin: encoderblock
-            encoder u_encoder (psel_output[i], phys_regs_to_use[i]);
+            encoder #(
+                .INPUT_LENGTH(`PHYS_REG_SZ_R10K),
+                .OUTPUT_LENGTH(`PHYS_REG_ID_BITS)
+            ) u_encoder (
+                .in(psel_output[i]), 
+                .out(phys_regs_to_use[i])
+            );
         end
     endgenerate
 
@@ -59,7 +71,7 @@ module freddylist #(
         next_complete_list = complete_list;
         for (int i = 0; i < `N; ++i) begin
             if (completing_valid[i]) begin
-                next_complete_list[phys_reg_completing[i]] = 1;
+                next_complete_list[phys_reg_completing[i]] = 1'b1;
             end
         end
 
@@ -89,4 +101,8 @@ module freddylist #(
             // entries <= next_entries;
         end
     end
+
+`ifdef DEBUG
+    assign debug_complete_list = complete_list;
+`endif
 endmodule

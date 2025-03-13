@@ -25,6 +25,7 @@ module FreddyList_sva #(
     // output logic    [`NUM_SCALAR_BITS-1:0] free_list_spots,        // how many physical registers are free
     input  logic   [`PHYS_REG_SZ_R10K-1:0] free_list,              // bitvector of the phys reg that are complete
     // ------------- TO ISSUE -------------- //
+    input  logic   [`PHYS_REG_SZ_R10K-1:0] next_complete_list,           // bitvector of the phys reg that are complete
     input  logic   [`PHYS_REG_SZ_R10K-1:0] complete_list           // bitvector of the phys reg that are complete
 );
 

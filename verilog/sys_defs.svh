@@ -48,7 +48,7 @@
 `define PHYS_REG_SZ_P6 32
 `define PHYS_REG_SZ_R10K (`ARCH_REG_SZ_R10K + `ROB_SZ)
 `define PHYS_REG_NUM_ENTRIES_BITS $clog2(`PHYS_REG_SZ_R10K + 1)
-`define CDB_ARBITER_SZ `RS_SZ + `NUM_FU_MULT + `NUM_FU_LDST - 1
+`define CDB_ARBITER_SZ `RS_SZ + `NUM_FU_MULT + `NUM_FU_LDST
 
 
 // EDITED HERE
@@ -56,6 +56,7 @@
 `define PHYS_REG_ID_BITS $clog2(`PHYS_REG_SZ_R10K)
 `define B_MASK_ID_BITS $clog2(`B_MASK_WIDTH)
 `define ARCH_REG_ID_BITS $clog2(32) // Assuming # arch reg = 32
+`define FU_ID_BITS $clog2(`NUM_FU_TOTAL)
 
 typedef logic [`ROB_ENTRY_ID_BITS-1:0]      ROB_ENTRY_ID;
 typedef logic [`PHYS_REG_ID_BITS-1:0]       PHYS_REG_IDX;
@@ -64,6 +65,7 @@ typedef logic [6:0]                         OPCODE;
 typedef logic [`B_MASK_WIDTH-1:0]           B_MASK;
 typedef logic [`B_MASK_WIDTH-1:0]           B_MASK_MASK;
 typedef logic [2:0]                         BRANCH_FUNC;
+typedef logic [`FU_ID_BITS-1:0]             FU_IDX;
 typedef enum logic [1:0] {
     ALU   = 2'h0,
     MULT   = 2'h1,
@@ -431,7 +433,6 @@ typedef struct packed {
 
 typedef struct packed {
     // ADDR            PC;
-    logic           has_dest;
     logic           halt;
     PHYS_REG_IDX    T_new; // Use as unique rob id
     PHYS_REG_IDX    T_old;
@@ -528,18 +529,18 @@ typedef struct packed {
     B_MASK          bm;
 } ALU_EXIT_PACKET;
 
-const ALU_PACKET NOP_ALU_PACKET = '{
-    inst:          NOP   // Assuming 0 represents a NOP instruction
-    valid:         '0,
-    PC:            '0,   // No valid program counter
-    NPC:           '0,   // No valid next PC
-    opa_select:    ALU_OPA_ZERO, // Assuming ALU_OPA_ZERO means no operation
-    opb_select:    ALU_OPB_ZERO, // Assuming ALU_OPB_ZERO means no operation
-    source_reg_1:  '0,   // No valid source register
-    source_reg_2:  '0,   // No valid source register
-    dest_reg_idx:  '0,   // No valid destination register
-    bm:            '0,   // No valid branch mask
-};
+// const ALU_ENTRY_PACKET NOP_ALU_PACKET = '{
+//     inst:          `NOP,   // Assuming 0 represents a NOP instruction
+//     valid:         '0,
+//     PC:            '0,   // No valid program counter
+//     NPC:           '0,   // No valid next PC
+//     opa_select:    ALU_OPA_ZERO, // Assuming ALU_OPA_ZERO means no operation
+//     opb_select:    ALU_OPB_ZERO, // Assuming ALU_OPB_ZERO means no operation
+//     source_reg_1:  '0,   // No valid source register
+//     source_reg_2:  '0,   // No valid source register
+//     dest_reg_idx:  '0,   // No valid destination register
+//     bm:            '0   // No valid branch mask
+// };
 
 typedef struct packed {
     logic           valid;
@@ -551,18 +552,18 @@ typedef struct packed {
     MULT_FUNC       mult_func;   
 } MULT_PACKET;
 
-const ALU_PACKET NOP_MULT_PACKET = '{
-    inst:          NOP   // Assuming 0 represents a NOP instruction
-    valid:         '0,
-    PC:            '0,   // No valid program counter
-    NPC:           '0,   // No valid next PC
-    opa_select:    ALU_OPA_ZERO, // Assuming ALU_OPA_ZERO means no operation
-    opb_select:    ALU_OPB_ZERO, // Assuming ALU_OPB_ZERO means no operation
-    source_reg_1:  '0,   // No valid source register
-    source_reg_2:  '0,   // No valid source register
-    dest_reg_idx:  '0,   // No valid destination register
-    bm:            '0,   // No valid branch mask
-};
+// const MULT_PACKET NOP_MULT_PACKET = '{
+//     inst:          `NOP,   // Assuming 0 represents a NOP instruction
+//     valid:         '0,
+//     PC:            '0,   // No valid program counter
+//     NPC:           '0,   // No valid next PC
+//     opa_select:    ALU_OPA_ZERO, // Assuming ALU_OPA_ZERO means no operation
+//     opb_select:    ALU_OPB_ZERO, // Assuming ALU_OPB_ZERO means no operation
+//     source_reg_1:  '0,   // No valid source register
+//     source_reg_2:  '0,   // No valid source register
+//     dest_reg_idx:  '0,   // No valid destination register
+//     bm:            '0   // No valid branch mask
+// };
 
 typedef struct packed {
     INST inst;
@@ -594,6 +595,19 @@ typedef struct packed {
     INST            inst;
     ADDR            PC;
 } FETCH_PACKET;
+
+typedef struct packed {
+    PHYS_REG_IDX  completing_reg;
+    logic         valid;
+} CDB_ETB_PACKET;
+
+typedef struct packed {
+    DATA          result;
+    PHYS_REG_IDX  completing_reg;
+    B_MASK        bmm;
+    logic         bm_mispred;
+    logic         valid;
+} CDB_REG_PACKET;
 
 typedef struct packed {
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table;

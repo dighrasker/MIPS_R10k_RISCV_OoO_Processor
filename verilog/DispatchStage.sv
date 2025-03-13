@@ -43,6 +43,10 @@ module Dispatch #(
     // ------------ FROM ISSUE? ------------- //
     input   logic        [`NUM_SCALAR_BITS-1:0] num_issuing,
 
+    // ------------ FROM EXECUTE ------------- //
+    input   PHYS_REG_IDX               [`N-1:0] ETB_tags,
+    input   logic                      [`N-1:0] ETB_tags_valid,
+
     // ------------ TO ALL DATA STRUCTURES ------------- //
     output   logic       [`NUM_SCALAR_BITS-1:0] num_dispatched
     `ifdef DEBUG
@@ -84,7 +88,6 @@ module Dispatch #(
                                 ((rob_spots <= (rs_spots + num_issuing)) && (rob_spots <= instructions_valid)) ? rob_spots : instructions_valid;
 
     assign i_num_dispatched = restore_valid ? 0 : min; //if not restoring, num_dispatching = min (rs_entries, rob_entries, free_list)
-    
 
     always_comb begin
         branch_stack_entries = '0;
@@ -96,13 +99,36 @@ module Dispatch #(
             if(i < i_num_dispatched) begin
                 // Create rob/rs/branch-stack entries
                 
+                
                 //Create RS Packet
                 rs_entries[i].decoder_out = decoder_out[i];
                 rs_entries[i].T_new = regs_to_use[i];
                 rs_entries[i].Source1 = next_map_table[source1_arch_reg[i]];
-                rs_entries[i].Source1_ready = is_rs1_used[i] ? next_complete_list[rs_entries[i].Source1] : 1;
+                if (!is_rs1_used[i]) begin
+                    rs_entries[i].Source1_ready = 1'b1; 
+                end else if (next_complete_list[rs_entries[i].Source1]) begin
+                    rs_entries[i].Source1_ready = 1'b1; 
+                end else begin
+                    rs_entries[i].Source1_ready = 1'b0;
+                    for(int j = 0; j < `N; j++) begin
+                        if(rs_entries[i].Source1 == ETB_tags[j] && ETB_tags_valid[j])begin
+                            rs_entries[i].Source1_ready = 1'b1;
+                        end
+                    end
+                end
                 rs_entries[i].Source2 = next_map_table[source2_arch_reg[i]];
-                rs_entries[i].Source2_ready = is_rs2_used[i] ? next_complete_list[rs_entries[i].Source2] : 1;
+                if (!is_rs2_used[i]) begin
+                    rs_entries[i].Source2_ready = 1'b1; 
+                end else if (next_complete_list[rs_entries[i].Source2]) begin
+                    rs_entries[i].Source2_ready = 1'b1; 
+                end else begin
+                    rs_entries[i].Source2_ready = 1'b0;
+                    for(int j = 0; j < `N; j++) begin
+                        if(rs_entries[i].Source2 == ETB_tags[j] && ETB_tags_valid[j])begin
+                            rs_entries[i].Source2_ready = 1'b1;
+                        end
+                    end
+                end
                 rs_entries[i].b_mask = next_b_mask;
                 rs_entries[i].b_mask_mask = '0;
 
@@ -113,10 +139,9 @@ module Dispatch #(
                     ARCH_REG_IDX    Arch_reg;
                 */
                 rob_entries[i].T_new = regs_to_use[i];                          //this should be the output from freddy
-                rob_entries[i].has_dest = decoder_out[i].has_dest;
                 rob_entries[i].halt = decoder_out[i].halt;
                 rob_entries[i].Arch_reg = dest_arch_reg[i];         //this should come from instruction dest_reg
-                rob_entries[i].T_old = decoder_out[i].has_dest ? next_map_table[dest_arch_reg[i]] : 0;      //this should be coming from map table
+                rob_entries[i].T_old = decoder_out[i].has_dest ? next_map_table[dest_arch_reg[i]] : rob_entries[i].T_new;      //this should be coming from map table
 
 
                 // create the branch checkpoint

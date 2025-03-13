@@ -24,49 +24,50 @@ module Issue # (
 
     // ------------- FROM CDB -------------- //
     input DATA                        [`N-1:0] CDB_data_forwarded,  // for ETB, data forwarded from CDB to replace data 
+    input PHYS_REG_IDX                [`N-1:0] CDB_tags_forwarded,
 
     // ------------- TO/FROM EXECUTE -------------- //
     // TODO: include the backpressure signals from each FU. 
-    input                   [`NUM_FU_MULT-1:0] mult_free,
-    input                   [`NUM_FU_LDST-1:0] ldst_free,
+    input                         [`NUM_FU_MULT-1:0] mult_free, // backpressure signal from the mult FU
+    input                         [`NUM_FU_LDST-1:0] ldst_free, // backpressure signal from the ldst FU
 
-    input                   [`NUM_FU_MULT-1:0] mult_cdb_req,
-    input                   [`NUM_FU_LDST-1:0] ldst_cdb_req,
-    
+    input                         [`NUM_FU_MULT-1:0] mult_cdb_req, // High if there is a valid instruction in the second to last stage of mult
+    input                         [`NUM_FU_LDST-1:0] ldst_cdb_req, // High if there is a valid instruction in the second to last stage of ldst
 
-    output ALU_PACKET        [`NUM_FU_ALU-1:0] alu_packets,
-    output MULT_PACKET      [`NUM_FU_MULT-1:0] mult_packets,
-    output BRANCH_PACKET  [`NUM_FU_BRANCH-1:0] branch_packets,
-    output LD_PACKET        [`NUM_FU_LOAD-1:0] ldst_packets
+    output logic                  [`NUM_FU_MULT-1:0] mult_cdb_gnt,
+    output logic                  [`NUM_FU_LDST-1:0] ldst_cdb_gnt,
+    output ALU_ENTRY_PACKET        [`NUM_FU_ALU-1:0] alu_packets,
+    output MULT_ENTRY_PACKET      [`NUM_FU_MULT-1:0] mult_packets,
+    output BRANCH_ENTRY_PACKET  [`NUM_FU_BRANCH-1:0] branch_packets,
+    output LDST_ENTRY_PACKET      [`NUM_FU_LDST-1:0] ldst_packets,
+
+    output logic [`N-1:0]        [`NUM_FU_TOTAL-1:0] complete_gnt_bus
 );
 
 // TODO: Make the ldst and mult fu grant buses
 
-logic [`NUM_FU_BRANCH-1:0] branch_cdb_req;
-logic [`NUM_FU_BRANCH-1:0] alu_cdb_req;
-
 // Functional Unit Request Lines
-logic [`RS_SZ-1:0] branch_entries_valid;
+logic [`RS_SZ-1:0] branch_entries_valid; // Which entries in the rs are a branch instruction
 logic [`RS_SZ-1:0] mult_entries_valid;
 logic [`RS_SZ-1:0] alu_entries_valid;
 logic [`RS_SZ-1:0] ldst_entries_valid;
 logic [`RS_SZ-1:0] single_cycle_entries_valid;
 
-
+assign single_cycle_entries_valid = branch_entries_valid | alu_entries_valid; // which entries in the rs are single cycle instructions
 
 //Functional Unit Grant Buses
-logic [`CDB_ARBITER_SZ:0]   [`NUM_FU_TOTAL-1:0]  complete_gnt_bus, next_complete_gnt_bus;
-logic [`NUM_FU_BRANCH-1:0]  [`RS_SZ-1:0] bu_gnt_bus;
-logic [`NUM_FU_ALU-1:0]     [`RS_SZ-1:0] alu_gnt_bus;
-logic [`NUM_FU_MULT-1:0]    [`RS_SZ-1:0] mult_gnt_bus;
-logic [`NUM_FU_LDST-1:0]    [`RS_SZ-1:0] ldst_gnt_bus;
+logic [`N-1:0]             [`NUM_FU_TOTAL-1:0] next_complete_gnt_bus;
+logic                             [`RS_SZ-1:0] rs_cdb_gnt;
+logic                        [`NUM_FU_ALU-1:0] alu_cdb_gnt;
+logic                     [`NUM_FU_BRANCH-1:0] branch_cdb_gnt;
 
-logic [`NUM_FU_BRANCH-1:0]  [`RS_SZ_BITS-1:0] bu_indices;
-logic [`NUM_FU_ALU-1:0]     [`RS_SZ_BITS-1:0] alu_indices;
-logic [`NUM_FU_MULT-1:0]    [`RS_SZ_BITS-1:0] mult_indices;
-logic [`NUM_FU_LDST-1:0]    [`RS_SZ_BITS-1:0] ldst_indices;
+logic [`NUM_FU_BRANCH-1:0]        [`RS_SZ-1:0] branch_inst_gnt_bus;
+logic [`NUM_FU_ALU-1:0]           [`RS_SZ-1:0] alu_inst_gnt_bus;
+logic [`NUM_FU_MULT-1:0]          [`RS_SZ-1:0] mult_inst_gnt_bus;
+logic [`NUM_FU_LDST-1:0]          [`RS_SZ-1:0] ldst_inst_gnt_bus;
 
-//assign single_cycle_entries_valid = branch_entries_valid | alu_entries_valid;
+logic [`NUM_FU_MULT-1:0]    [`NUM_FU_MULT-1:0] mult_fu_gnt_bus;
+logic [`NUM_FU_LDST-1:0]    [`NUM_FU_LDST-1:0] ldst_fu_gnt_bus;
 
 generate
 genvar i;
@@ -78,121 +79,235 @@ genvar i;
     end
 endgenerate
 
-
 psel_gen #(
-    .WIDTH(`CDB_ARBITER_SZ),  // The width of the request bus
-    .REQS(`N)                   // The number of requests that can be simultaenously granted
-) complete_psel (
-    .req(({branch_cdb_req, alu_cdb_req, ldst_cdb_req, mult_cdb_req})),            // Input request bus
-    .gnt(complete_gnt),                  // Output with all granted requests on a bus
-    .gnt_bus(next_complete_gnt_bus),      // Output bus for each request
-    .empty(empty)               // Output asserted when there are no requests
-);
-
-psel_gen #(
-    .WIDTH(`RS_SZ),  // The width of the request bus
-    .REQS(`NUM_FU_BRANCH)                   // The number of requests that can be simultaenously granted
+    .WIDTH(`RS_SZ),
+    .REQS(`NUM_FU_BRANCH)
 ) branch_inst_psel (
-    .req(branch_entries_valid),            // Input request bus
-    .gnt_bus(bu_gnt_bus),      // Output bus for each request
-    .empty(empty)               // Output asserted when there are no requests
+    .req(branch_entries_valid),
+    .gnt_bus(branch_inst_gnt_bus),
+    .empty(empty)
 );
 
 psel_gen #(
-    .WIDTH(`RS_SZ),  // The width of the request bus
-    .REQS(`NUM_FU_MULT)                   // The number of requests that can be simultaenously granted
+    .WIDTH(`RS_SZ),
+    .REQS(`NUM_FU_MULT)
 ) mult_inst_psel (
-    .req(mult_entries_valid),            // Input request bus
-    .gnt_bus(mult_gnt_bus),      // Output bus for each request
-    .empty(empty)               // Output asserted when there are no requests
+    .req(mult_entries_valid),
+    .gnt_bus(mult_inst_gnt_bus),
+    .empty(empty)
 );
 
 psel_gen #(
-    .WIDTH(`RS_SZ),  // The width of the request bus
-    .REQS(`NUM_FU_ALU)                   // The number of requests that can be simultaenously granted
+    .WIDTH(`RS_SZ),
+    .REQS(`NUM_FU_ALU)
 ) alu_inst_psel (
-    .req(alu_entries_valid),            // Input request bus
-    .gnt_bus(alu_gnt_bus),      // Output bus for each request
-    .empty(empty)               // Output asserted when there are no requests
+    .req(alu_entries_valid),
+    .gnt_bus(alu_inst_gnt_bus),
+    .empty(empty)
 );
 
 psel_gen #(
-    .WIDTH(`RS_SZ),  // The width of the request bus
-    .REQS(`NUM_FU_LDST)                   // The number of requests that can be simultaenously granted
+    .WIDTH(`RS_SZ),
+    .REQS(`NUM_FU_LDST)
 ) ldst_inst_psel (
-    .req(ldst_entries_valid),            // Input request bus
-    .gnt_bus(ldst_gnt_bus),      // Output bus for each request
-    .empty(empty)               // Output asserted when there are no requests
+    .req(ldst_entries_valid),
+    .gnt_bus(ldst_inst_gnt_bus),
+    .empty(empty)
 );
 
 // FU PSELS
 
 psel_gen #(
-    .WIDTH(`NUM_FU_MULT),  // The width of the request bus
-    .REQS(`NUM_FU_MULT)                   // The number of requests that can be simultaenously granted
+    .WIDTH(`NUM_FU_MULT),
+    .REQS(`NUM_FU_MULT)
 ) mult_fu_psel (
-    .req(mult_free),            // Input request bus
-    .gnt_bus(mult_gnt_bus),      // Output bus for each request TODO: assign the the mult fu grant bus
-    .empty(empty)               // Output asserted when there are no requests
+    .req(mult_free),
+    .gnt_bus(mult_fu_gnt_bus),
+    .empty(empty)
 );
 
 psel_gen #(
-    .WIDTH(`NUM_FU_LDST),  // The width of the request bus
-    .REQS(`NUM_FU_LDST)                   // The number of requests that can be simultaenously granted
+    .WIDTH(`NUM_FU_LDST),
+    .REQS(`NUM_FU_LDST)
 ) ldst_fu_psel (
-    .req(ldst_free),            // Input request bus
-    .gnt_bus(mult_gnt_bus),      // Output bus for each request TODO: assign the the LDST fu grant bus 
-    .empty(empty)               // Output asserted when there are no requests
+    .req(ldst_free),
+    .gnt_bus(ldst_fu_gnt_bus),
+    .empty(empty)
 );
 
-// Choose which branch inst to issue
-always_comb begin
-    for (int i = 0; i < `NUM_FU_BRANCH ++i) begin
-        branch_cdb_req[i] = |bu_gnt_bus[i];
-    end
-end
+// CDB and Complete psel
 
-encoder #(`RS_SZ, `RS_SZ_BITS) encoders_branch [`NUM_FU_BRANCH-1:0] (bu_gnt_bus, bu_indices);
-wor [`NUM_FU_BRANCH-1:0] branch_fu_selected;
-always_comb begin
+psel_gen #(
+    .WIDTH(`CDB_ARBITER_SZ),
+    .REQS(`N)
+) cdb_psel (
+    .req({single_cycle_entries_valid, mult_cdb_req, ldst_cdb_req}),
+    .gnt({rs_cdb_gnt, mult_cdb_gnt, ldst_cdb_gnt}),
+    .empty(empty)
+);
+
+psel_gen #(
+    .WIDTH(`NUM_FU_TOTAL),
+    .REQS(`N),
+) complete_psel (
+    .req({branch_cdb_gnt, alu_cdb_gnt, mult_cdb_gnt, ldst_cdb_gnt}),
+    .gnt_bus(next_complete_gnt_bus),
+    .empty(empty)
+);
+
+// Create The Branch Packets Issuing
+
+generate
+genvar i;
+genvar j;
     //loop through branch gnt bus
-    for (int i = 0; i < `NUM_FU_BRANCH; ++i) begin
-        for (j = 0; j < `N; ++j) begin
-            branch_fu_selected[i] = next_complete_gnt_bus[j][i];
-        end
+    for (i = 0; i < `NUM_FU_BRANCH ++i) begin : branch_loop
+        logic [`RS_SZ_BITS-1:0] branch_index;
+        encoder #(`RS_SZ, `RS_SZ_BITS) encoders_branch (branch_inst_gnt_bus[i], branch_index);
+        if (branch_inst_gnt_bus[i] & rs_cdb_gnt) begin
+            assign branch_packet[i] = // TODO: get the data from rs_entries[branch_index] to form this branch packet
+            //assign regfile_read_indices Decide how to index regfile later
+            if (complete_list[rs_entries[branch_index].Source1]) begin
+                assign branch_packet[i].Source1_value = regfile_outputs;
+            end else begin
+                for(j = 0; j < `N; ++j) begin
+                    if (rs_entries[branch_index].Source1 == CDB_tags_forwarded[j]) begin
+                       assign branch_packet[i].Source1_value = CDB_data_forwarded[j];
+                    end
+                end
+            end
 
-        if (bu_gnt_bus[i] && branch_fu_selected[i]) begin
-            branch_packet[i] = // TODO: get the data from rs_entries[branch_indices[i]] to form this branch packet
+            if (complete_list[rs_entries[branch_index].Source2]) begin
+                assign branch_packet[i].Src2_value = regfile_outputs;
+            end else begin
+                for(j = 0; j < `N; ++j) begin
+                    if(rs_entries[branch_index].Source2 == CDB_tags_forwarded[j]) begin
+                        assign branch_packet[i].Source2_value = CDB_data_forwarded[j];
+                    end
+                end
+            end
+            
+            assign branch_cdb_gnt[i] = 1'b1;
         end else begin
-            branch_packet[i] = // NOP 
+            assign branch_packet[i] = //NOP TODO: get the data from rs_entries[branch_index] to form this branch packet
+            assign branch_cdb_gnt[i] = 1'b0;
         end
     end
-end
+endgenerate
 
+// Create The ALU Packets Issuing
 
-// Choose which alu inst to issue
-always_comb begin
-    for (int i = 0; i < `NUM_ALU_BRANCH ++i) begin
-        alu_cdb_req[i] = |alu_gnt_bus[i];
-    end
-end
+generate
+genvar i;
+genvar j;
+    //loop through alu gnt bus
+    for (i = 0; i < `NUM_FU_ALU ++i) begin : alu_loop
+        logic [`RS_SZ_BITS-1:0] alu_index;
+        encoder #(`RS_SZ, `RS_SZ_BITS) encoders_alu (alu_inst_gnt_bus[i], alu_index);
+        if (alu_inst_gnt_bus[i] & rs_cdb_gnt) begin
+            assign alu_packet[i] = // TODO: get the data from rs_entries[alu_index] to form this alu packet
+            //assign regfile_read_indices Decide how to index regfile later
+            if (complete_list[rs_entries[alu_index].Source1]) begin
+                assign alu_packet[i].Source1_value = regfile_outputs;
+            end else begin
+                for(j = 0; j < `N; ++j) begin
+                    if (rs_entries[alu_index].Source1 == CDB_tags_forwarded[j]) begin
+                       assign alu_packet[i].Source1_value = CDB_data_forwarded[j];
+                    end
+                end
+            end
 
-encoder #(`RS_SZ, `RS_SZ_BITS) encoders_alu [`NUM_ALU_BRANCH-1:0] (alu_gnt_bus, alu_indices);
-wor [`NUM_FU_BRANCH-1:0] alu_fu_selected;
-always_comb begin
-    //loop through branch gnt bus
-    for (int i = 0; i < `NUM_ALU_BRANCH; ++i) begin
-        for (j = 0; j < `N; ++j) begin
-            alu_fu_selected[i] = next_complete_gnt_bus[j][i];
-        end
-
-        if (alu_gnt_bus[i] && alu_fu_selected[i]) begin
-            alu_packet[i] = // TODO: get the data from rs_entries[branch_indices[i]] to form this branch packet
+            if (complete_list[rs_entries[alu_index].Source2]) begin
+                assign alu_packet[i].Src2_value = regfile_outputs;
+            end else begin
+                for(j = 0; j < `N; ++j) begin
+                    if(rs_entries[alu_index].Source2 == CDB_tags_forwarded[j]) begin
+                        assign alu_packet[i].Source2_value = CDB_data_forwarded[j];
+                    end
+                end
+            end
+            
+            assign alu_cdb_gnt[i] = 1'b1;
         end else begin
-            alu_packet[i] = // NOP 
+            assign alu_packet[i] = //NOP TODO: get the data from rs_entries[alu_index] to form this alu packet
+            assign alu_cdb_gnt[i] = 1'b0;
         end
     end
-end
+endgenerate
+
+// Create The Mult Packets Issuing
+
+generate
+genvar i;
+genvar j;
+    //loop through mult gnt bus
+    for (i = 0; i < `NUM_FU_MULT ++i) begin : mult_loop
+        logic [`RS_SZ_BITS-1:0] mult_rs_index;
+        encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_mult (mult_inst_gnt_bus[i], mult_rs_index);
+        encoder #(`RS_SZ, `RS_SZ_BITS) fu_encoders_mult (mult_fu_gnt_bus[i], mult_fu_index);
+        if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
+            assign mult_packet[mult_fu_index] = // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
+            if (complete_list[rs_entries[mult_rs_index].Source1]) begin
+                assign mult_packet[mult_fu_index].Source1_value = regfile_outputs;
+            end else begin
+                for(j = 0; j < `N; ++j) begin
+                    if (rs_entries[mult_rs_index].Source1 == CDB_tags_forwarded[j]) begin
+                       assign mult_packet[mult_fu_index].Source1_value = CDB_data_forwarded[j];
+                    end
+                end
+            end
+
+            if (complete_list[rs_entries[mult_rs_index].Source2]) begin
+                assign mult_packet[mult_fu_index].Src2_value = regfile_outputs;
+            end else begin
+                for(j = 0; j < `N; ++j) begin
+                    if(rs_entries[mult_rs_index].Source2 == CDB_tags_forwarded[j]) begin
+                        assign mult_packet[mult_fu_index].Source2_value = CDB_data_forwarded[j];
+                    end
+                end
+            end
+        end else begin
+            assign mult_packet[mult_fu_index] = //NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
+        end
+    end
+endgenerate
+
+// Create The LDST Packets Issuing
+
+generate
+genvar i;
+genvar j;
+    //loop through ldst gnt bus
+    for (i = 0; i < `NUM_FU_MULT ++i) begin : ldst_loop
+        logic [`RS_SZ_BITS-1:0] ldst_rs_index;
+        encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_ldst (ldst_inst_gnt_bus[i], ldst_rs_index);
+        encoder #(`RS_SZ, `RS_SZ_BITS) fu_encoders_ldst (ldst_fu_gnt_bus[i], ldst_fu_index);
+        if (ldst_inst_gnt_bus[i] && ldst_fu_gnt_bus[i]) begin
+            assign ldst_packet[ldst_fu_index] = // TODO: get the data from rs_entries[ldst_rs_index] to form this ldst packet
+            if (complete_list[rs_entries[ldst_rs_index].Source1]) begin
+                assign ldst_packet[ldst_fu_index].Source1_value = regfile_outputs;
+            end else begin
+                for(j = 0; j < `N; ++j) begin
+                    if (rs_entries[ldst_rs_index].Source1 == CDB_tags_forwarded[j]) begin
+                       assign ldst_packet[ldst_fu_index].Source1_value = CDB_data_forwarded[j];
+                    end
+                end
+            end
+
+            if (complete_list[rs_entries[ldst_rs_index].Source2]) begin
+                assign ldst_packet[ldst_fu_index].Src2_value = regfile_outputs;
+            end else begin
+                for(j = 0; j < `N; ++j) begin
+                    if(rs_entries[ldst_rs_index].Source2 == CDB_tags_forwarded[j]) begin
+                        assign ldst_packet[ldst_fu_index].Source2_value = CDB_data_forwarded[j];
+                    end
+                end
+            end
+        end else begin
+            assign ldst_packet[ldst_fu_index] = //NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
+        end
+    end
+endgenerate
 
 always_ff @(posedge clock) begin
     if(reset) begin

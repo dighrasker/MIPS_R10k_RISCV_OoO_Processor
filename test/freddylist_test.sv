@@ -29,6 +29,7 @@ module FreddyList_test ();
 
     logic   [`PHYS_REG_SZ_R10K-1:0] next_free_list;
 
+    logic   [`PHYS_REG_SZ_R10K-1:0] next_complete_list;
     logic   [`PHYS_REG_SZ_R10K-1:0] temp_complete_list;
 
     // INSTANCE is from the sys_defs.svh file
@@ -47,6 +48,7 @@ module FreddyList_test ();
         // .num_dispatched         (num_dispatched),
         .phys_regs_to_use       (phys_regs_to_use),
         .free_list              (free_list),
+        .next_complete_list     (next_complete_list),
         .complete_list          (complete_list)
     );
     
@@ -63,6 +65,7 @@ module FreddyList_test ();
         // .num_dispatched         (num_dispatched),
         .phys_regs_to_use       (phys_regs_to_use),
         .free_list              (free_list),
+        .next_complete_list     (next_complete_list),
         .complete_list          (complete_list)
     );
     
@@ -117,7 +120,7 @@ module FreddyList_test ();
         $display("\nTest 1: No interaction, updated_free_list copied to free_list");
         $display("Randomize updated_free_list input");
         @(negedge clock);
-        for (int i = 0; i < 10; ++i) begin
+        for (int i = 0; i < 100; ++i) begin
             for(int j = 0; j < `PHYS_REG_SZ_R10K; j++) begin
                 updated_free_list[j] = $urandom_range(1);
             end

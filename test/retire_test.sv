@@ -44,14 +44,12 @@ module retire_test ();
         for(int i = 0; i < `N; ++i) begin
             rob_out[i].T_old = $urandom_range(`PHYS_REG_SZ_R10K-1, 1);
             rob_out[i].T_new = $urandom_range(`PHYS_REG_SZ_R10K-1, 1);
-            rob_out[i].has_dest = 1;
         end
     endtask
 
     task randomize_rob_output_hasorno_dest (output ROB_PACKET [`N-1:0] rob_out);
         for(int i = 0; i < `N; ++i) begin
-            rob_out[i].has_dest = $urandom_range(1,0);
-            rob_out[i].T_old = rob_out[i].has_dest ? $urandom_range(`PHYS_REG_SZ_R10K-1, 1) : 0;
+            rob_out[i].T_old = $urandom_range(`PHYS_REG_SZ_R10K-1, 1);
             rob_out[i].T_new = $urandom_range(`PHYS_REG_SZ_R10K-1, 1);
         end
     endtask
@@ -70,8 +68,8 @@ module retire_test ();
         rob_outputs_valid = 0;
         complete_list_exposed = 0;
 
-        $monitor("  %3d   |  rob_outputs_valid: %d  | rob_outputs[1].has_dest: %d  | rob_outputs[1].T_old: %d  | num_retiring: %d   |  phys_regs_retiring[1]: %d", 
-                   $time, rob_outputs_valid, rob_outputs[1].has_dest, rob_outputs[1].T_old, num_retiring, phys_regs_retiring[1]);
+        $monitor("  %3d   |  rob_outputs_valid: %d  | rob_outputs[1].T_old: %d  | num_retiring: %d   |  phys_regs_retiring[1]: %d", 
+                   $time, rob_outputs_valid, rob_outputs[1].T_old, num_retiring, phys_regs_retiring[1]);
 
         @(negedge clock);
         reset = 0;

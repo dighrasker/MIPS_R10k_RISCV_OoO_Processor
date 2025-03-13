@@ -43,14 +43,6 @@ module retire_sva #(
             (~reset) |=> ((phys_regs_retiring[i] != 0) || (i >= num_retiring));
         endproperty
 
-        property retiring_has_dest (int i);
-            (~reset & rob_outputs[i].has_dest) |=> ((phys_regs_retiring[i] == rob_outputs[i].T_old) || (i >= num_retiring) || ~rob_outputs[i].has_dest);
-        endproperty
-        
-        property retiring_does_not_have_dest (int i);
-            (~reset & ~rob_outputs[i].has_dest) |=> ((phys_regs_retiring[i] == rob_outputs[i].T_new) || (i >= num_retiring) || rob_outputs[i].has_dest);
-        endproperty
-
         property num_retiring_must_lt_rob_outputs_valid;
             (~reset) |=> (num_retiring <= rob_outputs_valid);
         endproperty
@@ -84,19 +76,6 @@ module retire_sva #(
                         i);
                     $finish;
                 end
-
-            assert property (retire_prop.retiring_has_dest(i))
-                else begin
-                    $error("Rob outputs at index %d did not retire the correct register, has dest, %d, %d, %d", i, phys_regs_retiring[i],rob_outputs[i].T_old, num_retiring);
-                    $finish;
-                end
-
-            assert property (retire_prop.retiring_does_not_have_dest(i))
-                else begin
-                    $error("Rob outputs at index %d did not retire the correct register, no dest", i);
-                    $finish;
-                end
-
         //end
     end
     endgenerate
