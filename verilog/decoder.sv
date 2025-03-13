@@ -11,7 +11,7 @@
 // This module is purely combinational
 module decoder (
     input  INST          inst,
-    input  logic         valid, // when low, ignore inst. Output will look like a NOP
+    //input  logic         valid, // when low, ignore inst. Output will look like a NOP
     input  ADDR          PC,
     output DECODE_PACKET decoder_out,
     output logic         is_rs1_used,
@@ -22,7 +22,7 @@ module decoder (
 );
     //New outputs passed through into decode packet
     decoder_out.inst = inst;
-    decoder_out.valid = valid;
+    decoder_out.valid = 1'b1;
     decoder_out.PC = PC;
     decoder_out.NPC = PC + 4;
     // Note: I recommend using an IDE's code folding feature on this block

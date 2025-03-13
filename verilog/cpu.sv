@@ -14,6 +14,7 @@ module cpu (
     input clock, // System clock
     input reset, // System reset
 
+    /*
     input MEM_TAG   mem2proc_transaction_tag, // Memory tag for current transaction
     input MEM_BLOCK mem2proc_data,            // Data coming back from memory
     input MEM_TAG   mem2proc_data_tag,        // Tag for which transaction data is for
@@ -22,14 +23,16 @@ module cpu (
     output ADDR        proc2mem_addr,    // Address sent to memory
     output MEM_BLOCK   proc2mem_data,    // Data sent to memory
     output MEM_SIZE    proc2mem_size,    // Data size sent to memory
+    */
 
     // Note: these are assigned at the very bottom of the module
     output COMMIT_PACKET [`N-1:0] committed_insts,
+    output ADDR             
 
     // Debug outputs: these signals are solely used for debugging in testbenches
     // Do not change for project 3
     // You should definitely change these for project 4
-    output ADDR  if_NPC_dbg,
+    /*output ADDR  if_NPC_dbg,
     output DATA  if_inst_dbg,
     output logic if_valid_dbg,
     output ADDR  if_id_NPC_dbg,
@@ -43,7 +46,7 @@ module cpu (
     output logic ex_mem_valid_dbg,
     output ADDR  mem_wb_NPC_dbg,
     output DATA  mem_wb_inst_dbg,
-    output logic mem_wb_valid_dbg
+    output logic mem_wb_valid_dbg*/
 );
 
     //////////////////////////////////////////////////
@@ -187,185 +190,168 @@ module cpu (
     assign if_id_NPC_dbg   = if_id_reg.NPC;
     assign if_id_inst_dbg  = if_id_reg.inst;
     assign if_id_valid_dbg = if_id_reg.valid;
+    
 
     //////////////////////////////////////////////////
     //                                              //
-    //                  ID-Stage                    //
+    //               DATA STRUCTURES                //
     //                                              //
     //////////////////////////////////////////////////
 
-    stage_id stage_id_0 (
-        // Inputs
-        .clock (clock),
-        .reset (reset),
-        .if_id_reg       (if_id_reg),
-        .wb_regfile_en   (wb_packet.valid),
-        .wb_regfile_idx  (wb_packet.reg_idx),
-        .wb_regfile_data (wb_packet.data),
 
-        // Output
-        .id_packet (id_packet)
+    /*----------------Reorder Buffer----------------*/
+
+    rob rob (
+        .clock             (clock),
+        .reset             (reset),
+        .rob_inputs        (rob_inputs),
+        .rob_inputs_valid  (rob_inputs_valid), 
+        .rob_spots         (rob_spots),
+        .rob_tail          (rob_tail),
+        .num_retiring      (num_retiring),
+        .rob_outputs       (rob_outputs),
+        .rob_outputs_valid (rob_outputs_valid),
+        .tail_restore_valid(tail_restore_valid),
+        .tail_restore      (tail_restore),
+        .rob_debug         (rob_debug)
+    );
+
+
+    /*---------------Reservation Station------------*/
+
+    rs rs (
+        .clock             (clock),
+        .reset             (reset),
+        .num_dispatched    (num_dispatched),
+        .rs_entries        (rs_entries), 
+        .rs_spots          (rs_spots),
+        .CDB_tags          (CDB_tags),
+        .CDB_valid         (CDB_valid),
+        .rs_data_issuing   (rs_data_issuing),
+        .RS_data           (RS_data),
+        .RS_valid_next     (RS_valid_next),
+        .b_mm_resolve      (b_mm_resolve),
+        .b_mm_mispred      (b_mm_mispred),
+        .rs_debug          (rs_debug)
+    );
+
+
+    /*-------------Freddy List--------------------*/
+
+    freddylist fl (
+        .clock                  (clock),
+        .reset                  (reset),
+        .phys_reg_completing    (phys_reg_completing),
+        .completing_valid       (completing_valid), 
+        .phys_reg_retiring      (phys_reg_retiring),
+        .num_retiring_valid     (num_retiring_valid),
+        .free_list_restore      (free_list_restore),
+        .restore_flag           (restore_flag),
+        .updated_free_list      (updated_free_list),
+        // .num_dispatched         (num_dispatched),
+        .phys_regs_to_use       (phys_regs_to_use),
+        .free_list              (free_list),
+        .complete_list          (complete_list)
+    );
+
+
+    /*-------------Branch Stack--------------------*/
+
+    branchstack dut (
+        .clock(clock),
+        .reset(reset),
+        .PC_restore(PC_restore),
+        .b_mm_resolve(b_mm_resolve),
+        .b_mm_mispred(b_mm_mispred),
+        .rob_tail_restore(rob_tail_restore),
+        .restore_valid(restore_valid),
+        .freelist_restore(freelist_restore),
+        .branch_stack_entries(branch_stack_entries),
+        .next_b_mask(next_b_mask),
+        .map_table_restore(map_table_restore),
+        .b_mask_combinational(b_mask_combinational),
+        .bs_debug(bs_debug)
     );
 
     //////////////////////////////////////////////////
     //                                              //
-    //            ID/EX Pipeline Register           //
+    //                  FETCH                       //
     //                                              //
     //////////////////////////////////////////////////
 
-    assign id_ex_enable = !load_stall;
+    Fetch fetch_stage(
 
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            id_ex_reg <= '{
-                `NOP, // we can't simply assign 0 because NOP is non-zero
-                32'b0, // PC
-                32'b0, // NPC
-                32'b0, // rs1 select
-                32'b0, // rs2 select
-                OPA_IS_RS1,
-                OPB_IS_RS2,
-                `ZERO_REG,
-                ALU_ADD,
-                1'b0, // mult
-                1'b0, // rd_mem
-                1'b0, // wr_mem
-                1'b0, // cond
-                1'b0, // uncond
-                1'b0, // halt
-                1'b0, // illegal
-                1'b0, // csr_op
-                1'b0  // valid
-            };
-        end else if (id_ex_enable) begin
-            id_ex_reg <= id_packet;
-        end
-    end
+    .clock(clock), 
+    .reset(reset),
 
-    // debug outputs
-    assign id_ex_NPC_dbg   = id_ex_reg.NPC;
-    assign id_ex_inst_dbg  = id_ex_reg.inst;
-    assign id_ex_valid_dbg = id_ex_reg.valid;
+    // ------------ TO/FROM MEMORY ------------- //
+    .i_buffer_inputs(i_buffer_inputs),    // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+    .inputs_valid(inputs_valid),  // To distinguish invalid instructions being passed in from Dispatch (A number, NOT one hot)
+    .PC_reg(PC_reg),
+    
+    // ------------- FROM BRANCH STACK -------------- //
+    .recovery_PC(recovery_PC),  // Retire module tells the ROB how many entries can be cleared
+    
+    // ------------ FROM EXECUTE ------------- //
+    .target_PC(target_PC),
+    .mispredict(mispredict),
+    .taken(taken),            //original prediction was taken
+
+    // ------------ TO/FROM DISPATCH ------------- //
+    .i_buffer_outputs(i_buffer_outputs),   // For retire to check eligibility
+    .outputs_valid(outputs_valid), // If not all N rob entries are valid entries they should not be considered  
+);
 
     //////////////////////////////////////////////////
     //                                              //
-    //                  EX-Stage                    //
+    //                  DISPATCH                    //
     //                                              //
     //////////////////////////////////////////////////
 
-    stage_ex stage_ex_0 (
-        // Input
-        .id_ex_reg (id_ex_reg),
-
-        // Output
-        .ex_packet (ex_packet)
+    Dispatch dispatch_stage (
+        .clock                (clock),
+        .reset                (reset),
+        .instruction_packets  (instruction_packets),
+        .instructions_valid   (instructions_valid), 
+        .map_table_restore    (map_table_restore),
+        .restore_valid        (restore_valid),
+        .b_mask_combinational (b_mask_combinational),
+        .branch_stack_entries (branch_stack_entries),
+        .next_b_mask          (next_b_mask),
+        .rob_tail             (rob_tail),
+        .rob_spots            (rob_spots),
+        .rob_entries          (rob_entries),
+        .rs_entries           (rs_entries),
+        .rs_spots             (rs_spots),
+        .num_regs_available   (num_regs_available),
+        .next_complete_list   (next_complete_list),
+        .regs_to_use          (regs_to_use),
+        .free_list_copy       (free_list_copy),
+        .updated_free_list    (updated_free_list),
+        .num_issuing          (num_issuing),
+        .num_dispatched       (num_dispatched),
+        .dispatch_debug       (dispatch_debug)
     );
 
-    //////////////////////////////////////////////////
-    //                                              //
-    //           EX/MEM Pipeline Register           //
-    //                                              //
-    //////////////////////////////////////////////////
 
-    assign ex_mem_enable = !load_stall;
-
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            ex_mem_inst_dbg <= `NOP; // debug output
-            ex_mem_reg      <= 0;    // the defaults can all be zero!
-        end else if (ex_mem_enable) begin
-            ex_mem_inst_dbg <= id_ex_inst_dbg; // debug output, just forwarded from ID
-            ex_mem_reg      <= ex_packet;
-        end
-    end
-
-    // debug outputs
-    assign ex_mem_NPC_dbg   = ex_mem_reg.NPC;
-    assign ex_mem_valid_dbg = ex_mem_reg.valid;
 
     //////////////////////////////////////////////////
     //                                              //
-    //                 MEM-Stage                    //
+    //                  ISSUE                       //
     //                                              //
     //////////////////////////////////////////////////
 
-    // New address if:
-    // 1) Previous instruction wasn't a load
-    // 2) Load address changed
-    logic valid_load;
-    assign valid_load = ex_mem_reg.valid && ex_mem_reg.rd_mem; 
-    assign new_load = valid_load && !rd_mem_q;
-
-    assign mem_tag_match = outstanding_mem_tag == mem2proc_data_tag;
-    assign load_stall    = new_load || (valid_load && !mem_tag_match);
-
-    assign Dmem_command_filtered = new_load || ex_mem_reg.wr_mem ? Dmem_command : MEM_NONE;
-
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            rd_mem_q            <= 1'b0;
-            outstanding_mem_tag <= '0;
-        end else begin
-            rd_mem_q            <= valid_load;
-            outstanding_mem_tag <= new_load      ? mem2proc_transaction_tag : 
-                                   mem_tag_match ? '0 : outstanding_mem_tag;
-        end
-    end
-
-    stage_mem stage_mem_0 (
-        // Inputs
-        .ex_mem_reg      (ex_mem_reg),
-        .Dmem_load_data  (mem2proc_data),
-
-        // Outputs
-        .mem_packet      (mem_packet),
-        .Dmem_command    (Dmem_command),
-        .Dmem_size       (Dmem_size),
-        .Dmem_addr       (Dmem_addr),
-        .Dmem_store_data (Dmem_store_data)
-    );
-
     //////////////////////////////////////////////////
     //                                              //
-    //           MEM/WB Pipeline Register           //
+    //                  COMPLETE                    //
     //                                              //
     //////////////////////////////////////////////////
 
-    assign mem_wb_enable = 1'b1; // always enabled
-
-    always_ff @(posedge clock) begin
-        if (reset || load_stall) begin
-            mem_wb_inst_dbg <= `NOP; // debug output
-            mem_wb_reg      <= 0;    // the defaults can all be zero!
-        end else if (mem_wb_enable) begin
-            mem_wb_inst_dbg <= ex_mem_inst_dbg; // debug output, just forwarded from EX
-            mem_wb_reg      <= mem_packet;
-        end
-    end
-
-    // debug outputs
-    assign mem_wb_NPC_dbg   = mem_wb_reg.NPC;
-    assign mem_wb_valid_dbg = mem_wb_reg.valid;
-
     //////////////////////////////////////////////////
     //                                              //
-    //                  WB-Stage                    //
+    //                  RETIRE                      //
     //                                              //
     //////////////////////////////////////////////////
-
-    stage_wb stage_wb_0 (
-        // Input
-        .mem_wb_reg (mem_wb_reg), // doesn't use all of these
-
-        // Output
-        .wb_packet (wb_packet)
-    );
-
-    // This signal is solely used by if_valid for the initial stalling behavior
-    always_ff @(posedge clock) begin
-        if (reset) wb_valid <= 0;
-        else       wb_valid <= mem_wb_reg.valid;
-    end
 
     //////////////////////////////////////////////////
     //                                              //

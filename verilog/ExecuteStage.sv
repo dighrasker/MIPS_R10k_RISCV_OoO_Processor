@@ -14,14 +14,19 @@ module ExecuteStage (
 
     // ------------ TO ALL DATA STRUCTURES ------------- //
     output CDB_ETB_PACKET                   [`N-1:0] cdb_completing,
-    output CDB_REG_PACKET                   [`N-1:0] cdb_reg
+    output CDB_REG_PACKET                   [`N-1:0] cdb_reg,
+
+    // --------------- TO/FROM FETCH --------------- //
+    output ADDR                                 target_pc,
+    output logic                                mispredict,
+    output logic                                taken
+
+    
 );
 
     MULT_PACKET   mult_packets_issuing;
     ALU_PACKET    alu_packets_issuing;
     BRANCH_PACKET branch_packets_issuing;
-
-    
 
     logic [`NUM_FU_MULT-1:0] mult_cdb_valid;
     logic [`NUM_FU_LDST-1:0] ldst_cdb_valid;
@@ -95,6 +100,11 @@ module ExecuteStage (
         // Output
         .take(take_conditional)
     );
+
+
+    //add logic to set the mispredict signal
+
+    // mispredict = prediction XOR actual 
 
 endmodule // stage_ex
 

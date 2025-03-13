@@ -27,6 +27,7 @@
 `define NUM_B_MASK_BITS $clog2(`B_MASK_WIDTH + 1)
 `define CDB_SZ `N // This MUST match your superscalar width
 `define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]
+`define PC_STEP 12
 
 // functional units (you should decide if you want more or fewer types of FUs)
 `define NUM_FU_BRANCH 1
@@ -38,6 +39,8 @@
 `define NUM_FU_TOTAL `NUM_FU_ALU + `NUM_FU_MULT + `NUM_FU_BRANCH +`NUM_FU_LDST
 
 // sizes
+`define FB_SZ 32
+`define FB_SZ_BITS $clog2(`FB_SZ)
 `define ROB_SZ 32
 `define ROB_SZ_BITS $clog2(`ROB_SZ)
 `define ROB_NUM_ENTRIES_BITS $clog2(`ROB_SZ + 1)
