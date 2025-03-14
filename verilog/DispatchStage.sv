@@ -34,7 +34,7 @@ module Dispatch #(
     input   logic        [`NUM_SCALAR_BITS-1:0] rs_spots,
 
     // ------------ TO/FROM FREDDY LIST ------------- //
-    input   logic        [`NUM_SCALAR_BITS-1:0] num_regs_available,
+    //input   logic        [`NUM_SCALAR_BITS-1:0] num_regs_available,
     input   logic       [`PHYS_REG_SZ_R10K-1:0] next_complete_list,
     input   PHYS_REG_IDX               [`N-1:0] regs_to_use,
     input   logic       [`PHYS_REG_SZ_R10K-1:0] free_list_copy,
@@ -170,8 +170,7 @@ module Dispatch #(
                 updated_free_list[regs_to_use[i]] = 0;
                 next_map_table[dest_arch_reg[i]] = decoder_out[i].has_dest ? regs_to_use[i] : next_map_table[dest_arch_reg[i]];
 
-                num_dispatched = i;
-
+                num_dispatched = i + 1;
             end
         end
     end
