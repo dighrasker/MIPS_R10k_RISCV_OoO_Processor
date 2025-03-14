@@ -20,7 +20,7 @@ module Issue # (
     // ------------- TO/FROM RS -------------- //
     input RS_ENTRY_PACKET         [`RS_SZ-1:0] RS_data,             // full RS data exposed to issue for psel and FU packets generating
     input logic                   [`RS_SZ-1:0] RS_valid_next,
-    output                        [`RS_SZ-1:0] rs_data_issuing,     // set index to 1 when a RS_data is selected to be issued
+    output  wor                   [`RS_SZ-1:0] rs_data_issuing,     // set index to 1 when a RS_data is selected to be issued
 
     // ------------- FROM CDB -------------- //
     input DATA                        [`N-1:0] CDB_data_forwarded,  // for ETB, data forwarded from CDB to replace data 
@@ -155,8 +155,8 @@ psel_gen #(
     .empty(empty)
 );
 
-// Create The Branch Packets Issuing
 
+// Create The Branch Packets Issuing
 generate
 genvar i;
 genvar j;
@@ -165,6 +165,7 @@ genvar j;
         logic [`RS_SZ_BITS-1:0] branch_index;
         encoder #(`RS_SZ, `RS_SZ_BITS) encoders_branch (branch_inst_gnt_bus[i], branch_index);
         if (branch_inst_gnt_bus[i] & rs_cdb_gnt) begin
+            assign rs_data_issuing = branch_inst_gnt_bus[i];
             assign branch_packet[i] = // TODO: get the data from rs_entries[branch_index] to form this branch packet
             //assign regfile_read_indices Decide how to index regfile later
             if (complete_list[rs_entries[branch_index].Source1]) begin
@@ -195,8 +196,8 @@ genvar j;
     end
 endgenerate
 
-// Create The ALU Packets Issuing
 
+// Create The ALU Packets Issuing
 generate
 genvar i;
 genvar j;
@@ -205,6 +206,7 @@ genvar j;
         logic [`RS_SZ_BITS-1:0] alu_index;
         encoder #(`RS_SZ, `RS_SZ_BITS) encoders_alu (alu_inst_gnt_bus[i], alu_index);
         if (alu_inst_gnt_bus[i] & rs_cdb_gnt) begin
+            assign rs_data_issuing = alu_inst_gnt_bus[i];
             assign alu_packet[i] = // TODO: get the data from rs_entries[alu_index] to form this alu packet
             //assign regfile_read_indices Decide how to index regfile later
             if (complete_list[rs_entries[alu_index].Source1]) begin
@@ -235,8 +237,8 @@ genvar j;
     end
 endgenerate
 
-// Create The Mult Packets Issuing
 
+// Create The Mult Packets Issuing
 generate
 genvar i;
 genvar j;
@@ -246,6 +248,7 @@ genvar j;
         encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_mult (mult_inst_gnt_bus[i], mult_rs_index);
         encoder #(`RS_SZ, `RS_SZ_BITS) fu_encoders_mult (mult_fu_gnt_bus[i], mult_fu_index);
         if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
+            assign rs_data_issuing = mult_inst_gnt_bus[i];
             assign mult_packet[mult_fu_index] = // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
             if (complete_list[rs_entries[mult_rs_index].Source1]) begin
                 assign mult_packet[mult_fu_index].Source1_value = regfile_outputs;
@@ -272,8 +275,8 @@ genvar j;
     end
 endgenerate
 
-// Create The LDST Packets Issuing
 
+// Create The LDST Packets Issuing
 generate
 genvar i;
 genvar j;
@@ -283,6 +286,7 @@ genvar j;
         encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_ldst (ldst_inst_gnt_bus[i], ldst_rs_index);
         encoder #(`RS_SZ, `RS_SZ_BITS) fu_encoders_ldst (ldst_fu_gnt_bus[i], ldst_fu_index);
         if (ldst_inst_gnt_bus[i] && ldst_fu_gnt_bus[i]) begin
+            assign rs_data_issuing = ldst_inst_gnt_bus[i];
             assign ldst_packet[ldst_fu_index] = // TODO: get the data from rs_entries[ldst_rs_index] to form this ldst packet
             if (complete_list[rs_entries[ldst_rs_index].Source1]) begin
                 assign ldst_packet[ldst_fu_index].Source1_value = regfile_outputs;

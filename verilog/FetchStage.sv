@@ -41,11 +41,12 @@ module Fetch #() (
     ADDR Next_PC_reg;
     
     always_comb begin
-        i_buffer_inputs = i_buffer_inputs;
-
+        inst_buffer_inputs = '0;
         Next_PC_reg = PC_reg;
         for (int i = 0; i < `N; ++i) begin
-            if (i < fetch_buffer_spots) begin
+            if (i < inst_spots) begin
+                inst_buffer_inputs[i].inst = inst[i]
+                inst_buffer_inputs[i].PC = Next_PC_reg;
                 Next_PC_reg = Next_PC_reg + 4; 
             end
         end

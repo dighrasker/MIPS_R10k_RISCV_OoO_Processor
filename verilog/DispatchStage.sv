@@ -41,7 +41,7 @@ module Dispatch #(
     output  logic       [`PHYS_REG_SZ_R10K-1:0] updated_free_list,
     
     // ------------ FROM ISSUE? ------------- //
-    input   logic        [`NUM_SCALAR_BITS-1:0] num_issuing,
+    //input   logic        [`NUM_SCALAR_BITS-1:0] num_issuing,
 
     // ------------ FROM EXECUTE ------------- //
     input   PHYS_REG_IDX               [`N-1:0] ETB_tags,
@@ -84,8 +84,9 @@ module Dispatch #(
 
     logic [`NUM_SCALAR_BITS-1:0] min;           // min (rs_spots +num_issuing, rob_spots, instruction valid)
 
-    assign min = (((rs_spots + num_issuing) <= rob_spots) && ((rs_spots + num_issuing) <= instructions_valid)) ? (rs_spots + num_issuing) :
-                                ((rob_spots <= (rs_spots + num_issuing)) && (rob_spots <= instructions_valid)) ? rob_spots : instructions_valid;
+    assign min = (((rs_spots) <= rob_spots) && ((rs_spots) <= instructions_valid)) ? (rs_spots) :
+                                ((rob_spots <= (rs_spots)) && (rob_spots <= instructions_valid)) ? rob_spots : instructions_valid;
+
 
     assign i_num_dispatched = restore_valid ? 0 : min; //if not restoring, num_dispatching = min (rs_entries, rob_entries, free_list)
 
