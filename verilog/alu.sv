@@ -1,6 +1,6 @@
 module alu (
     input ALU_PACKET alu_packet,
-    output DATA result
+    output CDB_REG_PACKET result
 );
 
     DATA opa, opb;

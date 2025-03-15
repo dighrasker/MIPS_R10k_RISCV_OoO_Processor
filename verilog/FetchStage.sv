@@ -28,7 +28,7 @@ module Fetch #() (
     
     // ------------ FROM EXECUTE ------------- //
     input   ADDR                          target_PC,
-    input   logic                         mispredict,
+    input   logic                         restore_valid,
     input   logic                         taken,            //original prediction was taken
 
     // ------------ TO/FROM FETCH BUFFER -------- //
@@ -45,33 +45,10 @@ module Fetch #() (
         Next_PC_reg = PC_reg;
         for (int i = 0; i < `N; ++i) begin
             if (i < inst_spots) begin
-                inst_buffer_inputs[i].inst = inst[i]
+                inst_buffer_inputs[i].inst = inst[i];
                 inst_buffer_inputs[i].PC = Next_PC_reg;
-                Next_PC_reg = Next_PC_reg + 4; 
-            end
-        end
-    end
-
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            PC_reg <= 0;
-            tail <= 0;
-            head <= 0;             // initial PC value is 0 (the memory address where our program starts)
-        end else begin
-            PC_reg <= Next_PC_reg;
-            tail <= next_tail;
-            head <= next_head;
-        end
-    end
-
-    /*
-    always_comb begin
-        Next_PC_reg = PC_reg;
-        for (int i = 0; i < `N; ++i) begin
-            if (take_branch) begin
-                PC_reg <= branch_target; // update to a taken branch (does not depend on valid bit)
-            end else begin
-                Next_PC_reg = Next_PC_reg + 4; 
+                inst_buffer_inputs[i].taken = 0;
+                Next_PC_reg = PC_reg + (4 * i); 
             end
         end
     end
@@ -79,16 +56,10 @@ module Fetch #() (
     always_ff @(posedge clock) begin
         if (reset) begin
             PC_reg <= 0;             // initial PC value is 0 (the memory address where our program starts)
-        end else if (mispredict) begin
-            PC_reg <= taken ? target_PC : recovery_PC;    // or transition to next PC if valid
-        end else if (take_branch) begin
-            PC_reg <= branch_target; // update to a taken branch (does not depend on valid bit)
+        end else if (restore_valid) begin
+            PC_reg <= taken ? recovery_PC : target_PC;    // or transition to next PC if valid
         end else begin
             PC_reg <= Next_PC_reg;
         end
     end
-    */
-  
-
-
 endmodule

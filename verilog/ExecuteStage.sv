@@ -19,9 +19,9 @@ module ExecuteStage (
     // --------------- TO/FROM FETCH --------------- //
     output ADDR                                 target_pc,
     output logic                                mispredict,
-    output logic                                taken
+    output logic                                taken //where are we keeping taken?
+    // we need to have the original taken prediction somewhere, branch stack maybe?
 
-    
 );
 
     MULT_PACKET   mult_packets_issuing;
@@ -105,6 +105,8 @@ module ExecuteStage (
     //add logic to set the mispredict signal
 
     // mispredict = prediction XOR actual 
+    
+
 
 endmodule // stage_ex
 

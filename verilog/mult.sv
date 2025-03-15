@@ -36,7 +36,7 @@ module mult # (
 
     logic [`MULT_STAGES-2:0] internal_free;
 
-    assign cdb_valid = internal_mult_packet_in[`MULT_STAGES-3].valid;
+    assign cdb_valid = internal_mult_packets[`MULT_STAGES-3].valid;
 
     assign internal_mult_packet_in.valid        = mult_packet_in.valid;
     assign internal_mult_packet_in.prev_sum     = 64'h0;
@@ -61,7 +61,7 @@ module mult # (
     mult_stage mstage [`MULT_STAGES-1:0] (
         .clock (clock),
         .reset (reset),
-        .is_last_stage ({1'b1, `MULT_STAGES-1'b0})
+        .is_last_stage ({1'b1, `MULT_STAGES-1'b0}),
         .next_stage_free ({cdb_en, internal_free}),
         .internal_mult_packet_in ({internal_mult_packets, internal_mult_packet_in})
         .current_stage_free ({internal_free, fu_free})

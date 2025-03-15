@@ -435,7 +435,8 @@ typedef struct packed {
 // EDIED HERE
 
 typedef struct packed {
-    // ADDR            PC;
+    ADDR            NPC;
+    logic           illegal;
     logic           halt;
     PHYS_REG_IDX    T_new; // Use as unique rob id
     PHYS_REG_IDX    T_old;
@@ -516,38 +517,29 @@ typedef struct packed {
     logic           valid;
     ADDR            PC;
     ADDR            NPC; // PC + 4
-
-    ALU_OPA_SELECT opa_select; // ALU opa mux select (ALU_OPA_xxx *)
-    ALU_OPB_SELECT opb_select; // ALU opb mux select (ALU_OPB_xxx *)
-    
+    ALU_OPA_SELECT  opa_select; // ALU opa mux select (ALU_OPA_xxx *)
+    ALU_OPB_SELECT  opb_select; // ALU opb mux select (ALU_OPB_xxx *)
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;
-    B_MASK          bm;
-} ALU_ENTRY_PACKET;
+    //B_MASK          bm;
+} ALU_PACKET;
+
+const ALU_PACKET NOP_ALU_PACKET = '{
+    inst:          `NOP,   // Assuming 0 represents a NOP instruction
+    valid:         '0,
+    PC:            '0,   // No valid program counter
+    NPC:           '0,   // No valid next PC
+    opa_select:    OPA_IS_RS1, // Assuming ALU_OPA_ZERO means no operation
+    opb_select:    OPB_IS_RS2, // Assuming ALU_OPB_ZERO means no operation
+    source_reg_1:  '0,   // No valid source register
+    source_reg_2:  '0,   // No valid source register
+    dest_reg_idx:  '0,   // No valid destination register
+    //bm:            '0   // No valid branch mask
+};
 
 typedef struct packed {
     logic           valid;
-    PHYS_REG_IDX    dest_reg_idx;
-    B_MASK          bm;
-} ALU_EXIT_PACKET;
-
-// const ALU_ENTRY_PACKET NOP_ALU_PACKET = '{
-//     inst:          `NOP,   // Assuming 0 represents a NOP instruction
-//     valid:         '0,
-//     PC:            '0,   // No valid program counter
-//     NPC:           '0,   // No valid next PC
-//     opa_select:    ALU_OPA_ZERO, // Assuming ALU_OPA_ZERO means no operation
-//     opb_select:    ALU_OPB_ZERO, // Assuming ALU_OPB_ZERO means no operation
-//     source_reg_1:  '0,   // No valid source register
-//     source_reg_2:  '0,   // No valid source register
-//     dest_reg_idx:  '0,   // No valid destination register
-//     bm:            '0   // No valid branch mask
-// };
-
-typedef struct packed {
-    logic           valid;
-
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;
@@ -555,18 +547,18 @@ typedef struct packed {
     MULT_FUNC       mult_func;   
 } MULT_PACKET;
 
-// const MULT_PACKET NOP_MULT_PACKET = '{
-//     inst:          `NOP,   // Assuming 0 represents a NOP instruction
-//     valid:         '0,
-//     PC:            '0,   // No valid program counter
-//     NPC:           '0,   // No valid next PC
-//     opa_select:    ALU_OPA_ZERO, // Assuming ALU_OPA_ZERO means no operation
-//     opb_select:    ALU_OPB_ZERO, // Assuming ALU_OPB_ZERO means no operation
-//     source_reg_1:  '0,   // No valid source register
-//     source_reg_2:  '0,   // No valid source register
-//     dest_reg_idx:  '0,   // No valid destination register
-//     bm:            '0   // No valid branch mask
-// };
+const MULT_PACKET NOP_MULT_PACKET = '{
+    inst:          `NOP,   // Assuming 0 represents a NOP instruction
+    valid:         '0,
+    PC:            '0,   // No valid program counter
+    NPC:           '0,   // No valid next PC
+    opa_select:    OPA_IS_RS1, // Assuming ALU_OPA_ZERO means no operation
+    opb_select:    OPB_IS_RS2, // Assuming ALU_OPB_ZERO means no operation
+    source_reg_1:  '0,   // No valid source register
+    source_reg_2:  '0,   // No valid source register
+    dest_reg_idx:  '0,   // No valid destination register
+    bm:            '0   // No valid branch mask
+};
 
 typedef struct packed {
     INST inst;
@@ -597,6 +589,7 @@ typedef struct packed {
 typedef struct packed {
     INST            inst;
     ADDR            PC;
+    logic           taken;
 } FETCH_PACKET;
 
 typedef struct packed {
@@ -609,6 +602,7 @@ typedef struct packed {
     PHYS_REG_IDX  completing_reg;
     B_MASK        bmm;
     logic         bm_mispred;
+    logic         taken;
     logic         valid;
 } CDB_REG_PACKET;
 

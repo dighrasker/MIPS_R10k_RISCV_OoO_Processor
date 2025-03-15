@@ -1,7 +1,8 @@
 `include "sys_defs.svh"
 
 module retire (
-    
+    input logic                         clock,
+    input logic                         reset,
     // ------------- TO/FROM ROB -------------- //
     input  ROB_PACKET           [`N-1:0] rob_outputs,                   // Coming from rob, to retrieve T_old from the packet, so that it can be retired
     input  logic  [`NUM_SCALAR_BITS-1:0] rob_outputs_valid,             // Coming from rob, to check which output is valid, only valid rob outputs can be retired
@@ -9,7 +10,14 @@ module retire (
 
     // ------------- TO/FROM FREDDYLIST -------------- //
     input        [`PHYS_REG_SZ_R10K-1:0] complete_list_exposed,         // Coming from freddylist, to find out which rob_output is actually completed and ready to retire
-    output PHYS_REG_IDX         [`N-1:0] phys_regs_retiring             // Send to freddylist, which physical registers are being retired
+    output PHYS_REG_IDX         [`N-1:0] phys_regs_retiring,             // Send to freddylist, which physical registers are being retired
+
+    // ------------- TO CPU -------------- //
+    output COMMIT_PACKET        [`N-1:0] committed_insts
+
+    //--------------TO/FROM PHYS REG FILE-------------//
+    output 
+    input                               regfile_outputs
 );
 
 
@@ -28,17 +36,44 @@ always_comb begin
         num_retiring = num_retiring + 1'b1;
     end
 end*/
+logic halt, next_halt;
+
+/*
+     ADDR    NPC; done
+    DATA    data;
+    REG_IDX reg_idx; done
+    logic   halt; done
+    logic   illegal; done
+    logic   valid;
+*/
 
 always_comb begin
     num_retiring = 0;
     phys_regs_retiring = '0;
+    next_halt = halt;
+    committed_insts = 0';
     for (int i = 0; i < `N; i++) begin
-        if (i < rob_outputs_valid && complete_list_exposed[rob_outputs[i].T_new]) begin
+        if (!next_halt && i < rob_outputs_valid && complete_list_exposed[rob_outputs[i].T_new]) begin
+            committed_insts[i].data = regfile_outputs[i];
+            committed_insts[i].reg_idx = rob_outputs[i].T_new;
+            committed_insts[i].halt = rob_outputs[i].halt;
+            committed_insts[i].illegal = rob_outputs[i].illegal
+            committed_insts[i].NPC = rob_outputs[i].NPC;
+            committed_insts[i].valid = 1'b1;
             phys_regs_retiring[num_retiring] = rob_outputs[i].T_new;
             num_retiring = num_retiring + 1'b1;
+            next_halt = rob_outputs[i].halt;
         end else begin
             break;
         end
+    end
+end
+
+always_ff @(posedge clock) begin
+    if (reset) begin
+        halt <= '0;
+    end else begin
+        halt <= next_halt;
     end
 end
 

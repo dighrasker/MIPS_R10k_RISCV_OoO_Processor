@@ -10,7 +10,7 @@ module instbuffer #() (
     output  logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,
 
     // ------------ FROM EXECUTE ------------- //
-    input   logic                         mispredict,
+    input   logic                         restore_valid,
 
     // ------------ TO/FROM DISPATCH -------- //
     input   logic  [`NUM_SCALAR_BITS-1:0] num_dispatched,     //number of spots available in dispatch
@@ -39,7 +39,7 @@ module instbuffer #() (
     end
 
     always_ff @(posedge clock) begin
-        if (reset || mispredict) begin
+        if (reset || restore_valid) begin
             inst_buffer <= '0; 
             head <= 0;             // initial PC value is 0 (the memory address where our program starts)
             tail <= 0;

@@ -17,7 +17,7 @@ module branchstack #(
     output  logic        [`PHYS_REG_SZ_R10K-1:0] freelist_restore,
     // ------------- TO/FROM DISPATCH -------------- //
     input   BS_ENTRY_PACKET  [`B_MASK_WIDTH-1:0] branch_stack_entries,
-    input   logic            [`B_MASK_WIDTH-1:0] next_b_mask,
+    input   B_MASK                               next_b_mask,
     output  PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore,     
     output  B_MASK                               b_mask_combinational,
     output  logic         [`NUM_B_MASK_BITS-1:0] branch_stack_spots//,
@@ -38,7 +38,7 @@ module branchstack #(
         next_branch_stack = branch_stack;
         b_mask_combinational = b_mask_reg;
         for (int i = 0; i < `B_MASK_WIDTH; i++) begin
-            if ((b_mm_mispred & ((branch_stack[i].b_m & b_mm_resolve) != 0)) | b_mm_resolve[i]) begin
+            if ((b_mm_mispred && ((branch_stack[i].b_m & b_mm_resolve) != 0)) | b_mm_resolve[i]) begin
                 b_mask_combinational[i] = 0;
                 next_branch_stack[i] = 0;
             end else begin
@@ -56,7 +56,7 @@ module branchstack #(
         map_table_restore = 0;
         
         for (int i = 0; i < `B_MASK_WIDTH; i++) begin
-            if (b_mm_mispred && b_mm_resolve[i]) begin
+            if (b_mm_mispred && b_mm_resolve[i] && b_mask_reg[i]) begin
                 restore_valid = 1;
                 PC_restore = branch_stack[i].recovery_PC;
                 rob_tail_restore = branch_stack[i].rob_tail;
