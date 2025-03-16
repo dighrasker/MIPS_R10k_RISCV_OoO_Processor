@@ -22,18 +22,18 @@ module regfile (
     output DATA        [`N-1:0] retire_read_data,
 
     /*---------------- FROM/TO ISSUE ---------------------------*/
-    input PHYS_REG_IDX [`NUM_FU_ALU-1:0] issue_alu_phys_regs_reading_1,
-    input PHYS_REG_IDX [`NUM_FU_ALU-1:0] issue_alu_phys_regs_reading_2,
+    input PHYS_REG_IDX [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1,
+    input PHYS_REG_IDX [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2,
     output DATA        [`NUM_FU_ALU-1:0] issue_alu_read_data_1,
     output DATA        [`NUM_FU_ALU-1:0] issue_alu_read_data_2,
 
-    input PHYS_REG_IDX [`NUM_FU_BRANCH-1:0] issue_branch_phys_regs_reading_1,
-    input PHYS_REG_IDX [`NUM_FU_BRANCH-1:0] issue_branch_phys_regs_reading_2,
+    input PHYS_REG_IDX [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1,
+    input PHYS_REG_IDX [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2,
     output DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_1,
     output DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_2,
 
-    input PHYS_REG_IDX [`NUM_FU_MULT-1:0] issue_mult_phys_regs_reading_1,
-    input PHYS_REG_IDX [`NUM_FU_MULT-1:0] issue_mult_phys_regs_reading_2,
+    input PHYS_REG_IDX [`NUM_FU_MULT-1:0] issue_mult_regs_reading_1,
+    input PHYS_REG_IDX [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2,
     output DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_1,
     output DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_2,
 
@@ -62,26 +62,25 @@ module regfile (
 
     // Read for Issue
     for(int i = 0; i < `NUM_FU_ALU; ++i) begin
-        assign issue_alu_read_data_1[i] = reg_file[issue_alu_phys_regs_reading_1[i]];
-        assign issue_alu_read_data_2[i] = reg_file[issue_alu_phys_regs_reading_2[i]];
+        assign issue_alu_read_data_1[i] = reg_file[issue_alu_regs_reading_1[i]];
+        assign issue_alu_read_data_2[i] = reg_file[issue_alu_regs_reading_2[i]];
     end
 
     for(int i = 0; i < `NUM_FU_BRANCH; ++i) begin
-        assign issue_branch_read_data_1[i] = reg_file[issue_branch_phys_regs_reading_1[i]];
-        assign issue_branch_read_data_2[i] = reg_file[issue_branch_phys_regs_reading_2[i]];
+        assign issue_branch_read_data_1[i] = reg_file[issue_branch_regs_reading_1[i]];
+        assign issue_branch_read_data_2[i] = reg_file[issue_branch_regs_reading_2[i]];
     end
 
     for(int i = 0; i < `NUM_FU_MULT; ++i) begin
-        assign issue_mult_read_data_1[i] = reg_file[issue_mult_phys_regs_reading_1[i]];
-        assign issue_mult_read_data_2[i] = reg_file[issue_mult_phys_regs_reading_2[i]];
-    end
+        assign issue_mult_read_data_1[i] = reg_file[issue_mult_regs_reading_1[i]];
+        assign issue_mult_read_data_2[i] = reg_file[issue_mult_regs_reading_2[i]];
 
     always_ff begin
         if(reset) begin
             reg_file <= '0;
         end else begin
             for(int i = 0; i < `N; ++i) begin
-                if(write_en[i]) begin
+                if(write_en[i] && (phys_regs_completing[i]==0)) begin
                     reg_file[phys_regs_completing[i]] <= write_data[i];
                 end
             end

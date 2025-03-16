@@ -8,7 +8,7 @@ module freddylist #(
     input  PHYS_REG_IDX           [`N-1:0] phys_reg_completing,    // phys reg indexes that are being completed (T_new)
     input  logic                  [`N-1:0] completing_valid,       // bit vector of N showing which phys_reg_completing is valid
     // ------------- FROM RETIRE -------------- //
-    input  PHYS_REG_IDX           [`N-1:0] phys_reg_retiring,      // phy reg indexes that are being retired (T_old)
+    input  PHYS_REG_IDX           [`N-1:0] phys_regs_retiring,      // phy reg indexes that are being retired (T_old)
     input  logic    [`NUM_SCALAR_BITS-1:0] num_retiring_valid,     // number of retiring phys reg (T_old)
     // ------------- FROM BRANCH STACK -------------- //
     input  logic   [`PHYS_REG_SZ_R10K-1:0] free_list_restore,      // snapshot of freelist at mispredicted branch
@@ -23,9 +23,6 @@ module freddylist #(
     // ------------- TO ISSUE -------------- //
     output logic   [`PHYS_REG_SZ_R10K-1:0] next_complete_list,           // bitvector of the phys reg that are complete
     output logic   [`PHYS_REG_SZ_R10K-1:0] complete_list
-`ifdef DEBUG
-    , output logic   [`PHYS_REG_SZ_R10K-1:0] debug_complete_list
-`endif
     
 );
 
@@ -82,7 +79,7 @@ module freddylist #(
         next_free_list = updated_free_list;
         for (int i = 0; i < `N; ++i) begin
             if (i < num_retiring_valid) begin
-                next_free_list[phys_reg_retiring[i]] = 1'b1;
+                next_free_list[phys_regs_retiring[i]] = 1'b1;
             end
         end
     end
@@ -102,7 +99,4 @@ module freddylist #(
         end
     end
 
-`ifdef DEBUG
-    assign debug_complete_list = complete_list;
-`endif
 endmodule

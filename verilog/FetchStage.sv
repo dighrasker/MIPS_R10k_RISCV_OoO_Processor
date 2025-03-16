@@ -2,21 +2,6 @@
 // Simple FIFO with parametrizable depth and width
 
 module Fetch #() (
-    
-    /*
-        input           if_valid,       // only go to next PC when true
-        input           take_branch,    // taken-branch signal
-        input ADDR      branch_target,  // target pc: use if take_branch is TRUE
-        input MEM_BLOCK Imem_data,      // data coming back from Instruction memory
-
-        // tags from memory
-        input MEM_TAG   Imem2proc_transaction_tag, // Should be zero unless there is a response
-        input MEM_TAG   Imem2proc_data_tag,
-
-        output MEM_COMMAND  Imem_command, // Command sent to memory
-        output IF_ID_PACKET if_packet,
-        output ADDR         Imem_addr // address sent to Instruction memory
-    */
     input   logic                        clock, 
     input   logic                        reset,
 
@@ -25,12 +10,9 @@ module Fetch #() (
     output  ADDR                 [`N-1:0] PC_reg, 
     
     // ------------- FROM BRANCH STACK -------------- //
-    input   ADDR                          recovery_PC,  // Retire module tells the ROB how many entries can be cleared
-    
-    // ------------ FROM EXECUTE ------------- //
-    input   ADDR                          target_PC,
+    input   ADDR                          PC_restore,  // Retire module tells the ROB how many entries can be cleared                        
     input   logic                         restore_valid,
-    input   logic                         taken,            //original prediction was taken
+       
 
     // ------------ TO/FROM FETCH BUFFER -------- //
     input   logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,     //number of spots in instruction buffer
@@ -43,8 +25,9 @@ module Fetch #() (
     
     always_comb begin
         inst_buffer_inputs = '0;
-        Next_PC_reg = PC_reg;
+        Next_PC_reg = PC_reg[0];
         for (int i = 0; i < `N; ++i) begin
+            PC_reg[i] = Next_PC_reg;
             if (i < inst_spots) begin
                 inst_buffer_inputs[i].inst = inst[i];
                 inst_buffer_inputs[i].PC = Next_PC_reg;
@@ -58,7 +41,7 @@ module Fetch #() (
         if (reset) begin
             PC_reg <= 0;             // initial PC value is 0 (the memory address where our program starts)
         end else if (restore_valid) begin
-            PC_reg <= taken ? recovery_PC : target_PC;    // or transition to next PC if valid
+            PC_reg <= PC_restore;    // or transition to next PC if valid
         end else begin
             PC_reg <= Next_PC_reg;
         end

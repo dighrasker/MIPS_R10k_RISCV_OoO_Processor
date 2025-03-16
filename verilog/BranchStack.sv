@@ -14,13 +14,13 @@ module branchstack #(
     // ------------- TO ROB ------------------- //
     output  logic             [`ROB_SZ_BITS-1:0] rob_tail_restore,
     // ------------- TO FREDDY LIST ----------- //
-    output  logic        [`PHYS_REG_SZ_R10K-1:0] freelist_restore,
+    output  logic        [`PHYS_REG_SZ_R10K-1:0] free_list_restore,
     // ------------- TO/FROM DISPATCH -------------- //
     input   BS_ENTRY_PACKET  [`B_MASK_WIDTH-1:0] branch_stack_entries,
     input   B_MASK                               next_b_mask,
     output  PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore,     
     output  B_MASK                               b_mask_combinational,
-    output  logic         [`NUM_B_MASK_BITS-1:0] branch_stack_spots,
+    //output  logic         [`NUM_B_MASK_BITS-1:0] branch_stack_spots,
 
     // ------------- TO RS/EXECUTE -------------- //
     output  B_MASK                               b_mm_out
@@ -68,7 +68,7 @@ module branchstack #(
         restore_valid = 0;
         PC_restore = 0;
         rob_tail_restore = 0;
-        freelist_restore = 0;
+        free_list_restore = 0;
         map_table_restore = 0;
         b_mm_out = '0;
         
@@ -79,7 +79,7 @@ module branchstack #(
                     restore_valid = 1;
                     PC_restore = taken ? branch_stack[i].recovery_PC : target_PC;
                     rob_tail_restore = branch_stack[i].rob_tail;
-                    freelist_restore = branch_stack[i].free_list;
+                    free_list_restore = branch_stack[i].free_list;
                     map_table_restore = branch_stack[i].map_table;
                 end
             end
@@ -89,11 +89,11 @@ module branchstack #(
     
     always_ff @(posedge clock) begin
         if (reset) begin
-            branch_stack_spots <= `B_MASK_WIDTH;
+            //branch_stack_spots <= `B_MASK_WIDTH;
             b_mask_reg <= 0;
             branch_stack <= 0;
         end else begin
-            branch_stack_spots <= next_branch_stack_spots;
+            //branch_stack_spots <= next_branch_stack_spots;
             b_mask_reg <= next_b_mask;
             for (int i = 0; i < `B_MASK_WIDTH; i++) begin
                 branch_stack[i] <= next_branch_stack[i] | branch_stack_entries[i];

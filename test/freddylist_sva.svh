@@ -12,7 +12,7 @@ module FreddyList_sva #(
     input  PHYS_REG_IDX           [`N-1:0] phys_reg_completing,    // phys reg indexes that are being completed (T_new)
     input  logic                  [`N-1:0] completing_valid,       // bit vector of N showing which phys_reg_completing is valid
     // ------------- FROM RETIRE -------------- //
-    input  PHYS_REG_IDX           [`N-1:0] phys_reg_retiring,      // phy reg indexes that are being retired (T_old)
+    input  PHYS_REG_IDX           [`N-1:0] phys_regs_retiring,      // phy reg indexes that are being retired (T_old)
     input  logic    [`NUM_SCALAR_BITS-1:0] num_retiring_valid,     // number of retiring phys reg (T_old)
     // ------------- FROM BRANCH STACK -------------- //
     input  logic   [`PHYS_REG_SZ_R10K-1:0] free_list_restore,      // snapshot of freelist at mispredicted branch
@@ -50,14 +50,14 @@ module FreddyList_sva #(
     always_comb begin 
         retiring_list = 0;
         for (int i = 0; i < num_retiring_valid; i++) begin
-            retiring_list[phys_reg_retiring[i]] = 1;
+            retiring_list[phys_regs_retiring[i]] = 1;
         end
     end
 
     always_comb begin 
         FL_restore_to_check = free_list_restore;
         for (int i = 0; i < num_retiring_valid; i++) begin
-            FL_restore_to_check[phys_reg_retiring[i]] = 0;
+            FL_restore_to_check[phys_regs_retiring[i]] = 0;
         end
     end
 

@@ -4,8 +4,8 @@ module Dispatch (
     input   logic                               clock,
     input   logic                               reset,
 
-    // ------------ FROM FETCH BUFFER ------------- //
-    input   logic        [`NUM_SCALAR_BITS-1:0] instructions_valid,
+    // ------------ FROM INST BUFFER ------------- //
+    input   logic        [`NUM_SCALAR_BITS-1:0] inst_buffer_instructions_valid,
 
     // ------------ FROM DECODER ------------- //
     input   DECODE_PACKET              [`N-1:0] decoder_out,
@@ -82,8 +82,8 @@ module Dispatch (
 
     logic [`NUM_SCALAR_BITS-1:0] min;           // min (rs_spots +num_issuing, rob_spots, instruction valid)
 
-    assign min = (((rs_spots) <= rob_spots) && ((rs_spots) <= instructions_valid)) ? (rs_spots) :
-                                ((rob_spots <= (rs_spots)) && (rob_spots <= instructions_valid)) ? rob_spots : instructions_valid;
+    assign min = (((rs_spots) <= rob_spots) && ((rs_spots) <= inst_buffer_instructions_valid)) ? (rs_spots) :
+                                ((rob_spots <= (rs_spots)) && (rob_spots <= inst_buffer_instructions_valid)) ? rob_spots : inst_buffer_instructions_valid;
 
 
     assign i_num_dispatched = restore_valid ? 0 : min; //if not restoring, num_dispatching = min (rs_entries, rob_entries, free_list)

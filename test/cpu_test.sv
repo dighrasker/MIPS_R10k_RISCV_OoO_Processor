@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////////////////////////
 //                                                                     //
-//   Modulename :  cpu_test.sv                                         //
+//  Modulename :  cpu_test.sv                                          //
 //                                                                     //
 //  Description :  Testbench module for the VeriSimpleV processor.     //
 //                                                                     //
@@ -42,6 +42,7 @@ module testbench;
     // variables used in the testbench
     logic        clock;
     logic        reset;
+    /*
     logic [31:0] clock_count; // also used for terminating infinite loops
     logic [31:0] instr_count;
 
@@ -71,13 +72,17 @@ module testbench;
     ADDR  mem_wb_NPC_dbg;
     DATA  mem_wb_inst_dbg;
     logic mem_wb_valid_dbg;
-
+    */
+    INST          [`N-1:0] insts;
+    COMMIT_PACKET [`N-1:0] committed_insts;
+    ADDR          [`N-1:0] PCs;
 
     // Instantiate the Pipeline
     cpu verisimpleV (
         // Inputs
         .clock (clock),
         .reset (reset),
+        /*
         .mem2proc_transaction_tag (mem2proc_transaction_tag),
         .mem2proc_data            (mem2proc_data),
         .mem2proc_data_tag        (mem2proc_data_tag),
@@ -107,8 +112,17 @@ module testbench;
         .mem_wb_NPC_dbg   (mem_wb_NPC_dbg),
         .mem_wb_inst_dbg  (mem_wb_inst_dbg),
         .mem_wb_valid_dbg (mem_wb_valid_dbg)
+        */
+        .inst(insts),
+        .committed_insts(committed_insts),
+        .PC(PCs)
     );
 
+    for(int i = 0; i < `N; ++) begin
+        logic [63:0] mem_block;
+        mem_block = memory.unified_memory(PC[15:3]);
+        insts[i] = PCs[i][2] ? mem_block[63:32] : mem_block[31:0];
+    end
 
     // Instantiate the Data Memory
     mem memory (

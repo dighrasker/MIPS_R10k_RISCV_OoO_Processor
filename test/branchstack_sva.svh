@@ -14,7 +14,7 @@ module BranchStack_sva #(
     // ------------- TO ROB ------------------- //
     input  logic             [`ROB_SZ_BITS-1:0] rob_tail_restore,
     // ------------- TO FREDDY LIST ----------- //
-    input  logic        [`PHYS_REG_SZ_R10K-1:0] freelist_restore,
+    input  logic        [`PHYS_REG_SZ_R10K-1:0] free_list_restore,
     // ------------- TO/FROM DISPATCH -------------- //
     input   BS_ENTRY_PACKET  [`B_MASK_WIDTH-1:0] branch_stack_entries,
     input   logic            [`B_MASK_WIDTH-1:0] next_b_mask,

@@ -12,7 +12,7 @@ module FreddyList_test ();
     PHYS_REG_IDX           [`N-1:0] phys_reg_completing;    // phys reg indexes that are being completed (T_new)
     logic                  [`N-1:0] completing_valid;       // bit vector of N showing which phys_reg_completing is valid
     // ------------- FROM RETIRE -------------- //
-    PHYS_REG_IDX           [`N-1:0] phys_reg_retiring;      // phy reg indexes that are being retired (T_old)
+    PHYS_REG_IDX           [`N-1:0] phys_regs_retiring;      // phy reg indexes that are being retired (T_old)
     logic    [`NUM_SCALAR_BITS-1:0] num_retiring_valid;     // number of retiring phys reg (T_old)
     // ------------- FROM BRANCH STACK -------------- //
     logic   [`PHYS_REG_SZ_R10K-1:0] free_list_restore;      // snapshot of freelist at mispredicted branch
@@ -40,7 +40,7 @@ module FreddyList_test ();
         .reset                  (reset),
         .phys_reg_completing    (phys_reg_completing),
         .completing_valid       (completing_valid), 
-        .phys_reg_retiring      (phys_reg_retiring),
+        .phys_regs_retiring      (phys_regs_retiring),
         .num_retiring_valid     (num_retiring_valid),
         .free_list_restore      (free_list_restore),
         .restore_flag           (restore_flag),
@@ -57,7 +57,7 @@ module FreddyList_test ();
         .reset                  (reset),
         .phys_reg_completing    (phys_reg_completing),
         .completing_valid       (completing_valid), 
-        .phys_reg_retiring      (phys_reg_retiring),
+        .phys_regs_retiring      (phys_regs_retiring),
         .num_retiring_valid     (num_retiring_valid),
         .free_list_restore      (free_list_restore),
         .restore_flag           (restore_flag),
@@ -142,7 +142,7 @@ module FreddyList_test ();
         while (index < 12) begin
             updated_free_list = free_list;
             for(int i = 0; i < num_retiring_valid; ++i) begin
-                phys_reg_retiring[i] = index + i;
+                phys_regs_retiring[i] = index + i;
             end
             index = index + num_retiring_valid;
             

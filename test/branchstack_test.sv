@@ -20,7 +20,7 @@ module BranchStack_test ();
     // ------------- TO ROB ------------------- //
     logic             [`ROB_SZ_BITS-1:0] rob_tail_restore;
     // ------------- TO FREDDY LIST ----------- //
-    logic        [`PHYS_REG_SZ_R10K-1:0] freelist_restore;
+    logic        [`PHYS_REG_SZ_R10K-1:0] free_list_restore;
     // ------------- TO/FROM DISPATCH -------------- //
     BS_ENTRY_PACKET  [`B_MASK_WIDTH-1:0] branch_stack_entries;
     logic            [`B_MASK_WIDTH-1:0] next_b_mask;
@@ -36,7 +36,7 @@ module BranchStack_test ();
         .b_mm_mispred(b_mm_mispred),
         .rob_tail_restore(rob_tail_restore),
         .restore_valid(restore_valid),
-        .freelist_restore(freelist_restore),
+        .free_list_restore(free_list_restore),
         .branch_stack_entries(branch_stack_entries),
         .next_b_mask(next_b_mask),
         .map_table_restore(map_table_restore),
@@ -52,7 +52,7 @@ module BranchStack_test ();
         .b_mm_resolve(b_mm_resolve),
         .b_mm_mispred(b_mm_mispred),
         .rob_tail_restore(rob_tail_restore),
-        .freelist_restore(freelist_restore),
+        .free_list_restore(free_list_restore),
         .branch_stack_entries(branch_stack_entries),
         .next_b_mask(next_b_mask),
         .map_table_restore(map_table_restore),
