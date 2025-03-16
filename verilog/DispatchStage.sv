@@ -1,8 +1,6 @@
 `include "sys_defs.svh"
 
-module Dispatch #(
-    
-) (
+module Dispatch (
     input   logic                               clock,
     input   logic                               reset,
 

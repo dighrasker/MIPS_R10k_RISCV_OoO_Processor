@@ -25,6 +25,7 @@ module decoder (
     decoder_out.taken = inst_buffer_input.taken
     decoder_out.PC = inst_buffer_input.PC;
     decoder_out.NPC = PC + 4;
+    decoder_out.mult_func = inst.r.funct3;
     // Note: I recommend using an IDE's code folding feature on this block
     always_comb begin
         // Default control values (looks like a NOP)

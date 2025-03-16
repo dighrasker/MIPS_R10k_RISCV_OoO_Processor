@@ -27,7 +27,7 @@ module cpu (
 
     // Note: these are assigned at the very bottom of the module
     output COMMIT_PACKET [`N-1:0] committed_insts,
-    output ADDR             
+    output ADDR          [`N-1:0] PC
 
     // Debug outputs: these signals are solely used for debugging in testbenches
     // Do not change for project 3
@@ -49,157 +49,10 @@ module cpu (
     output logic mem_wb_valid_dbg*/
 );
 
-    //////////////////////////////////////////////////
-    //                                              //
-    //                Pipeline Wires                //
-    //                                              //
-    //////////////////////////////////////////////////
-
-    // Pipeline register enables
-    logic if_id_enable, id_ex_enable, ex_mem_enable, mem_wb_enable;
-
-    // From IF stage to memory
-    MEM_COMMAND Imem_command; // Command sent to memory
-
-    // Outputs from IF-Stage and IF/ID Pipeline Register
-    ADDR Imem_addr;
-    IF_ID_PACKET if_packet, if_id_reg;
-
-    // Outputs from ID stage and ID/EX Pipeline Register
-    ID_EX_PACKET id_packet, id_ex_reg;
-
-    // Outputs from EX-Stage and EX/MEM Pipeline Register
-    EX_MEM_PACKET ex_packet, ex_mem_reg;
-
-    // Outputs from MEM-Stage and MEM/WB Pipeline Register
-    MEM_WB_PACKET mem_packet, mem_wb_reg;
-
-    // Outputs from MEM-Stage to memory
-    ADDR        Dmem_addr;
-    MEM_BLOCK   Dmem_store_data;
-    MEM_COMMAND Dmem_command;
-    MEM_SIZE    Dmem_size;
-
-    // Outputs from WB-Stage (These loop back to the register file in ID)
-    COMMIT_PACKET wb_packet;
-
-    // Logic for stalling memory stage
-    logic       load_stall;
-    logic       new_load;
-    logic       mem_tag_match;
-    logic       rd_mem_q;       // previous load
-    MEM_TAG     outstanding_mem_tag;    // tag load is waiting in
-    MEM_COMMAND Dmem_command_filtered;  // removes redundant loads
-
-    //////////////////////////////////////////////////
-    //                                              //
-    //                Memory Outputs                //
-    //                                              //
-    //////////////////////////////////////////////////
-
-    // these signals go to and from the processor and memory
-    // we give precedence to the mem stage over instruction fetch
-    // note that there is no latency in project 3
-    // but there will be a 100ns latency in project 4
-
-    always_comb begin
-        if (Dmem_command != MEM_NONE) begin  // read or write DATA from memory
-            proc2mem_command = Dmem_command_filtered;
-            proc2mem_size    = Dmem_size;
-            proc2mem_addr    = Dmem_addr;
-        end else begin                      // read an INSTRUCTION from memory
-            proc2mem_command = Imem_command;
-            proc2mem_addr    = Imem_addr;
-            proc2mem_size    = DOUBLE;      // instructions load a full memory line (64 bits)
-        end
-        proc2mem_data = Dmem_store_data;
-    end
-
-    //////////////////////////////////////////////////
-    //                                              //
-    //                  Valid Bit                   //
-    //                                              //
-    //////////////////////////////////////////////////
-
-    // This state controls the stall signal that artificially forces IF
-    // to stall until the previous instruction has completed.
-    // For project 3, start by assigning if_valid to always be 1
-
-    logic if_valid, start_valid_on_reset, wb_valid;
-
-
-    always_ff @(posedge clock) begin
-        // Start valid on reset. Other stages (ID,EX,MEM,WB) start as invalid
-        // Using a separate always_ff is necessary since if_valid is combinational
-        // Assigning if_valid = reset doesn't work as you'd hope :/
-        start_valid_on_reset <= reset;
-    end
-
-    // valid bit will cycle through the pipeline and come back from the wb stage
-    assign if_valid = start_valid_on_reset || wb_valid;
-
-    //////////////////////////////////////////////////
-    //                                              //
-    //                  IF-Stage                    //
-    //                                              //
-    //////////////////////////////////////////////////
-
-    stage_if stage_if_0 (
-        // Inputs
-        .clock (clock),
-        .reset (reset),
-        .if_valid      (if_valid),
-        .take_branch   (ex_mem_reg.take_branch),
-        .branch_target (ex_mem_reg.alu_result),
-        .Imem_data     (mem2proc_data),
-        
-        .Imem2proc_transaction_tag(mem2proc_transaction_tag),
-        .Imem2proc_data_tag       (mem2proc_data_tag),
-
-        // Outputs
-        .Imem_command  (Imem_command),
-        .if_packet     (if_packet),
-        .Imem_addr     (Imem_addr)
-    );
-
-    // debug outputs
-    assign if_NPC_dbg   = if_packet.NPC;
-    assign if_inst_dbg  = if_packet.inst;
-    assign if_valid_dbg = if_packet.valid;
-
-    //////////////////////////////////////////////////
-    //                                              //
-    //            IF/ID Pipeline Register           //
-    //                                              //
-    //////////////////////////////////////////////////
-
-    assign if_id_enable = !load_stall;
-
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            if_id_reg.inst  <= `NOP;
-            if_id_reg.valid <= `FALSE;
-            if_id_reg.NPC   <= 0;
-            if_id_reg.PC    <= 0;
-        end else if (if_id_enable) begin
-            if_id_reg <= if_packet;
-        end
-    end
-
-    // debug outputs
-    assign if_id_NPC_dbg   = if_id_reg.NPC;
-    assign if_id_inst_dbg  = if_id_reg.inst;
-    assign if_id_valid_dbg = if_id_reg.valid;
-
-    //////////////////////////////////////////////////
-    //                                              //
-    //            REGs & WIREs STRUCTURES           //
-    //                                              //
-    //////////////////////////////////////////////////
-
     // ONLY OUTPUTS ARE UNCOMMENTED
 
-    /*------- ROB SHIT ----------*/
+    /*------- ROB WIRES ----------*/
+
     // INPUT clock
     // INPUT reset
     // INPUT ROB_PACKET           [`N-1:0] rob_entries;
@@ -216,22 +69,89 @@ module cpu (
     ROB_DEBUG                   rob_debug;
 `endif
 
-    /*------- RS SHIT ----------*/
+    /*------- RS WIRES ----------*/
+    
+    // INPUT clock
+    // INPUT reset
     // INPUT logic  [`NUM_SCALAR_BITS-1:0] num_dispatched;
     // INPUT RS_PACKET            [`N-1:0] rs_entries;
-    // INPUT logic  [`NUM_SCALAR_BITS-1:0] rs_spots;
+    logic  [`NUM_SCALAR_BITS-1:0] rs_spots;
+
+    // INPUT CDB_ETB_PACKET       [`N-1:0] cdb_completing;
+
+    // INPUT logic           [`RS_SZ-1:0] rs_data_issuing;      // bit vector of rs_data that is being issued by issue stage
+    RS_PACKET       [`RS_SZ-1:0] rs_data;              // The entire RS data 
+    logic           [`RS_SZ-1:0] rs_valid_next;        // 1 if RS data is valid <-- Coded
+
+    // INPUT B_MASK_MASK                   b_mm_out;
+    // INPUT logic                         restore_valid;
+`ifdef DEBUG
+    RS_DEBUG               rs_debug;
+`endif
 
 
-    /*------- FREDDYLIST SHIT ----------*/
+    /*------- FREDDYLIST WIRES ----------*/
 
-    /*------- BRANCH STACK SHIT ----------*/
+    // INPUT clock,
+    // INPUT reset,
+    // TODO:: DECIDE WHAT TO DO WITH CDB
+    // INPUT PHYS_REG_IDX           [`N-1:0] phys_reg_completing,    // phys reg indexes that are being completed (T_new)
+    // INPUT logic                  [`N-1:0] completing_valid,       // bit vector of N showing which phys_reg_completing is valid
+    
+    // INPUT PHYS_REG_IDX           [`N-1:0] phys_regs_retiring,      // phy reg indexes that are being retired (T_old)
+    // INPUT logic    [`NUM_SCALAR_BITS-1:0] num_retiring_valid,     // number of retiring phys reg (T_old)
+
+    // INPUT logic   [`PHYS_REG_SZ_R10K-1:0] freelist_restore,      // snapshot of freelist at mispredicted branch
+    // INPUT logic                           restore_valid,           // branch mispredict flag
+
+    // INPUT logic   [`PHYS_REG_SZ_R10K-1:0] updated_free_list,      // freelist from dispatch
+
+    PHYS_REG_IDX           [`N-1:0] phys_regs_to_use,       // physical register indices for dispatch to use
+    logic   [`PHYS_REG_SZ_R10K-1:0] free_list,              // bitvector of the phys reg that are complete
+
+    logic   [`PHYS_REG_SZ_R10K-1:0] next_complete_list;          // bitvector of the phys reg that are complete
+    logic   [`PHYS_REG_SZ_R10K-1:0] complete_list;
+
+`ifdef DEBUG
+    logic   [`PHYS_REG_SZ_R10K-1:0] debug_complete_list;
+`endif
+    
+
+    /*------- BRANCH STACK WIRES ----------*/
 
     logic                         restore_valid;
     logic      [`ROB_SZ_BITS-1:0] rob_tail_restore;
 
-    /*------- FETCH SHIT ----------*/
+    /*------- FETCH WIRES ----------*/
 
-    /*------- DISPATCH SHIT ----------*/
+    /*------- INSTBUFFER WIRES ----------*/    
+        //input   logic                        clock, 
+        //input   logic                        reset,
+
+        // ------------ TO/FROM FETCH ------------- //
+        //input   FETCH_PACKET         [`N-1:0] inst_buffer_inputs,
+        //input   logic  [`NUM_SCALAR_BITS-1:0] instructions_valid, //number of valid instructions fetch sends to instruction buffer     // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+        output  logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,
+
+        // ------------ FROM EXECUTE ------------- //
+        //input   logic                         restore_valid,
+
+        // ------------ TO/FROM DISPATCH -------- //
+        //input   logic  [`NUM_SCALAR_BITS-1:0] num_dispatched,     //number of spots available in dispatch
+        output  FETCH_PACKET         [`N-1:0] inst_buffer_outputs,   // For retire to check eligibility
+        output  logic  [`NUM_SCALAR_BITS-1:0] outputs_valid,
+
+
+         /*------- DECODER WIRES ----------*/
+input  FETCH_PACKET  inst_buffer_input,
+    output DECODE_PACKET decoder_out,
+    output logic         is_rs1_used,
+    output logic         is_rs2_used,
+    output ARCH_REG_IDX  source1_arch_reg,
+    output ARCH_REG_IDX  source2_arch_reg,
+    output ARCH_REG_IDX  dest_arch_reg
+
+    /*------- DISPATCH WIRES ----------*/
 
     ROB_PACKET           [`N-1:0] rob_entries;
     logic  [`NUM_SCALAR_BITS-1:0] num_dispatched;
@@ -239,11 +159,46 @@ module cpu (
     logic  [`NUM_SCALAR_BITS-1:0] rs_spots;
 
 
-    /*------- ISSUE SHIT ----------*/
+    /*------- ISSUE WIRES ----------*/
+     
+    // ------------- TO/FROM RS -------------- //
+    output  wor                   [`RS_SZ-1:0] rs_data_issuing,     // set index to 1 when a rs_data is selected to be issued
 
-    /*------- COMPLETE SHIT ----------*/
+    // ------------- TO/FROM REGFILE -------------- //
+    
 
-    /*------- RETIRE SHIT ----------*/
+     DATA            [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1,
+     DATA            [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2,
+     DATA           [`NUM_FU_MULT-1:0] issue_mult_regs_reading_1,
+     DATA           [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2,
+     DATA         [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1,
+     DATA         [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2,
+    
+    // ------------- FROM CDB -------------- //
+
+
+    // ------------- TO/FROM EXECUTE -------------- //
+     logic                  [`NUM_FU_MULT-1:0] mult_cdb_gnt,
+     logic                  [`NUM_FU_LDST-1:0] ldst_cdb_gnt,
+     ALU_ENTRY_PACKET        [`NUM_FU_ALU-1:0] alu_packets,
+     MULT_ENTRY_PACKET      [`NUM_FU_MULT-1:0] mult_packets,
+     BRANCH_ENTRY_PACKET  [`NUM_FU_BRANCH-1:0] branch_packets,
+    output LDST_ENTRY_PACKET      [`NUM_FU_LDST-1:0] ldst_packets,
+
+    output logic [`N-1:0]        [`NUM_FU_TOTAL-1:0] complete_gnt_bus
+    
+
+    /*----------EXECUTE WIRES -------------*/
+    
+    logic              [`NUM_FU_MULT-1:0] mult_free;
+    logic              [`NUM_FU_LDST-1:0] ldst_free;
+    CDB_ETB_PACKET               [`N-1:0] cdb_completing;
+    CDB_REG_PACKET               [`N-1:0] cdb_reg;
+    BRANCH_REG_PACKET                     branch_reg;
+
+    /*------- COMPLETE WIRES ----------*/
+
+    /*------- RETIRE WIRES ----------*/
 
     logic  [`NUM_SCALAR_BITS-1:0] num_retiring;
 
@@ -267,8 +222,10 @@ module cpu (
         .rob_outputs       (rob_outputs),
         .rob_outputs_valid (rob_outputs_valid),
         .tail_restore_valid(restore_valid),
-        .tail_restore      (rob_tail_restore),
-        .rob_debug         (rob_debug)
+        .tail_restore      (rob_tail_restore)
+    `ifdef DEBUG
+        ,.rob_debug         (rob_debug)
+    `endif
     );
 
 
@@ -280,14 +237,15 @@ module cpu (
         .num_dispatched    (num_dispatched),
         .rs_entries        (rs_entries), 
         .rs_spots          (rs_spots),
-        .CDB_tags          (CDB_tags),
-        .CDB_valid         (CDB_valid),
+        .ETB_tags          (cdb_completing),
         .rs_data_issuing   (rs_data_issuing),
         .rs_data           (rs_data),
         .rs_valid_next     (rs_valid_next),
-        .b_mm_resolve      (b_mm_resolve),
-        .b_mm_mispred      (b_mm_mispred),
-        .rs_debug          (rs_debug)
+        .b_mm_resolve      (b_mm_out),
+        .b_mm_mispred      (restore_valid)
+    `ifdef DEBUG
+        ,.rs_debug          (rs_debug)
+    `endif
     );
 
 
@@ -298,12 +256,11 @@ module cpu (
         .reset                  (reset),
         .phys_reg_completing    (phys_reg_completing),
         .completing_valid       (completing_valid), 
-        .phys_reg_retiring      (phys_reg_retiring),
+        .phys_reg_retiring      (phys_regs_retiring),
         .num_retiring_valid     (num_retiring_valid),
         .free_list_restore      (free_list_restore),
         .restore_flag           (restore_flag),
         .updated_free_list      (updated_free_list),
-        // .num_dispatched         (num_dispatched),
         .phys_regs_to_use       (phys_regs_to_use),
         .free_list              (free_list),
         .complete_list          (complete_list)
@@ -312,7 +269,7 @@ module cpu (
 
     /*-------------Branch Stack--------------------*/
 
-    branchstack dut (
+    branchstack bs (
         .clock(clock),
         .reset(reset),
         .PC_restore(PC_restore),
@@ -326,6 +283,29 @@ module cpu (
         .map_table_restore(map_table_restore),
         .b_mask_combinational(b_mask_combinational),
         .bs_debug(bs_debug)
+    );
+
+    /*------------------Reg File --------------------*/
+    regfile regfile_instance (
+        .clock(clock),
+        .reset(reset),
+        .retire_phys_regs_reading(retire_phys_regs_reading),
+        .retire_read_data(retire_read_data),
+        .issue_alu_phys_regs_reading_1(issue_alu_phys_regs_reading_1),
+        .issue_alu_phys_regs_reading_2(issue_alu_phys_regs_reading_2),
+        .issue_alu_read_data_1(issue_alu_read_data_1),
+        .issue_alu_read_data_2(issue_alu_read_data_2),
+        .issue_branch_phys_regs_reading_1(issue_branch_phys_regs_reading_1),
+        .issue_branch_phys_regs_reading_2(issue_branch_phys_regs_reading_2),
+        .issue_branch_read_data_1(issue_branch_read_data_1),
+        .issue_branch_read_data_2(issue_branch_read_data_2),
+        .issue_mult_phys_regs_reading_1(issue_mult_phys_regs_reading_1),
+        .issue_mult_phys_regs_reading_2(issue_mult_phys_regs_reading_2),
+        .issue_mult_read_data_1(issue_mult_read_data_1),
+        .issue_mult_read_data_2(issue_mult_read_data_2),
+        .phys_regs_completing(phys_regs_completing),
+        .write_en(write_en),
+        .write_data(write_data)
     );
 
     //////////////////////////////////////////////////
@@ -356,6 +336,48 @@ module cpu (
         .i_buffer_outputs(i_buffer_outputs),   // For retire to check eligibility
         .outputs_valid(outputs_valid), // If not all N rob entries are valid entries they should not be considered  
     );
+
+    //////////////////////////////////////////////////
+    //                                              //
+    //                  INSTBUFFER                  //
+    //                                              //
+    //////////////////////////////////////////////////
+
+
+    instbuffer inst_buffer(
+        .clock(clock), 
+        .reset(reset),
+
+        // ------------ TO/FROM FETCH ------------- //
+        .inst_buffer_inputs(inst_buffer_inputs),
+        .insttructions_valid(instructions_valid), //number of valid instructions fetch sends to instruction buffer     // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+        output  logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,
+
+        // ------------ FROM EXECUTE ------------- //
+        input   logic                         restore_valid,
+
+        // ------------ TO/FROM DISPATCH -------- //
+        input   logic  [`NUM_SCALAR_BITS-1:0] num_dispatched,     //number of spots available in dispatch
+        output  FETCH_PACKET         [`N-1:0] inst_buffer_outputs,   // For retire to check eligibility
+        output  logic  [`NUM_SCALAR_BITS-1:0] outputs_valid, // If not all N FB entries are valid entries they should not be considered 
+    );
+
+    //////////////////////////////////////////////////
+    //                                              //
+    //                  DECODER                     //
+    //                                              //
+    //////////////////////////////////////////////////
+    
+    decoder #() decode [`N-1:0] (
+        .inst_buffer_input(),
+        .decoder_out(),
+        .is_rs1_used(),
+        .is_rs2_used(),
+        .source1_arch_reg(),
+        .source2_arch_reg(),
+        .dest_arch_reg()
+    );
+
 
     //////////////////////////////////////////////////
     //                                              //
@@ -395,12 +417,70 @@ module cpu (
     //                  ISSUE                       //
     //                                              //
     //////////////////////////////////////////////////
+    
+   
 
+    Issue issue_instance (
+        // ------------- FROM FREDDY -------------- //
+        .complete_list(complete_list),
+
+        // ------------- TO/FROM RS -------------- //
+        .rs_data(rs_data),
+        .rs_valid_next(rs_valid_next),
+        .rs_data_issuing(rs_data_issuing),
+        // ------------- TO/FROM REGFILE -------------- //
+        .issue_alu_read_data_1(issue_alu_read_data_1),
+        .issue_alu_read_data_2(issue_alu_read_data_2),
+        .issue_mult_read_data_1(issue_mult_read_data_1),
+        .issue_mult_read_data_2(issue_mult_read_data_2),
+        .issue_branch_read_data_1(issue_branch_read_data_1),
+        .issue_branch_read_data_2(issue_branch_read_data_2),
+        .issue_alu_regs_reading_1(issue_alu_regs_reading_1),
+        .issue_alu_regs_reading_2(issue_alu_regs_reading_2),
+        .issue_mult_regs_reading_1(issue_mult_regs_reading_1),
+        .issue_mult_regs_reading_2(issue_mult_regs_reading_2),
+        .issue_branch_regs_reading_1(issue_branch_regs_reading_1),
+        .issue_branch_regs_reading_2(issue_branch_regs_reading_2),
+         // ------------- FROM CDB -------------- //
+        .CDB_data_forwarded(CDB_data_forwarded),
+        .CDB_tags_forwarded(CDB_tags_forwarded),
+        // ------------- TO/FROM EXECUTE -------------- //
+        .mult_free(mult_free),
+        .ldst_free(ldst_free),
+        .mult_cdb_req(mult_cdb_req),
+        .ldst_cdb_req(ldst_cdb_req),
+        .mult_cdb_gnt(mult_cdb_gnt),
+        .ldst_cdb_gnt(ldst_cdb_gnt),
+        .alu_packets(alu_packets),
+        .mult_packets(mult_packets),
+        .branch_packets(branch_packets),
+        .ldst_packets(ldst_packets),
+        .complete_gnt_bus(complete_gnt_bus)
+    );
+    
     //////////////////////////////////////////////////
     //                                              //
-    //                  COMPLETE                    //
+    //                  EXECUTE                     //
     //                                              //
     //////////////////////////////////////////////////
+
+    ExecuteStage execute_instance (
+        .clock(clock),
+        .reset(reset),
+        // --------------- TO/FROM ISSUE --------------- //
+        .mult_packets_issuing_in(mult_packets_issuing_in),
+        .alu_packets_issuing_in(alu_packets_issuing_in),
+        .branch_packets_issuing_in(branch_packets_issuing_in),
+        .mult_cdb_en(mult_cdb_en),
+        .complete_gnt_bus(complete_gnt_bus_exec),
+        .mult_free(mult_free),
+        .ldst_free(ldst_free),
+        .cdb_completing(cdb_completing),
+        .cdb_reg(cdb_reg),
+        .b_mm_resolve(b_mm_resolve),
+        .b_mm_mispred(b_mm_mispred),
+        .branch_reg(branch_reg)
+    );
 
     //////////////////////////////////////////////////
     //                                              //
@@ -418,15 +498,15 @@ module cpu (
         .num_retiring(num_retiring),                  // Send to rob, how many rob_outputs can be retired
 
     // ------------- TO/FROM FREDDYLIST -------------- //
-        .complete_list_exposed,         // Coming from freddylist, to find out which rob_output is actually completed and ready to retire
-        .phys_regs_retiring,             // Send to freddylist, which physical registers are being retired
+        .complete_list_exposed(),         // Coming from freddylist, to find out which rob_output is actually completed and ready to retire
+        .phys_regs_retiring(),             // Send to freddylist, which physical registers are being retired
 
     // ------------- TO CPU -------------- //
-        .committed_insts,
+        .committed_insts(),
 
     /*---------------- FROM/TO REGFILE ---------------------------*/
-        .retire_phys_regs_reading,
-        .retire_read_data
+        .retire_phys_regs_reading(),
+        .retire_read_data()
     );
 
     //////////////////////////////////////////////////

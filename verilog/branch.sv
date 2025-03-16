@@ -33,15 +33,19 @@ module branch (
     assign branch_result.result = opa + opb;
 
     always_comb begin
-        case (branch_packet.branch_func)
-            3'b000:  take = signed'(branch_packet.source_reg_1) == signed'(branch_packet.source_reg_2); // BEQ
-            3'b001:  take = signed'(branch_packet.source_reg_1) != signed'(branch_packet.source_reg_2); // BNE
-            3'b100:  take = signed'(branch_packet.source_reg_1) <  signed'(branch_packet.source_reg_2); // BLT
-            3'b101:  take = signed'(branch_packet.source_reg_1) >= signed'(branch_packet.source_reg_2); // BGE
-            3'b110:  take = branch_packet.source_reg_1 < branch_packet.source_reg_2;                    // BLTU
-            3'b111:  take = branch_packet.source_reg_1 >= branch_packet.source_reg_2;                   // BGEU
-            default: take = `FALSE;
-        endcase
+        if(branch_packet.conditional) begin
+            case (branch_packet.branch_func)
+                3'b000:  take = signed'(branch_packet.source_reg_1) == signed'(branch_packet.source_reg_2); // BEQ
+                3'b001:  take = signed'(branch_packet.source_reg_1) != signed'(branch_packet.source_reg_2); // BNE
+                3'b100:  take = signed'(branch_packet.source_reg_1) <  signed'(branch_packet.source_reg_2); // BLT
+                3'b101:  take = signed'(branch_packet.source_reg_1) >= signed'(branch_packet.source_reg_2); // BGE
+                3'b110:  take = branch_packet.source_reg_1 < branch_packet.source_reg_2;                    // BLTU
+                3'b111:  take = branch_packet.source_reg_1 >= branch_packet.source_reg_2;                   // BGEU
+                default: take = `FALSE;
+            endcase
+        end else begin
+            take = `TRUE;
+        end
 
         branch_result.result = branch_packet.NPC;
         branch_result.completing_reg = branch_packet.completing_reg;

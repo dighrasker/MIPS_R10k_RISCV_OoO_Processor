@@ -33,9 +33,9 @@
 `define NUM_FU_BRANCH 1
 `define NUM_FU_ALU `N
 `define NUM_FU_MULT `N
-`define NUM_FU_LDST `N
-`define NUM_FU_LOAD `N
-`define NUM_FU_STORE `N
+`define NUM_FU_LDST 0
+`define NUM_FU_LOAD 0
+`define NUM_FU_STORE 0
 `define NUM_FU_TOTAL `NUM_FU_ALU + `NUM_FU_MULT + `NUM_FU_BRANCH +`NUM_FU_LDST
 
 // sizes
@@ -456,6 +456,7 @@ typedef struct packed{
     logic          has_dest; // if there is a destination register
     ALU_FUNC       alu_func;
     logic          mult; 
+    MULT_FUNC      mult_func;
     logic          rd_mem; 
     logic          wr_mem; 
     logic          cond_branch; 
@@ -537,6 +538,7 @@ const ALU_PACKET NOP_ALU_PACKET = '{
     source_reg_1:  '0,   // No valid source register
     source_reg_2:  '0,   // No valid source register
     dest_reg_idx:  '0,   // No valid destination register
+    alu_func:       0
 };
 
 typedef struct packed {
@@ -549,27 +551,22 @@ typedef struct packed {
 } MULT_PACKET;
 
 const MULT_PACKET NOP_MULT_PACKET = '{
-    inst:          `NOP,   // Assuming 0 represents a NOP instruction
     valid:         '0,
-    PC:            '0,   // No valid program counter
-    NPC:           '0,   // No valid next PC
-    opa_select:    OPA_IS_RS1, // Assuming ALU_OPA_ZERO means no operation
-    opb_select:    OPB_IS_RS2, // Assuming ALU_OPB_ZERO means no operation
     source_reg_1:  '0,   // No valid source register
     source_reg_2:  '0,   // No valid source register
     dest_reg_idx:  '0,   // No valid destination register
-    bm:            '0   // No valid branch mask
+    bm:            '0,   // No valid branch mask
+    mult_func:      0   
 };
 
 typedef struct packed {
-    INST inst;
-    logic valid;
-    ADDR PC;
-    ADDR NPC; // PC + 4
-
-    ALU_OPA_SELECT opa_select; // ALU opa mux select (ALU_OPA_xxx *)
-    ALU_OPB_SELECT opb_select; // ALU opb mux select (ALU_OPB_xxx *)
-
+    INST            inst;
+    logic           valid;
+    ADDR            PC;
+    ADDR            NPC; // PC + 4
+    logic           unconditional;
+    ALU_OPA_SELECT  opa_select; // ALU opa mux select (ALU_OPA_xxx *)
+    ALU_OPB_SELECT  opb_select; // ALU opb mux select (ALU_OPB_xxx *)
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;       // not used but might be good for identification purposes
@@ -579,12 +576,13 @@ typedef struct packed {
 } BRANCH_PACKET;
 
 const BRANCH_PACKET NOP_BRANCH_PACKET = '{
-    inst:       `NOP,
-    valid:      '0,
-    PC:         '0,
-    NPC:        '0, // PC + 4
-    opa_select:  OPA_IS_RS1, // ALU opa mux select (ALU_OPA_xxx *)
-    opb_select:  OPB_IS_RS2, // ALU opb mux select (ALU_OPB_xxx *)
+    inst:         `NOP,
+    valid:        '0,
+    PC:           '0,
+    NPC:          '0, // PC + 4
+    conditional    0,
+    opa_select:    OPA_IS_RS1, // ALU opa mux select (ALU_OPA_xxx *)
+    opb_select:    OPB_IS_RS2, // ALU opb mux select (ALU_OPB_xxx *)
     source_reg_1: '0,
     source_reg_2: '0,
     dest_reg_idx: '0,       // not used but might be good for identification purposes

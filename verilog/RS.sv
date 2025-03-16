@@ -13,8 +13,8 @@ module rs #(
     output logic [`NUM_SCALAR_BITS-1:0] rs_spots,            // Number of spots
     
     // --------- FROM: CDB ------------ //
-    input  PHYS_REG_IDX        [`N-1:0] CDB_tags,            // Tags that are broadcasted from the CDB
-    input  logic               [`N-1:0] CDB_valid,           // 1 is the broadcast is valid
+    input  CDB_ETB_PACKET      [`N-1:0] ETB_tags,            // Tags that are broadcasted from the CDB
+    
     
     // ------- TO/FROM: ISSUE --------- //
     input  logic           [`RS_SZ-1:0] rs_data_issuing,      // bit vector of rs_data that is being issued by issue stage
@@ -76,10 +76,10 @@ module rs #(
             end
             //Cam logic
             for(int i = 0; i < `N; ++i) begin
-                if(CDB_valid[i]) begin
+                if(ETB_tags[i].valid) begin
                     for(int j = 0; j < `RS_SZ; ++j)begin
-                        if (rs_data[j].Source1 == CDB_tags[i]) rs_data[j].Source1_ready <= 1;
-                        if (rs_data[j].Source2 == CDB_tags[i]) rs_data[j].Source2_ready <= 1;
+                        if (rs_data[j].Source1 == ETB_tags[i]) rs_data[j].Source1_ready <= 1;
+                        if (rs_data[j].Source2 == ETB_tags[i]) rs_data[j].Source2_ready <= 1;
                     end
                 end 
             end

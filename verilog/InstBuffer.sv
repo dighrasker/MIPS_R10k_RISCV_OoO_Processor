@@ -9,13 +9,13 @@ module instbuffer #() (
     input   logic  [`NUM_SCALAR_BITS-1:0] instructions_valid, //number of valid instructions fetch sends to instruction buffer     // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
     output  logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,
 
-    // ------------ FROM EXECUTE ------------- //
+    // ------------ FROM BRANCH STACK ------------- //
     input   logic                         restore_valid,
 
-    // ------------ TO/FROM DISPATCH -------- //
+    // ------------ TO/FROM DISPATCH or DECODER -------- //
     input   logic  [`NUM_SCALAR_BITS-1:0] num_dispatched,     //number of spots available in dispatch
     output  FETCH_PACKET         [`N-1:0] inst_buffer_outputs,   // For retire to check eligibility
-    output  logic  [`NUM_SCALAR_BITS-1:0] outputs_valid, // If not all N FB entries are valid entries they should not be considered 
+    output  logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_outputs_valid, // If not all N FB entries are valid entries they should not be considered 
 );
 
     FETCH_PACKET [`FB_SZ-1:0] inst_buffer;
@@ -29,10 +29,10 @@ module instbuffer #() (
         next_tail = (tail + instructions_valid) % `FB_SZ;
         next_entries = entries + instructions_valid - num_dispatched;
         inst_buffer_spots = (`FB_SZ - entries < `N) ? `FB_SZ - entries : `N;
-        outputs_valid = (entries < `N) ? entries : `N;
+        inst_buffer_outputs_valid = (entries < `N) ? entries : `N;
         inst_buffer_outputs = '0;
         for (int i = 0; i < `N; ++i) begin
-            if (i < outputs_valid) begin
+            if (i < inst_buffer_outputs_valid) begin
                 inst_buffer_outputs[i] = inst_buffer[(head + i) % `FB_SZ];
             end
         end

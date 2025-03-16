@@ -18,7 +18,7 @@ module Issue # (
     input logic        [`PHYS_REG_SZ_R10K-1:0] complete_list,       // The entire complete list of each register
 
     // ------------- TO/FROM RS -------------- //
-    input RS_ENTRY_PACKET         [`RS_SZ-1:0] rs_data,             // full RS data exposed to issue for psel and FU packets generating
+    input RS_PACKET               [`RS_SZ-1:0] rs_data,             // full RS data exposed to issue for psel and FU packets generating
     input logic                   [`RS_SZ-1:0] rs_valid_next,
     output  wor                   [`RS_SZ-1:0] rs_data_issuing,     // set index to 1 when a rs_data is selected to be issued
 
@@ -171,51 +171,50 @@ genvar j;
         encoder #(`RS_SZ, `RS_SZ_BITS) encoders_branch (branch_inst_gnt_bus[i], branch_index);
         if (branch_inst_gnt_bus[i] & rs_cdb_gnt) begin
             assign rs_data_issuing = branch_inst_gnt_bus[i];
+
+            //assign regfile_read_indices
+            assign issue_branch_regs_reading_1[i] = rs_data[branch_index].Source1;
+            assign issue_branch_regs_reading_2[i] = rs_data[branch_index].Source2;
+
             // TODO: get the data from rs_entries[branch_index] to form this branch packet
             assign branch_packets[i].inst = rs_data[branch_index].decoded_signals.inst;
             assign branch_packets[i].valid = rs_data[branch_index].decoded_signals.valid;
             assign branch_packets[i].PC = rs_data[branch_index].decoded_signals.PC;
             assign branch_packets[i].NPC = rs_data[branch_index].decoded_signals.NPC;
+            assign branch_packets[i].conditional = rs_data[branch_index].decode_signals.cond_branch;
             assign branch_packets[i].opa_select = rs_data[branch_index].decoded_signals.opa_select;
-            assign branch_packets[i].opb_select = rs_data[branch_index].decoded_signals.opb_select;
-            
-            //Get these from regfile outputs
-            //assign branch_packets[i].source_reg_1 = rs_data[branch_index].decoded_signals.inst;
-            //assign branch_packets[i].source_reg_2 = rs_data[branch_index].decoded_signals.inst;
-            
+            assign branch_packets[i].opb_select = rs_data[branch_index].decoded_signals.opb_select;            
             assign branch_packets[i].dest_reg_idx = rs_data[branch_index].T_new;
             assign branch_packets[i].taken = rs_data[branch_index].decoded_signals.taken;
             assign branch_packets[i].branch_func = rs_data[branch_index].decoded_signals.branch_func;
             assign branch_packets[i].bmm = rs_data[branch_index].b_mask_mask;
 
-            //assign regfile_read_indices Decide how to index regfile later
-
             // Get the data from the prf
             if (complete_list[rs_data[branch_index].Source1]) begin
-                assign branch_packets[i].Source1_value = issue_branch_read_data_1[i];
+                assign branch_packets[i].source_reg_1 = issue_branch_read_data_1[i];
 
             // Cam the CDB to get the forwarded data
             end else begin
                 for(j = 0; j < `N; ++j) begin
                     if (rs_data[branch_index].Source1 == CDB_tags_forwarded[j]) begin
-                       assign branch_packets[i].Source1_value = CDB_data_forwarded[j];
+                       assign branch_packets[i].source_reg_1 = CDB_data_forwarded[j];
                     end
                 end
             end
 
             if (complete_list[rs_data[branch_index].Source2]) begin
-                assign branch_packets[i].Src2_value = issue_branch_read_data_2[i];
+                assign branch_packets[i].source_reg_2 = issue_branch_read_data_2[i];
             end else begin
                 for(j = 0; j < `N; ++j) begin
                     if(rs_data[branch_index].Source2 == CDB_tags_forwarded[j]) begin
-                        assign branch_packets[i].Source2_value = CDB_data_forwarded[j];
+                        assign branch_packets[i].source_reg_2 = CDB_data_forwarded[j];
                     end
                 end
             end
             
             assign branch_cdb_gnt[i] = 1'b1;
         end else begin
-            assign branch_packets[i] = //NOP TODO: get the data from rs_entries[branch_index] to form this branch packet
+            assign branch_packets[i] = NOP_BRANCH_PACKET; //NOP
             assign branch_cdb_gnt[i] = 1'b0;
         end
     end
@@ -232,39 +231,42 @@ genvar j;
         if (alu_inst_gnt_bus[i] & rs_cdb_gnt) begin
             assign rs_data_issuing = alu_inst_gnt_bus[i];
 
+            //assign regfile_read_indices
+            assign issue_alu_regs_reading_1[i] = rs_data[alu_index].Source1;
+            assign issue_alu_regs_reading_2[i] = rs_data[alu_index].Source2;
+
             assign alu_packets[i].inst = rs_data[alu_index].decoded_signals.inst;
             assign alu_packets[i].valid = rs_data[alu_index].decoded_signals.valid;
             assign alu_packets[i].PC = rs_data[alu_index].decoded_signals.PC;
             assign alu_packets[i].NPC = rs_data[alu_index].decoded_signals.NPC;
             assign alu_packets[i].opa_select = rs_data[alu_index].decoded_signals.opa_select;
             assign alu_packets[i].opb_select = rs_data[alu_index].decoded_signals.opb_select;
-            assign alu_packets[i].dest_reg_idx = rs_data[alu_index].decoded_signals.dest_reg_idx;
+            assign alu_packets[i].dest_reg_idx = rs_data[alu_index].T_new;
             assign alu_packets[i].alu_func = rs_data[alu_index].decoded_signals.alu_func;
 
-            //assign regfile_read_indices Decide how to index regfile later
             if (complete_list[rs_data[alu_index].Source1]) begin
-                assign alu_packets[i].Source1_value = issue_alu_read_data_1[i];
+                assign alu_packets[i].source_reg_1 = issue_alu_read_data_1[i];
             end else begin
                 for(j = 0; j < `N; ++j) begin
                     if (rs_data[alu_index].Source1 == CDB_tags_forwarded[j]) begin
-                       assign alu_packets[i].Source1_value = CDB_data_forwarded[j];
+                       assign alu_packets[i].source_reg_1 = CDB_data_forwarded[j];
                     end
                 end
             end
 
             if (complete_list[rs_data[alu_index].Source2]) begin
-                assign alu_packets[i].Src2_value = regfile_outputs;
+                assign alu_packets[i].source_reg_2 = issue_alu_read_data_2[i];
             end else begin
                 for(j = 0; j < `N; ++j) begin
                     if(rs_data[alu_index].Source2 == CDB_tags_forwarded[j]) begin
-                        assign alu_packets[i].Source2_value = CDB_data_forwarded[j];
+                        assign alu_packets[i].source_reg_2 = CDB_data_forwarded[j];
                     end
                 end
             end
             
             assign alu_cdb_gnt[i] = 1'b1;
         end else begin
-            assign alu_packets[i] = //NOP TODO: get the data from rs_entries[alu_index] to form this alu packet
+            assign alu_packets[i] = NOP_ALU_PACKET; //NOP TODO: get the data from rs_entries[alu_index] to form this alu packet
             assign alu_cdb_gnt[i] = 1'b0;
         end
     end
@@ -281,29 +283,39 @@ genvar j;
         encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_mult (mult_inst_gnt_bus[i], mult_rs_index);
         encoder #(`RS_SZ, `RS_SZ_BITS) fu_encoders_mult (mult_fu_gnt_bus[i], mult_fu_index);
         if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
+            
+            // Reading RegFile
+            assign issue_mult_regs_reading_1[i] = rs_data[mult_rs_index].Source1;
+            assign issue_mult_regs_reading_2[i] = rs_data[mult_rs_index].Source2;
+
             assign rs_data_issuing = mult_inst_gnt_bus[i];
-            assign mult_packets[mult_fu_index] = // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
+            assign mult_packets[mult_fu_index].valid = rs_data[mult_rs_index].decoded_signals.valid; // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
+            assign mult_packets[mult_fu_index].dest_reg_idx = rs_data[mult_rs_index].T_new;
+            assign mult_packets[mult_fu_index].bm = rs_data[mult_rs_index].decoded_signals.b_mask;
+            assign mult_packets[mult_fu_index].mult_func = rs_data[mult_rs_index].decoded_signals.mult_func;
+
+
             if (complete_list[rs_data[mult_rs_index].Source1]) begin
-                assign mult_packets[mult_fu_index].Source1_value = regfile_outputs;
+                assign mult_packets[mult_fu_index].source_reg_1 = issue_mult_read_data_1[i];
             end else begin
                 for(j = 0; j < `N; ++j) begin
                     if (rs_data[mult_rs_index].Source1 == CDB_tags_forwarded[j]) begin
-                       assign mult_packets[mult_fu_index].Source1_value = CDB_data_forwarded[j];
+                       assign mult_packets[mult_fu_index].source_reg_1 = CDB_data_forwarded[j];
                     end
                 end
             end
 
             if (complete_list[rs_data[mult_rs_index].Source2]) begin
-                assign mult_packets[mult_fu_index].Src2_value = regfile_outputs;
+                assign mult_packets[mult_fu_index].source_reg_2 = issue_mult_read_data_2[i];
             end else begin
                 for(j = 0; j < `N; ++j) begin
                     if(rs_data[mult_rs_index].Source2 == CDB_tags_forwarded[j]) begin
-                        assign mult_packets[mult_fu_index].Source2_value = CDB_data_forwarded[j];
+                        assign mult_packets[mult_fu_index].source_reg_2 = CDB_data_forwarded[j];
                     end
                 end
             end
         end else begin
-            assign mult_packets[mult_fu_index] = //NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
+            assign mult_packets[mult_fu_index] = NOP_MULT_PACKET//NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
         end
     end
 endgenerate
@@ -314,7 +326,7 @@ generate
 genvar i;
 genvar j;
     //loop through ldst gnt bus
-    for (i = 0; i < `NUM_FU_MULT ++i) begin : ldst_loop
+    for (i = 0; i < `NUM_FU_LDST ++i) begin : ldst_loop
         logic [`RS_SZ_BITS-1:0] ldst_rs_index;
         encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_ldst (ldst_inst_gnt_bus[i], ldst_rs_index);
         encoder #(`RS_SZ, `RS_SZ_BITS) fu_encoders_ldst (ldst_fu_gnt_bus[i], ldst_fu_index);
@@ -322,7 +334,7 @@ genvar j;
             assign rs_data_issuing = ldst_inst_gnt_bus[i];
             assign ldst_packets[ldst_fu_index] = // TODO: get the data from rs_entries[ldst_rs_index] to form this ldst packet
             if (complete_list[rs_data[ldst_rs_index].Source1]) begin
-                assign ldst_packets[ldst_fu_index].Source1_value = regfile_outputs;
+                assign ldst_packets[ldst_fu_index].Source1_value = regfile_outputs; // TODO: change regfile
             end else begin
                 for(j = 0; j < `N; ++j) begin
                     if (rs_data[ldst_rs_index].Source1 == CDB_tags_forwarded[j]) begin
@@ -332,7 +344,7 @@ genvar j;
             end
 
             if (complete_list[rs_data[ldst_rs_index].Source2]) begin
-                assign ldst_packets[ldst_fu_index].Src2_value = regfile_outputs;
+                assign ldst_packets[ldst_fu_index].Src2_value = regfile_outputs; // TODO: change regfile
             end else begin
                 for(j = 0; j < `N; ++j) begin
                     if(rs_data[ldst_rs_index].Source2 == CDB_tags_forwarded[j]) begin
