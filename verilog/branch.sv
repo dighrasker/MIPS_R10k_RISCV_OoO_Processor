@@ -1,9 +1,13 @@
+`include "sys_defs.svh"
+`include "ISA.svh"
+
 module branch (
     input  BRANCH_PACKET     branch_packet,
     output BRANCH_REG_PACKET branch_reg_result,
     output CDB_REG_PACKET    branch_result // True/False condition result
 );
 
+    logic take;
     DATA opa, opb;
 
     // ALU opA mux
@@ -30,8 +34,6 @@ module branch (
         endcase
     end
 
-    assign branch_result.result = opa + opb;
-
     always_comb begin
         if(branch_packet.conditional) begin
             case (branch_packet.branch_func)
@@ -48,7 +50,7 @@ module branch (
         end
 
         branch_result.result = branch_packet.NPC;
-        branch_result.completing_reg = branch_packet.completing_reg;
+        branch_result.completing_reg = branch_packet.dest_reg_idx;
         branch_result.valid = branch_packet.valid;
 
         branch_reg_result.target_PC = opa + opb;

@@ -189,7 +189,7 @@ GREP = grep -E --color=auto
 # ---- Modules to Test ---- #
 
 # TODO: add more modules here
-MODULES = cpu mult rob rs freddylist branchstack retire dispatch
+MODULES = alu branch branchstack CountOnes cpu deocder mult rob rs freddylist branchstack instbuffer retire dispatch
 
 # TODO: update this if you add more header files
 ALL_HEADERS = $(CPU_HEADERS)
@@ -246,17 +246,29 @@ CPU_TESTBENCH = test/pipeline_print.c \
 # NOTE: you CANNOT alter the given memory module
 
 # verilog/cpu.sv is implicit
-CPU_SOURCES = verilog/cpu.sv \
+CPU_SOURCES = verilog/alu.sv \
+		      verilog/branch.sv \
+			  verilog/branchstack.sv \
+			  verilog/CountOnes.sv \
+			  verilog/cpu.sv \
+		      verilog/decoder.sv \
+			  verilog/DispatchStage.sv \
+			  verilog/encoder.sv \
+		      verilog/ExecuteStage.sv \
+			  verilog/FetchStage.sv \
+			  verilog/FreddyList.sv \
+		      verilog/icache.sv \
+			  verilog/InstBuffer.sv \
+		      verilog/IssueStage.sv \
+			  verilog/MapTable.sv \
+			  verilog/memDP.sv \
+		      verilog/mult.sv \
+			  verilog/psel_gen.sv \
 			  verilog/regfile.sv \
-              verilog/icache.sv \
-              verilog/memDP.sv \
-			  verilog/p3/stage_if.sv \
-			  verilog/p3/stage_id.sv \
-			  verilog/p3/stage_ex.sv \
-			  verilog/p3/stage_mem.sv \
-			  verilog/p3/stage_wb.sv \
-			  verilog/mult.sv
-
+			  verilog/retire.sv \
+			  verilog/rob.sv \
+		      verilog/RS.sv 
+			  
 build/cpu.simv: $(CPU_SOURCES) $(CPU_HEADERS) $(CPU_TESTBENCH)
 synth/cpu.vg: $(CPU_SOURCES) $(CPU_HEADERS)
 build/cpu.syn.simv: $(CPU_TESTBENCH)

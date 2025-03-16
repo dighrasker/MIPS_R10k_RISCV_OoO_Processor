@@ -1,5 +1,4 @@
-
-`include "sys_defs.svh"
+`include "verilog/sys_defs.svh"
 
 // This is a pipelined multiplier that multiplies two 64-bit integers and
 // returns the low 64 bits of the result.
@@ -21,18 +20,8 @@ module mult # (
     // TODO: make sure the outputs are correct
     output logic                  fu_free, // tells execute if it should apply backpressure on this FU
     output logic                  cdb_valid, // tells cdb this FU has a valid inst
-    output CDB_REG_PACKET         mult_result,
+    output CDB_REG_PACKET         mult_result
 );
-
-    typedef struct {
-        logic            valid, 
-        logic [63:0]     prev_sum,
-        logic [63:0]     mplier,
-        logic [63:0]     mcand,
-        PHYS_REG_ID_BITS dest_reg_idx,
-        B_MASK           bm,
-        MULT_FUNC        func,
-    } INTERNAL_MULT_PACKET;
 
     INTERNAL_MULT_PACKET [`MULT_STAGES-2:0] internal_mult_packets;
     INTERNAL_MULT_PACKET internal_mult_packet_in, internal_mult_packet_out;
@@ -83,10 +72,7 @@ module mult # (
 
     assign mult_result.result = (internal_mult_packet_out.func == M_MUL) ? internal_mult_packet_out.prev_sum[31:0] : internal_mult_packet_out.prev_sum[63:32];
     assign mult_result.completing_reg = internal_mult_packet_out.dest_reg_idx;
-    assign mult_result.bmm = '0;
-    assign mult_result.bm_mispred = 0;
-    assign mult_result.taken = 0;
-    assign mult_packet.valid = internal_mult_packet_out.valid;
+    assign mult_result.valid = internal_mult_packet_out.valid;
 endmodule // mult
 
 

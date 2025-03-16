@@ -42,10 +42,11 @@ module testbench;
     // variables used in the testbench
     logic        clock;
     logic        reset;
-    /*
+    
     logic [31:0] clock_count; // also used for terminating infinite loops
     logic [31:0] instr_count;
 
+    /*
     MEM_COMMAND proc2mem_command;
     ADDR        proc2mem_addr;
     MEM_BLOCK   proc2mem_data;
@@ -53,10 +54,12 @@ module testbench;
     MEM_BLOCK   mem2proc_data;
     MEM_TAG     mem2proc_data_tag;
     MEM_SIZE    proc2mem_size;
+    */
 
-    COMMIT_PACKET [`N-1:0] committed_insts;
+    //COMMIT_PACKET [`N-1:0] committed_insts;
     EXCEPTION_CODE error_status = NO_ERROR;
 
+    /*
     ADDR  if_NPC_dbg;
     DATA  if_inst_dbg;
     logic if_valid_dbg;
@@ -118,12 +121,6 @@ module testbench;
         .PC(PCs)
     );
 
-    for(int i = 0; i < `N; ++) begin
-        logic [63:0] mem_block;
-        mem_block = memory.unified_memory(PC[15:3]);
-        insts[i] = PCs[i][2] ? mem_block[63:32] : mem_block[31:0];
-    end
-
     // Instantiate the Data Memory
     mem memory (
         // Inputs
@@ -148,6 +145,14 @@ module testbench;
         clock = ~clock;
     end
 
+    generate
+    genvar i;
+        for(i = 0; i < `N; ++i) begin
+            logic [63:0] mem_block;
+            assign mem_block = memory.unified_memory[PCs[15:3]];
+            assign insts[i] = PCs[i][2] ? mem_block[63:32] : mem_block[31:0];
+        end
+    endgenerate
 
     initial begin
         $display("\n---- Starting CPU Testbench ----\n");

@@ -1,4 +1,5 @@
 // Simple FIFO with parametrizable depth and width
+`include "sys_defs.svh"
 
 module instbuffer #() (
     input   logic                        clock, 
@@ -15,7 +16,7 @@ module instbuffer #() (
     // ------------ TO/FROM DISPATCH or DECODER -------- //
     input   logic  [`NUM_SCALAR_BITS-1:0] num_dispatched,     //number of spots available in dispatch
     output  FETCH_PACKET         [`N-1:0] inst_buffer_outputs,   // For retire to check eligibility
-    output  logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_outputs_valid, // If not all N FB entries are valid entries they should not be considered 
+    output  logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_outputs_valid // If not all N FB entries are valid entries they should not be considered 
 );
 
     FETCH_PACKET [`FB_SZ-1:0] inst_buffer;

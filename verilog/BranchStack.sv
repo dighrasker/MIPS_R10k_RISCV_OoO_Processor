@@ -39,10 +39,10 @@ module branchstack #(
     logic         taken;
 
 
-    assign b_mm_resolve = branch_completing[i].b_mm;
-    assign b_mm_mispred = branch_completing[i].bm_mispred;
-    assign target_PC = branch_completing[i].result;
-    assign taken = branch_completing[i].taken;
+    assign b_mm_resolve = branch_completing.bmm;
+    assign b_mm_mispred = branch_completing.bm_mispred;
+    assign target_PC = branch_completing.target_PC;
+    assign taken = branch_completing.taken;
 
 
     BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack, next_branch_stack;

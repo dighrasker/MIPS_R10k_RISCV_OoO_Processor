@@ -42,9 +42,10 @@ module regfile (
     // note: no system reset, register values must be written before they can be read
     input PHYS_REG_IDX [`N-1:0] phys_regs_completing,
     input              [`N-1:0] write_en, //phys regs valid
-    input DATA         [`N-1:0] write_data, //cdb results
+    input DATA         [`N-1:0] write_data //cdb results
 
 );
+    genvar i;
 
     // Intermediate data before accounting for register 0
     DATA  rdata2, rdata1;
@@ -56,62 +57,43 @@ module regfile (
     DATA [`PHYS_REG_SZ_R10K-1:0] reg_file;
 
     // Read for Retire
-    for (int i = 0; i < `N; ++i) begin
-        assign retire_read_data[i] = reg_file[retire_phys_regs_reading[i]];
-    end
+    generate
+        for (i = 0; i < `N; ++i) begin
+            assign retire_read_data[i] = reg_file[retire_phys_regs_reading[i]];
+        end
+    endgenerate
 
     // Read for Issue
-    for(int i = 0; i < `NUM_FU_ALU; ++i) begin
-        assign issue_alu_read_data_1[i] = reg_file[issue_alu_regs_reading_1[i]];
-        assign issue_alu_read_data_2[i] = reg_file[issue_alu_regs_reading_2[i]];
-    end
+    generate
+        for(i = 0; i < `NUM_FU_ALU; ++i) begin
+            assign issue_alu_read_data_1[i] = reg_file[issue_alu_regs_reading_1[i]];
+            assign issue_alu_read_data_2[i] = reg_file[issue_alu_regs_reading_2[i]];
+        end
+    endgenerate
+    
+    generate
+        for(i = 0; i < `NUM_FU_BRANCH; ++i) begin
+            assign issue_branch_read_data_1[i] = reg_file[issue_branch_regs_reading_1[i]];
+            assign issue_branch_read_data_2[i] = reg_file[issue_branch_regs_reading_2[i]];
+        end
+    endgenerate
+    
+    generate
+        for (i = 0; i < `NUM_FU_MULT; ++i) begin
+            assign issue_mult_read_data_1[i] = reg_file[issue_mult_regs_reading_1[i]];
+            assign issue_mult_read_data_2[i] = reg_file[issue_mult_regs_reading_2[i]];
+        end
+    endgenerate
 
-    for(int i = 0; i < `NUM_FU_BRANCH; ++i) begin
-        assign issue_branch_read_data_1[i] = reg_file[issue_branch_regs_reading_1[i]];
-        assign issue_branch_read_data_2[i] = reg_file[issue_branch_regs_reading_2[i]];
-    end
-
-    for(int i = 0; i < `NUM_FU_MULT; ++i) begin
-        assign issue_mult_read_data_1[i] = reg_file[issue_mult_regs_reading_1[i]];
-        assign issue_mult_read_data_2[i] = reg_file[issue_mult_regs_reading_2[i]];
-
-    always_ff begin
-        if(reset) begin
+    always_ff @(posedge clock) begin
+        if (reset) begin
             reg_file <= '0;
         end else begin
             for(int i = 0; i < `N; ++i) begin
-                if(write_en[i] && (phys_regs_completing[i]==0)) begin
+                if (write_en[i] && (phys_regs_completing[i] != 0)) begin
                     reg_file[phys_regs_completing[i]] <= write_data[i];
                 end
             end
         end
     end
-
-
-    // Read port 1
-    always_comb begin
-        if (read_idx_1 == `ZERO_REG) begin
-            read_out_1 = '0;
-            re1        = 1'b0;
-        end else begin
-            read_out_1 = rdata1;
-            re1       = 1'b1;
-        end
-    end
-
-    // Read port 2
-    always_comb begin
-        if (read_idx_2 == `ZERO_REG) begin
-            read_out_2 = '0;
-            re2        = 1'b0;
-        end else begin
-            read_out_2 = rdata2;
-            re2       = 1'b1;
-        end
-    end
-
-    // Write port
-    // Can't write to zero register
-    assign we = write_en && (write_idx != `ZERO_REG);
-
 endmodule // regfile

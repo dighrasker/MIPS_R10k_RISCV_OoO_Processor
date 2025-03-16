@@ -22,15 +22,13 @@ module MapTable #(
 
     always_comb begin
         next_map_table = map_table;
-        generate
-            for (genvar i; i < `N; ++i) begin
-                if(i < inst_valid) begin
-                    source1_phys_reg[i] = next_map_table[source1_arch_reg[i]];
-                    source2_phys_reg[i] = next_map_table[source2_arch_reg[i]];
-                    next_map_table[dest_reg[i]] = free_regs[i];
-                end
+        for (int i = 0; i < `N; ++i) begin
+            if(i < inst_valid) begin
+                source1_phys_reg[i] = next_map_table[source1_arch_reg[i]];
+                source2_phys_reg[i] = next_map_table[source2_arch_reg[i]];
+                next_map_table[dest_reg[i]] = free_regs[i];
             end
-        endgenerate
+        end  
     end
 
     always_ff @(posedge clock) begin

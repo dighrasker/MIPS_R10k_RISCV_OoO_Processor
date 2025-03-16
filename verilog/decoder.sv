@@ -4,7 +4,7 @@
 // This has a few changes, it now sets a "mult" flag for multiply instructions
 // Pass these to the mult module with inst.r.funct3 as the MULT_FUNC
 
-`include "sys_defs.svh"
+`include "verilog/sys_defs.svh"
 `include "ISA.svh"
 
 // Decode an instruction: generate useful datapath control signals by matching the RISC-V ISA
@@ -20,12 +20,14 @@ module decoder (
     output ARCH_REG_IDX  dest_arch_reg
 );
     //New outputs passed through into decode packet
-    decoder_out.inst = inst_buffer_input.inst;
-    decoder_out.valid = 1'b1;
-    decoder_out.taken = inst_buffer_input.taken
-    decoder_out.PC = inst_buffer_input.PC;
-    decoder_out.NPC = PC + 4;
-    decoder_out.mult_func = inst.r.funct3;
+    assign decoder_out.inst = inst_buffer_input.inst;
+    assign decoder_out.valid = 1'b1;
+    assign decoder_out.taken = inst_buffer_input.taken;
+    assign decoder_out.PC = inst_buffer_input.PC;
+    assign decoder_out.NPC = inst_buffer_input.PC + 4;
+    assign decoder_out.mult_func = inst_buffer_input.inst.r.funct3;
+    assign decoder_out.branch_func = inst_buffer_input.inst.b.funct3;
+
     // Note: I recommend using an IDE's code folding feature on this block
     always_comb begin
         // Default control values (looks like a NOP)
@@ -189,9 +191,9 @@ module decoder (
 
     assign is_rs1_used = decoder_out.cond_branch || (decoder_out.opa_select == OPA_IS_RS1);
     assign is_rs2_used = decoder_out.cond_branch || decoder_out.wr_mem || (decoder_out.opb_select == OPB_IS_RS2);
-    assign source1_arch_reg = inst.r.rs1;
-    assign source2_arch_reg = inst.r.rs2;
-    assign dest_arch_reg = inst.r.rd;
+    assign source1_arch_reg = inst_buffer_input.inst.r.rs1;
+    assign source2_arch_reg = inst_buffer_input.inst.r.rs2;
+    assign dest_arch_reg = inst_buffer_input.inst.r.rd;
 
     assign decoder_out.FU_type = (decoder_out.cond_branch || decoder_out.uncond_branch) ? BU :
                                     (decoder_out.rd_mem || decoder_out.wr_mem) ? LDST :

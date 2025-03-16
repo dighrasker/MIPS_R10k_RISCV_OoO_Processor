@@ -71,7 +71,7 @@ module ExecuteStage (
         for (int i = 0; i < `N; ++i) begin
             for (int j = 0; j < `NUM_FU_TOTAL; ++j) begin
                 if (complete_gnt_bus[i][j]) begin
-                    next_cdb_reg[i] = fu_results[j];
+                    next_cdb_reg[i] = fu_result[j];
                     cdb_completing[i].completing_reg = next_cdb_reg[i].completing_reg;
                     cdb_completing[i].valid = next_cdb_reg[i].valid;
                 end
@@ -92,7 +92,7 @@ module ExecuteStage (
         .alu_packet(alu_packets_issuing),
 
         // Output
-        .result(alu_result)
+        .alu_result(alu_result)
     );
 
     // Instantiate the multiplier
@@ -100,14 +100,14 @@ module ExecuteStage (
         // Inputs
         .clock(clock),
         .reset(reset),
-        .mult_packet(mult_packets_issuing_in),
+        .mult_packet_in(mult_packets_issuing_in),
         .cdb_en(mult_cdb_en),
         .b_mm_resolve(b_mm_resolve),
         .b_mm_mispred(b_mm_mispred),
 
         // Output
         .fu_free(mult_free),
-        .mult_cdb_valid(mult_cdb_valid),
+        .cdb_valid(mult_cdb_valid),
         .mult_result(mult_result)
     );
 

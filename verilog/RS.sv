@@ -1,6 +1,4 @@
 `include "sys_defs.svh"
-`include "CountOnes.sv"
-`include "psel_gen.sv"
 
 module rs #(
 ) (

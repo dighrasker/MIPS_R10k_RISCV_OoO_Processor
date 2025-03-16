@@ -1,4 +1,4 @@
-`include "sys_defs.svh"
+`include "verilog/sys_defs.svh"
 
 module Dispatch (
     input   logic                               clock,
@@ -100,7 +100,7 @@ module Dispatch (
                 
                 
                 //Create RS Packet
-                rs_entries[i].decoder_out = decoder_out[i];
+                rs_entries[i].decoded_signals = decoder_out[i];
                 rs_entries[i].T_new = regs_to_use[i];
                 rs_entries[i].Source1 = next_map_table[source1_arch_reg[i]];
                 if (!is_rs1_used[i]) begin
@@ -184,12 +184,12 @@ module Dispatch (
         end
     end
 
-    `ifdef DEBUG
-        assign dispatch_debug = {
-            map_table:      map_table,
-            next_map_table: next_map_table,
-            fu_type:        fu_type
-        };
-    `endif
+    // `ifdef DEBUG
+    //     assign dispatch_debug = {
+    //         map_table:      map_table,
+    //         next_map_table: next_map_table,
+    //         fu_type:        fu_type
+    //     };
+    // `endif
 
 endmodule

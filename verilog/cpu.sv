@@ -9,6 +9,7 @@
 /////////////////////////////////////////////////////////////////////////
 
 `include "sys_defs.svh"
+`include "ISA.svh"
 
 module cpu (
     input clock, // System clock
@@ -109,11 +110,8 @@ module cpu (
     DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_2;
 
     /*------- FETCH WIRES ----------*/  
-    ADDR                 [`N-1:0] PC;
     FETCH_PACKET         [`N-1:0] inst_buffer_inputs;   //instructions going to instruction buffer
     logic  [`NUM_SCALAR_BITS-1:0] instructions_valid;
-
-
 
     /*------- FETCH BUFFER WIRES ----------*/    
     logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots;
@@ -144,20 +142,20 @@ module cpu (
 
     /*------- ISSUE WIRES ----------*/
 
-    wor                   [`RS_SZ-1:0] rs_data_issuing;     // set index to 1 when a rs_data is selected to be issued
-    DATA            [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1;
-    DATA            [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2;
-    DATA           [`NUM_FU_MULT-1:0] issue_mult_regs_reading_1;
-    DATA           [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2;
-    DATA         [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1;
-    DATA         [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2;
-    logic                  [`NUM_FU_MULT-1:0] mult_cdb_gnt;
-    logic                  [`NUM_FU_LDST-1:0] ldst_cdb_gnt;
-    ALU_ENTRY_PACKET        [`NUM_FU_ALU-1:0] alu_packets;
-    MULT_ENTRY_PACKET      [`NUM_FU_MULT-1:0] mult_packets;
-    BRANCH_ENTRY_PACKET  [`NUM_FU_BRANCH-1:0] branch_packets;
-    LDST_ENTRY_PACKET      [`NUM_FU_LDST-1:0] ldst_packets;
-    logic [`N-1:0]        [`NUM_FU_TOTAL-1:0] complete_gnt_bus;
+    wor                    [`RS_SZ-1:0] rs_data_issuing;     // set index to 1 when a rs_data is selected to be issued
+    DATA              [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1;
+    DATA              [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2;
+    DATA             [`NUM_FU_MULT-1:0] issue_mult_regs_reading_1;
+    DATA             [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2;
+    DATA           [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1;
+    DATA           [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2;
+    logic            [`NUM_FU_MULT-1:0] mult_cdb_gnt;
+    logic            [`NUM_FU_LDST-1:0] ldst_cdb_gnt;
+    ALU_PACKET        [`NUM_FU_ALU-1:0] alu_packets;
+    MULT_PACKET      [`NUM_FU_MULT-1:0] mult_packets;
+    BRANCH_PACKET  [`NUM_FU_BRANCH-1:0] branch_packets;
+    LDST_PACKET      [`NUM_FU_LDST-1:0] ldst_packets;
+    logic [`N-1:0]  [`NUM_FU_TOTAL-1:0] complete_gnt_bus;
     
     /*----------EXECUTE WIRES -------------*/
     logic              [`NUM_FU_MULT-1:0] mult_free;
@@ -166,8 +164,12 @@ module cpu (
     CDB_REG_PACKET               [`N-1:0] cdb_reg;
     BRANCH_REG_PACKET                     branch_reg;
 
-    assign phys_reg_completing = cdb_reg.completing_reg; // decoding cdb_reg for freddylist
-    assign completing_valid = cdb_reg.valid; // decoding cdb_reg for freddylist
+    always_comb begin
+        for (int i = 0; i < `N; ++i) begin
+            phys_reg_completing[i] = cdb_reg[i].completing_reg; // decoding cdb_reg for freddylist
+            completing_valid[i] = cdb_reg[i].valid; // decoding cdb_reg for freddylist
+        end
+    end
 
     /*------- RETIRE WIRES ----------*/
 
@@ -331,10 +333,9 @@ module cpu (
         // ------------ TO/FROM FETCH BUFFER ------------- //
         .inst_buffer_spots(inst_buffer_spots),     //number of spots in instruction buffer
         .inst_buffer_inputs(inst_buffer_inputs),   //instructions going to instruction buffer
-        .instructions_valid(instructions_valid), //number of valid instructions fetch sends to instruction buffer   
+        .instructions_valid(instructions_valid) //number of valid instructions fetch sends to instruction buffer   
     );
 
-    
 
     //////////////////////////////////////////////////
     //                                              //
@@ -410,6 +411,8 @@ module cpu (
    
 
     Issue issue_instance (
+        .clock(clock),
+        .reset(reset),
         // ------------- FROM FREDDY -------------- //
         .complete_list(complete_list),
 
@@ -500,6 +503,6 @@ module cpu (
     //////////////////////////////////////////////////
 
     // Output the committed instruction to the testbench for counting
-    assign committed_insts[0] = wb_packet;
+    // assign committed_insts[0] = wb_packet;
 
 endmodule // pipeline

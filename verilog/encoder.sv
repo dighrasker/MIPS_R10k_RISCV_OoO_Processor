@@ -1,3 +1,5 @@
+`include "verilog/sys_defs.svh"
+
 module encoder #( // Parametize this module
     parameter INPUT_LENGTH = `PHYS_REG_SZ_R10K,
     parameter OUTPUT_LENGTH = `PHYS_REG_ID_BITS

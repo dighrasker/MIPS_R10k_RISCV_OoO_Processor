@@ -457,6 +457,7 @@ typedef struct packed{
     ALU_FUNC       alu_func;
     logic          mult; 
     MULT_FUNC      mult_func;
+    BRANCH_FUNC    branch_func;
     logic          rd_mem; 
     logic          wr_mem; 
     logic          cond_branch; 
@@ -470,7 +471,7 @@ typedef struct packed{
 //TODO: CHANGE FOR RS
 typedef struct packed {  
     DECODE_PACKET  decoded_signals;
-
+    
     //Added during dispatch
     PHYS_REG_IDX   T_new; // Use as unique RS id ???
     PHYS_REG_IDX   Source1;
@@ -550,6 +551,16 @@ typedef struct packed {
     MULT_FUNC       mult_func;   
 } MULT_PACKET;
 
+typedef struct packed {
+    logic            valid;
+    logic [63:0]     prev_sum;
+    logic [63:0]     mplier;
+    logic [63:0]     mcand;
+    PHYS_REG_IDX     dest_reg_idx;
+    B_MASK           bm;
+    MULT_FUNC        func;
+} INTERNAL_MULT_PACKET;
+
 const MULT_PACKET NOP_MULT_PACKET = '{
     valid:         '0,
     source_reg_1:  '0,   // No valid source register
@@ -564,7 +575,7 @@ typedef struct packed {
     logic           valid;
     ADDR            PC;
     ADDR            NPC; // PC + 4
-    logic           unconditional;
+    logic           conditional;
     ALU_OPA_SELECT  opa_select; // ALU opa mux select (ALU_OPA_xxx *)
     ALU_OPB_SELECT  opb_select; // ALU opb mux select (ALU_OPB_xxx *)
     DATA            source_reg_1;
@@ -580,13 +591,13 @@ const BRANCH_PACKET NOP_BRANCH_PACKET = '{
     valid:        '0,
     PC:           '0,
     NPC:          '0, // PC + 4
-    conditional    0,
+    conditional:   0,
     opa_select:    OPA_IS_RS1, // ALU opa mux select (ALU_OPA_xxx *)
     opb_select:    OPB_IS_RS2, // ALU opb mux select (ALU_OPB_xxx *)
     source_reg_1: '0,
     source_reg_2: '0,
     dest_reg_idx: '0,       // not used but might be good for identification purposes
-    taken:         0,
+    taken:        '0,
     branch_func:  '0,    // comparator used for branch
     bmm:          '0            // this branch's corresponding mask
 };

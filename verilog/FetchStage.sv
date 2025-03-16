@@ -1,5 +1,4 @@
-
-// Simple FIFO with parametrizable depth and width
+`include "verilog/sys_defs.svh"
 
 module Fetch #() (
     input   logic                        clock, 
@@ -17,7 +16,7 @@ module Fetch #() (
     // ------------ TO/FROM FETCH BUFFER -------- //
     input   logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,     //number of spots in instruction buffer
     output  FETCH_PACKET         [`N-1:0] inst_buffer_inputs,   //instructions going to instruction buffer
-    output  logic  [`NUM_SCALAR_BITS-1:0] instructions_valid, //number of valid instructions fetch sends to instruction buffer 
+    output  logic  [`NUM_SCALAR_BITS-1:0] instructions_valid //number of valid instructions fetch sends to instruction buffer 
 
 );
 
@@ -28,7 +27,7 @@ module Fetch #() (
         Next_PC_reg = PC_reg[0];
         for (int i = 0; i < `N; ++i) begin
             PC_reg[i] = Next_PC_reg;
-            if (i < inst_spots) begin
+            if (i < inst_buffer_spots) begin
                 inst_buffer_inputs[i].inst = inst[i];
                 inst_buffer_inputs[i].PC = Next_PC_reg;
                 inst_buffer_inputs[i].taken = 0;

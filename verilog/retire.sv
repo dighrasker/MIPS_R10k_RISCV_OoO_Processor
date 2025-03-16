@@ -51,15 +51,15 @@ always_comb begin
     num_retiring = 0;
     phys_regs_retiring = '0;
     next_halt = halt;
-    committed_insts = 0';
-    retire_phys_regs_reading = 
+    committed_insts = '0;
+    retire_phys_regs_reading = '0;
     for (int i = 0; i < `N; i++) begin
         if (!next_halt && i < rob_outputs_valid && complete_list_exposed[rob_outputs[i].T_new]) begin
             committed_insts[i].data = retire_read_data[i];
-            retire_phys_reg_reading[i] = rob_outputs[i].T_new;
+            retire_phys_regs_reading[i] = rob_outputs[i].T_new;
             committed_insts[i].reg_idx = rob_outputs[i].T_new;
             committed_insts[i].halt = rob_outputs[i].halt;
-            committed_insts[i].illegal = rob_outputs[i].illegal
+            committed_insts[i].illegal = rob_outputs[i].illegal;
             committed_insts[i].NPC = rob_outputs[i].NPC;
             committed_insts[i].valid = 1'b1;
             phys_regs_retiring[num_retiring] = rob_outputs[i].T_old;
