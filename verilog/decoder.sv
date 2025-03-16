@@ -10,9 +10,8 @@
 // Decode an instruction: generate useful datapath control signals by matching the RISC-V ISA
 // This module is purely combinational
 module decoder (
-    input  INST          inst,
     //input  logic         valid, // when low, ignore inst. Output will look like a NOP
-    input  ADDR          PC,
+    input  FETCH_PACKET  inst_buffer_input,
     output DECODE_PACKET decoder_out,
     output logic         is_rs1_used,
     output logic         is_rs2_used,
@@ -21,9 +20,10 @@ module decoder (
     output ARCH_REG_IDX  dest_arch_reg
 );
     //New outputs passed through into decode packet
-    decoder_out.inst = inst;
+    decoder_out.inst = inst_buffer_input.inst;
     decoder_out.valid = 1'b1;
-    decoder_out.PC = PC;
+    decoder_out.taken = inst_buffer_input.taken
+    decoder_out.PC = inst_buffer_input.PC;
     decoder_out.NPC = PC + 4;
     // Note: I recommend using an IDE's code folding feature on this block
     always_comb begin
@@ -42,8 +42,8 @@ module decoder (
         decoder_out.halt          = `FALSE;
         decoder_out.illegal       = `FALSE;
 
-        if (valid) begin
-            casez (inst)
+        if (1'b1) begin //replaced valid check with 1'b1 since we can decode anything we want, we already know we only dispatch valid ones
+            casez (inst_buffer_input.inst)
                 `RV32_LUI: begin
                     decoder_out.has_dest   = `TRUE;
                     decoder_out.opa_select = OPA_IS_ZERO;

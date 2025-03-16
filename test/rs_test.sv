@@ -22,8 +22,8 @@ module RS_test ();
     
     // ------- TO/FROM: ISSUE --------- //
     logic           [`RS_SZ-1:0] rs_data_issuing;      // bit vector of rs_data that is being issued by issue stage
-    RS_PACKET       [`RS_SZ-1:0] RS_data;              // The entire RS data 
-    logic           [`RS_SZ-1:0] RS_valid_next;        // 1 if RS data is valid <-- Coded
+    RS_PACKET       [`RS_SZ-1:0] rs_data;              // The entire RS data 
+    logic           [`RS_SZ-1:0] rs_valid_next;        // 1 if RS data is valid <-- Coded
 
     // ------- FROM: EXECUTE (BRANCH) --------- //
     B_MASK_MASK                   b_mm_resolve;         // b_mask_mask to resolve
@@ -39,8 +39,8 @@ module RS_test ();
         .CDB_tags          (CDB_tags),
         .CDB_valid         (CDB_valid),
         .rs_data_issuing   (rs_data_issuing),
-        .RS_data           (RS_data),
-        .RS_valid_next     (RS_valid_next),
+        .rs_data           (rs_data),
+        .rs_valid_next     (rs_valid_next),
         .b_mm_resolve      (b_mm_resolve),
         .b_mm_mispred      (b_mm_mispred),
         .rs_debug          (rs_debug)
@@ -55,8 +55,8 @@ module RS_test ();
         .CDB_tags          (CDB_tags),
         .CDB_valid         (CDB_valid),
         .rs_data_issuing   (rs_data_issuing),
-        .RS_data           (RS_data),
-        .RS_valid_next     (RS_valid_next),
+        .rs_data           (rs_data),
+        .rs_valid_next     (rs_valid_next),
         .b_mm_resolve      (b_mm_resolve),
         .b_mm_mispred      (b_mm_mispred),
         .rs_debug          (rs_debug)
@@ -186,7 +186,7 @@ module RS_test ();
 
 
         $monitor("  %3d | num_dispatched: %d   b_mm_resolve: %d   b_mm_mispred: %d,   spots: %d     rs_reqs: %b         rs_valid: %b        rs_valid_next: %b   rs_data_issuing: %b   CDB_tags: %d %d %d        RS27.src2: %d   RS27.src2rdy: %b",
-                  $time,  num_dispatched,      b_mm_resolve,      b_mm_mispred,       rs_spots,     rs_debug.rs_reqs,   rs_debug.rs_valid,  RS_valid_next,      rs_data_issuing,   CDB_tags[0], CDB_tags[1], CDB_tags[2], RS_data[27].Source2, RS_data[27].Source2_ready);
+                  $time,  num_dispatched,      b_mm_resolve,      b_mm_mispred,       rs_spots,     rs_debug.rs_reqs,   rs_debug.rs_valid,  rs_valid_next,      rs_data_issuing,   CDB_tags[0], CDB_tags[1], CDB_tags[2], rs_data[27].Source2, rs_data[27].Source2_ready);
         @(negedge clock);
         @(negedge clock);
         reset = 0;

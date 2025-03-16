@@ -29,9 +29,9 @@ module Dispatch #(
     input   logic        [`NUM_SCALAR_BITS-1:0] rob_spots,
     output  ROB_PACKET                 [`N-1:0] rob_entries,
 
-    // ------------ TO/FROM RS ------------- //
-    output  RS_PACKET                  [`N-1:0] rs_entries,
+    // ------------ TO/FROM RS ------------- // 
     input   logic        [`NUM_SCALAR_BITS-1:0] rs_spots,
+    output  RS_PACKET                  [`N-1:0] rs_entries,
 
     // ------------ TO/FROM FREDDY LIST ------------- //
     //input   logic        [`NUM_SCALAR_BITS-1:0] num_regs_available,

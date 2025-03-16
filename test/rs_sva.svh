@@ -20,8 +20,8 @@ module RS_sva #(
     
     // ------- TO/FROM: ISSUE --------- //
     input  logic           [`RS_SZ-1:0] rs_data_issuing,      // bit vector of rs_data that is being issued by issue stage
-    input  RS_PACKET       [`RS_SZ-1:0] RS_data,              // The entire RS data 
-    input  logic           [`RS_SZ-1:0] RS_valid_next,        // 1 if RS data is valid <-- Coded
+    input  RS_PACKET       [`RS_SZ-1:0] rs_data,              // The entire RS data 
+    input  logic           [`RS_SZ-1:0] rs_valid_next,        // 1 if RS data is valid <-- Coded
 
     // ------- FROM: EXECUTE (BRANCH) --------- //
     input B_MASK_MASK                   b_mm_resolve,         // b_mask_mask to resolve
@@ -47,15 +47,15 @@ module RS_sva #(
     
     clocking cb @(posedge clock);
         property squashing(i);
-            (b_mm_mispred && rs_debug.rs_valid[i] && (RS_data[i].b_mask & b_mm_resolve)) |-> (RS_valid_next[i] == 0);
+            (b_mm_mispred && rs_debug.rs_valid[i] && (rs_data[i].b_mask & b_mm_resolve)) |-> (rs_valid_next[i] == 0);
         endproperty
 
         property cammingSrc1(i, j);
-            (rs_debug.rs_valid[i] && CDB_valid[j] && (CDB_tags[j] == RS_data[i].Source1)) |=> (RS_data[i].Source1_ready);
+            (rs_debug.rs_valid[i] && CDB_valid[j] && (CDB_tags[j] == rs_data[i].Source1)) |=> (rs_data[i].Source1_ready);
         endproperty
 
         property cammingSrc2(i, j);
-            (rs_debug.rs_valid[i] && CDB_valid[j] && (CDB_tags[j] == RS_data[i].Source2)) |=> (RS_data[i].Source2_ready);
+            (rs_debug.rs_valid[i] && CDB_valid[j] && (CDB_tags[j] == rs_data[i].Source2)) |=> (rs_data[i].Source2_ready);
         endproperty
     endclocking
 
@@ -69,13 +69,13 @@ module RS_sva #(
             end
 
         //testing b_mask values after resolving (no mispred)
-        //should be checking RS_data[i].b_mask
+        //should be checking rs_data[i].b_mask
         for (int i = 0; i < `RS_SZ; ++ i) begin // for each RS entry
             if(rs_debug.rs_valid[i]) begin
-                assert(reset || !(RS_data[i].b_mask & b_mm_resolve_prev))
+                assert(reset || !(rs_data[i].b_mask & b_mm_resolve_prev))
                     else begin
                         $error("RS entry #%0d did not properly set b_mask idx to zero - Current B_mask(%0d) - Prev B_mask_mask(%0d).", 
-                        i, RS_data[i].b_mask, b_mm_resolve_prev);
+                        i, rs_data[i].b_mask, b_mm_resolve_prev);
                         $finish;
                     end
             end
@@ -100,7 +100,7 @@ module RS_sva #(
                 assert property (cb.squashing(i))
                     else begin
                         $error("RS entry #%0d did not properly squash when it should have - Current B_mask(%0d) - b_mm_resolve(%0d).", 
-                            i, RS_data[i].b_mask, b_mm_resolve_prev);
+                            i, rs_data[i].b_mask, b_mm_resolve_prev);
                         $finish;
                     end
             end
@@ -112,13 +112,13 @@ module RS_sva #(
                     assert property (cb.cammingSrc1(k, j))
                         else begin
                             $error("RS entry #%0d did not properly match the cdb to src 1 when it should have - Current cdb idx(%0d) - RS entry src 1(%0d).", 
-                            k, CDB_tags[j], RS_data[k].Source1);
+                            k, CDB_tags[j], rs_data[k].Source1);
                             $finish;
                         end
                     assert property (cb.cammingSrc2(k, j))
                         else begin
                             $error("RS entry #%0d did not properly match the cdb to src 2 when it should have - Current cdb idx(%0d) - RS entry src 2(%0d).", 
-                            k, CDB_tags[j], RS_data[k].Source2);
+                            k, CDB_tags[j], rs_data[k].Source2);
                             $finish;
                         end
                 end

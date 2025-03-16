@@ -18,10 +18,10 @@ module rs #(
     
     // ------- TO/FROM: ISSUE --------- //
     input  logic           [`RS_SZ-1:0] rs_data_issuing,      // bit vector of rs_data that is being issued by issue stage
-    output RS_PACKET       [`RS_SZ-1:0] RS_data,              // The entire RS data 
-    output logic           [`RS_SZ-1:0] RS_valid_next,        // 1 if RS data is valid <-- Coded
+    output RS_PACKET       [`RS_SZ-1:0] rs_data,              // The entire RS data 
+    output logic           [`RS_SZ-1:0] rs_valid_next,        // 1 if RS data is valid <-- Coded
 
-    // ------- FROM: EXECUTE (BRANCH) --------- //
+    // ------- FROM: BRANCH STACK --------- //
     input B_MASK_MASK                   b_mm_resolve,         // b_mask_mask to resolve
     input logic                         b_mm_mispred          // 1 if mispredict happens
     `ifdef DEBUG
@@ -60,26 +60,26 @@ module rs #(
         //B_mask camming
         for(int i = 0; i < `RS_SZ; ++i) begin
             //squashing step
-            RS_valid_next[i] = (b_mm_mispred && (b_mm_resolve & RS_data[i].b_mask)) ? 0 : RS_valid[i];
+            rs_valid_next[i] = (b_mm_mispred && (b_mm_resolve & rs_data[i].b_mask)) ? 0 : RS_valid[i];
         end
     end
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            RS_data <= '0;
+            rs_data <= '0;
             RS_valid <= '0;
         end else begin
-            RS_valid <= RS_valid_next & ~(rs_data_issuing);
+            RS_valid <= rs_valid_next & ~(rs_data_issuing);
             for(int i = 0; i < `RS_SZ; ++i) begin
                 //resolving mask
-                RS_data[i].b_mask <= RS_data[i].b_mask & ~(b_mm_resolve);
+                rs_data[i].b_mask <= rs_data[i].b_mask & ~(b_mm_resolve);
             end
             //Cam logic
             for(int i = 0; i < `N; ++i) begin
                 if(CDB_valid[i]) begin
                     for(int j = 0; j < `RS_SZ; ++j)begin
-                        if (RS_data[j].Source1 == CDB_tags[i]) RS_data[j].Source1_ready <= 1;
-                        if (RS_data[j].Source2 == CDB_tags[i]) RS_data[j].Source2_ready <= 1;
+                        if (rs_data[j].Source1 == CDB_tags[i]) rs_data[j].Source1_ready <= 1;
+                        if (rs_data[j].Source2 == CDB_tags[i]) rs_data[j].Source2_ready <= 1;
                     end
                 end 
             end
@@ -87,7 +87,7 @@ module rs #(
             for (int i = 0; i < `N; ++i) begin
                 for(int j = 0; j < `RS_SZ; ++j) begin
                     if (i < num_dispatched & rs_gnt_bus[i][j]) begin
-                        RS_data[j] <= rs_entries[i];
+                        rs_data[j] <= rs_entries[i];
                         RS_valid[j] <= 1;
                     end
                 end

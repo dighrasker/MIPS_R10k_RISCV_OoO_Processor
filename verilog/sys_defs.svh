@@ -69,6 +69,7 @@ typedef logic [`B_MASK_WIDTH-1:0]           B_MASK;
 typedef logic [`B_MASK_WIDTH-1:0]           B_MASK_MASK;
 typedef logic [2:0]                         BRANCH_FUNC;
 typedef logic [`FU_ID_BITS-1:0]             FU_IDX;
+
 typedef enum logic [1:0] {
     ALU   = 2'h0,
     MULT   = 2'h1,
@@ -447,6 +448,7 @@ typedef struct packed {
 typedef struct packed{
     INST           inst;
     logic          valid; // when low, ignore inst. Output will look like a NOP
+    logic          taken;
     ADDR           PC;
     ADDR           NPC;
     ALU_OPA_SELECT opa_select;
@@ -466,7 +468,7 @@ typedef struct packed{
 
 //TODO: CHANGE FOR RS
 typedef struct packed {  
-    DECODE_PACKET decoded_signals;
+    DECODE_PACKET  decoded_signals;
 
     //Added during dispatch
     PHYS_REG_IDX   T_new; // Use as unique RS id ???
@@ -522,7 +524,7 @@ typedef struct packed {
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;
-    //B_MASK          bm;
+    ALU_FUNC        alu_func;
 } ALU_PACKET;
 
 const ALU_PACKET NOP_ALU_PACKET = '{
@@ -535,7 +537,6 @@ const ALU_PACKET NOP_ALU_PACKET = '{
     source_reg_1:  '0,   // No valid source register
     source_reg_2:  '0,   // No valid source register
     dest_reg_idx:  '0,   // No valid destination register
-    //bm:            '0   // No valid branch mask
 };
 
 typedef struct packed {
@@ -562,11 +563,9 @@ const MULT_PACKET NOP_MULT_PACKET = '{
 
 typedef struct packed {
     INST inst;
+    logic valid;
     ADDR PC;
     ADDR NPC; // PC + 4
-
-    DATA rs1_value; // reg A value
-    DATA rs2_value; // reg B value
 
     ALU_OPA_SELECT opa_select; // ALU opa mux select (ALU_OPA_xxx *)
     ALU_OPB_SELECT opb_select; // ALU opb mux select (ALU_OPB_xxx *)
@@ -574,10 +573,25 @@ typedef struct packed {
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;       // not used but might be good for identification purposes
-    B_MASK          bm;
+    logic           taken;
     BRANCH_FUNC     branch_func;    // comparator used for branch
     B_MASK_MASK     bmm;            // this branch's corresponding mask
 } BRANCH_PACKET;
+
+const BRANCH_PACKET NOP_BRANCH_PACKET = '{
+    inst:       `NOP,
+    valid:      '0,
+    PC:         '0,
+    NPC:        '0, // PC + 4
+    opa_select:  OPA_IS_RS1, // ALU opa mux select (ALU_OPA_xxx *)
+    opb_select:  OPB_IS_RS2, // ALU opb mux select (ALU_OPB_xxx *)
+    source_reg_1: '0,
+    source_reg_2: '0,
+    dest_reg_idx: '0,       // not used but might be good for identification purposes
+    taken:         0,
+    branch_func:  '0,    // comparator used for branch
+    bmm:          '0            // this branch's corresponding mask
+};
 
 typedef struct packed {
     DATA            source_reg_1;
@@ -600,11 +614,16 @@ typedef struct packed {
 typedef struct packed {
     DATA          result;
     PHYS_REG_IDX  completing_reg;
+    logic         valid;
+} CDB_REG_PACKET;
+
+typedef struct packed {
+    ADDR          target_PC;
     B_MASK        bmm;
     logic         bm_mispred;
     logic         taken;
     logic         valid;
-} CDB_REG_PACKET;
+} BRANCH_REG_PACKET;
 
 typedef struct packed {
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table;

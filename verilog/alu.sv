@@ -1,7 +1,13 @@
 module alu (
     input ALU_PACKET alu_packet,
-    output CDB_REG_PACKET result
+    output CDB_REG_PACKET alu_result
 );
+
+    assign alu_result.completing_reg = alu_packet.dest_reg_idx;
+    assign alu_result.bmm = '0;
+    assign alu_result.bm_mispred = 0;
+    assign alu_result.taken = 0;
+    assign alu_result.valid = alu_packet.valid;
 
     DATA opa, opb;
 
@@ -30,19 +36,19 @@ module alu (
     end
 
     always_comb begin
-        case (alu_packet.alu_flags.alu_func)
-            ALU_ADD:  result = opa + opb;
-            ALU_SUB:  result = opa - opb;
-            ALU_AND:  result = opa & opb;
-            ALU_SLT:  result = signed'(opa) < signed'(opb);
-            ALU_SLTU: result = opa < opb;
-            ALU_OR:   result = opa | opb;
-            ALU_XOR:  result = opa ^ opb;
-            ALU_SRL:  result = opa >> opb[4:0];
-            ALU_SLL:  result = opa << opb[4:0];
-            ALU_SRA:  result = signed'(opa) >>> opb[4:0]; // arithmetic from logical shift
+        case (alu_packet.alu_func)
+            ALU_ADD:  alu_result.result = opa + opb;
+            ALU_SUB:  alu_result.result = opa - opb;
+            ALU_AND:  alu_result.result = opa & opb;
+            ALU_SLT:  alu_result.result = signed'(opa) < signed'(opb);
+            ALU_SLTU: alu_result.result = opa < opb;
+            ALU_OR:   alu_result.result = opa | opb;
+            ALU_XOR:  alu_result.result = opa ^ opb;
+            ALU_SRL:  alu_result.result = opa >> opb[4:0];
+            ALU_SLL:  alu_result.result = opa << opb[4:0];
+            ALU_SRA:  alu_result.result = signed'(opa) >>> opb[4:0]; // arithmetic from logical shift
             // here to prevent latches:
-            default:  result = 32'hfacebeec;
+            default:  alu_result.result = 32'hfacebeec;
         endcase
     end
 

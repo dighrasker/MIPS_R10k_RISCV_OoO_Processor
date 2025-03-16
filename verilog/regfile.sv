@@ -14,12 +14,36 @@
 
 module regfile (
     input         clock, // system clock
-    // note: no system reset, register values must be written before they can be read
-    input REG_IDX read_idx_1, read_idx_2, write_idx,
-    input         write_en,
-    input DATA    write_data,
+    input         reset,
+    
+    /*---------------- FROM/TO RETIRE ---------------------------*/
+    input PHYS_REG_IDX [`N-1:0] retire_phys_regs_reading,
+    // input              [`N-1:0] retire_read_en,
+    output DATA        [`N-1:0] retire_read_data,
 
-    output DATA   read_out_1, read_out_2
+    /*---------------- FROM/TO ISSUE ---------------------------*/
+    input PHYS_REG_IDX [`NUM_FU_ALU-1:0] issue_alu_phys_regs_reading_1,
+    input PHYS_REG_IDX [`NUM_FU_ALU-1:0] issue_alu_phys_regs_reading_2,
+    output DATA        [`NUM_FU_ALU-1:0] issue_alu_read_data_1,
+    output DATA        [`NUM_FU_ALU-1:0] issue_alu_read_data_2,
+
+    input PHYS_REG_IDX [`NUM_FU_BRANCH-1:0] issue_branch_phys_regs_reading_1,
+    input PHYS_REG_IDX [`NUM_FU_BRANCH-1:0] issue_branch_phys_regs_reading_2,
+    output DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_1,
+    output DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_2,
+
+    input PHYS_REG_IDX [`NUM_FU_MULT-1:0] issue_mult_phys_regs_reading_1,
+    input PHYS_REG_IDX [`NUM_FU_MULT-1:0] issue_mult_phys_regs_reading_2,
+    output DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_1,
+    output DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_2,
+
+    // TODO: ldst
+    
+    // note: no system reset, register values must be written before they can be read
+    input PHYS_REG_IDX [`N-1:0] phys_regs_completing,
+    input              [`N-1:0] write_en, //phys regs valid
+    input DATA         [`N-1:0] write_data, //cdb results
+
 );
 
     // Intermediate data before accounting for register 0
@@ -28,24 +52,42 @@ module regfile (
     logic re2, re1;
     logic we;
 
-    // Technically we only need 31 registers since reg 0 is hard wired to 0
-    // But since we're not grading area, just set size to 32 to make interface
-    // easier and avoid having to subtract 1 from all addresses
-    memDP #(
-        .WIDTH     ($bits(DATA)), // 32-bit registers
-        .DEPTH     (32),
-        .READ_PORTS(2), // 2 read ports
-        .BYPASS_EN (1)) // Allow internal forwarding
-    regfile_mem (
-        .clock(clock),
-        .reset(1'b0),   // must be written before read
-        .re   ({re2,        re1}),
-        .raddr({read_idx_2, read_idx_1}),
-        .rdata({rdata2,     rdata1}),
-        .we   (we),
-        .waddr(write_idx),
-        .wdata(write_data)
-    );
+    //actual data structure
+    DATA [`PHYS_REG_SZ_R10K-1:0] reg_file;
+
+    // Read for Retire
+    for (int i = 0; i < `N; ++i) begin
+        assign retire_read_data[i] = reg_file[retire_phys_regs_reading[i]];
+    end
+
+    // Read for Issue
+    for(int i = 0; i < `NUM_FU_ALU; ++i) begin
+        assign issue_alu_read_data_1[i] = reg_file[issue_alu_phys_regs_reading_1[i]];
+        assign issue_alu_read_data_2[i] = reg_file[issue_alu_phys_regs_reading_2[i]];
+    end
+
+    for(int i = 0; i < `NUM_FU_BRANCH; ++i) begin
+        assign issue_branch_read_data_1[i] = reg_file[issue_branch_phys_regs_reading_1[i]];
+        assign issue_branch_read_data_2[i] = reg_file[issue_branch_phys_regs_reading_2[i]];
+    end
+
+    for(int i = 0; i < `NUM_FU_MULT; ++i) begin
+        assign issue_mult_read_data_1[i] = reg_file[issue_mult_phys_regs_reading_1[i]];
+        assign issue_mult_read_data_2[i] = reg_file[issue_mult_phys_regs_reading_2[i]];
+    end
+
+    always_ff begin
+        if(reset) begin
+            reg_file <= '0;
+        end else begin
+            for(int i = 0; i < `N; ++i) begin
+                if(write_en[i]) begin
+                    reg_file[phys_regs_completing[i]] <= write_data[i];
+                end
+            end
+        end
+    end
+
 
     // Read port 1
     always_comb begin

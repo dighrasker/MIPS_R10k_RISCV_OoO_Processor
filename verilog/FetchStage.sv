@@ -1,3 +1,4 @@
+
 // Simple FIFO with parametrizable depth and width
 
 module Fetch #() (

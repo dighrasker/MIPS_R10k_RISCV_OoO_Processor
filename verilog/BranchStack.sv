@@ -9,8 +9,8 @@ module branchstack #(
     // ------------- TO FETCH -------------- //
     output  ADDR                                 PC_restore,
     // ------------- FROM COMPLETE -------------- //
-    input   B_MASK_MASK                          b_mm_resolve,
-    input   logic                                b_mm_mispred,
+    input   BRANCH_REG_PACKET                    branch_completing,
+    
     // ------------- TO ROB ------------------- //
     output  logic             [`ROB_SZ_BITS-1:0] rob_tail_restore,
     // ------------- TO FREDDY LIST ----------- //
@@ -20,7 +20,11 @@ module branchstack #(
     input   B_MASK                               next_b_mask,
     output  PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore,     
     output  B_MASK                               b_mask_combinational,
-    output  logic         [`NUM_B_MASK_BITS-1:0] branch_stack_spots//,
+    output  logic         [`NUM_B_MASK_BITS-1:0] branch_stack_spots,
+
+    // ------------- TO RS/EXECUTE -------------- //
+    output  B_MASK                               b_mm_out
+
     // ------------- TO LSQ ------------------ //
     // output logic                                 lsq_tail_restore  //<--- STILL NEED TO UPDATE THIS
     // branch prediction repair?
@@ -28,6 +32,18 @@ module branchstack #(
     , output BS_DEBUG                            bs_debug
 `endif
 ); 
+
+    B_MASK_MASK   b_mm_resolve;
+    logic         b_mm_mispred;
+    ADDR          target_PC;
+    logic         taken;
+
+
+    assign b_mm_resolve = branch_completing[i].b_mm;
+    assign b_mm_mispred = branch_completing[i].bm_mispred;
+    assign target_PC = branch_completing[i].result;
+    assign taken = branch_completing[i].taken;
+
 
     BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack, next_branch_stack;
     logic [`NUM_B_MASK_BITS-1:0] next_branch_stack_spots;
@@ -54,14 +70,18 @@ module branchstack #(
         rob_tail_restore = 0;
         freelist_restore = 0;
         map_table_restore = 0;
+        b_mm_out = '0;
         
         for (int i = 0; i < `B_MASK_WIDTH; i++) begin
-            if (b_mm_mispred && b_mm_resolve[i] && b_mask_reg[i]) begin
-                restore_valid = 1;
-                PC_restore = branch_stack[i].recovery_PC;
-                rob_tail_restore = branch_stack[i].rob_tail;
-                freelist_restore = branch_stack[i].free_list;
-                map_table_restore = branch_stack[i].map_table;
+            if (b_mm_resolve[i] && b_mask_reg[i]) begin
+                b_mm_out[i] = 1'b1;
+                if (b_mm_mispred) begin
+                    restore_valid = 1;
+                    PC_restore = taken ? branch_stack[i].recovery_PC : target_PC;
+                    rob_tail_restore = branch_stack[i].rob_tail;
+                    freelist_restore = branch_stack[i].free_list;
+                    map_table_restore = branch_stack[i].map_table;
+                end
             end
         end
         

@@ -115,13 +115,13 @@ module Dispatch_sva #(
                     assert property (cb.cammingSrc1(k, j))
                         else begin
                             $error("RS entry #%0d did not properly match the cdb to src 1 when it should have - Current cdb idx(%0d) - RS entry src 1(%0d).", 
-                            k, CDB_tags[j], RS_data[k].Source1);
+                            k, CDB_tags[j], rs_data[k].Source1);
                             $finish;
                         end
                     assert property (cb.cammingSrc2(k, j))
                         else begin
                             $error("RS entry #%0d did not properly match the cdb to src 2 when it should have - Current cdb idx(%0d) - RS entry src 2(%0d).", 
-                            k, CDB_tags[j], RS_data[k].Source2);
+                            k, CDB_tags[j], rs_data[k].Source2);
                             $finish;
                         end
                 end

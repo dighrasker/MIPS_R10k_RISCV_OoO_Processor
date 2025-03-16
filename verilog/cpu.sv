@@ -190,7 +190,62 @@ module cpu (
     assign if_id_NPC_dbg   = if_id_reg.NPC;
     assign if_id_inst_dbg  = if_id_reg.inst;
     assign if_id_valid_dbg = if_id_reg.valid;
-    
+
+    //////////////////////////////////////////////////
+    //                                              //
+    //            REGs & WIREs STRUCTURES           //
+    //                                              //
+    //////////////////////////////////////////////////
+
+    // ONLY OUTPUTS ARE UNCOMMENTED
+
+    /*------- ROB SHIT ----------*/
+    // INPUT clock
+    // INPUT reset
+    // INPUT ROB_PACKET           [`N-1:0] rob_entries;
+    // INPUT logic  [`NUM_SCALAR_BITS-1:0] num_dispatched;
+    logic  [`NUM_SCALAR_BITS-1:0] rob_spots;
+    logic      [`ROB_SZ_BITS-1:0] rob_tail;
+    // INPUT logic  [`NUM_SCALAR_BITS-1:0] num_retiring;
+    ROB_PACKET           [`N-1:0] rob_outputs;
+    logic  [`NUM_SCALAR_BITS-1:0] rob_outputs_valid;
+    // INPUT logic                         restore_valid;
+    // INPUT logic      [`ROB_SZ_BITS-1:0] rob_tail_restore;
+
+`ifdef DEBUG
+    ROB_DEBUG                   rob_debug;
+`endif
+
+    /*------- RS SHIT ----------*/
+    // INPUT logic  [`NUM_SCALAR_BITS-1:0] num_dispatched;
+    // INPUT RS_PACKET            [`N-1:0] rs_entries;
+    // INPUT logic  [`NUM_SCALAR_BITS-1:0] rs_spots;
+
+
+    /*------- FREDDYLIST SHIT ----------*/
+
+    /*------- BRANCH STACK SHIT ----------*/
+
+    logic                         restore_valid;
+    logic      [`ROB_SZ_BITS-1:0] rob_tail_restore;
+
+    /*------- FETCH SHIT ----------*/
+
+    /*------- DISPATCH SHIT ----------*/
+
+    ROB_PACKET           [`N-1:0] rob_entries;
+    logic  [`NUM_SCALAR_BITS-1:0] num_dispatched;
+    RS_PACKET            [`N-1:0] rs_entries;
+    logic  [`NUM_SCALAR_BITS-1:0] rs_spots;
+
+
+    /*------- ISSUE SHIT ----------*/
+
+    /*------- COMPLETE SHIT ----------*/
+
+    /*------- RETIRE SHIT ----------*/
+
+    logic  [`NUM_SCALAR_BITS-1:0] num_retiring;
 
     //////////////////////////////////////////////////
     //                                              //
@@ -204,15 +259,15 @@ module cpu (
     rob rob (
         .clock             (clock),
         .reset             (reset),
-        .rob_inputs        (rob_inputs),
-        .rob_inputs_valid  (rob_inputs_valid), 
+        .rob_inputs        (rob_entries),
+        .rob_inputs_valid  (num_dispatched), 
         .rob_spots         (rob_spots),
         .rob_tail          (rob_tail),
         .num_retiring      (num_retiring),
         .rob_outputs       (rob_outputs),
         .rob_outputs_valid (rob_outputs_valid),
-        .tail_restore_valid(tail_restore_valid),
-        .tail_restore      (tail_restore),
+        .tail_restore_valid(restore_valid),
+        .tail_restore      (rob_tail_restore),
         .rob_debug         (rob_debug)
     );
 
@@ -228,8 +283,8 @@ module cpu (
         .CDB_tags          (CDB_tags),
         .CDB_valid         (CDB_valid),
         .rs_data_issuing   (rs_data_issuing),
-        .RS_data           (RS_data),
-        .RS_valid_next     (RS_valid_next),
+        .rs_data           (rs_data),
+        .rs_valid_next     (rs_valid_next),
         .b_mm_resolve      (b_mm_resolve),
         .b_mm_mispred      (b_mm_mispred),
         .rs_debug          (rs_debug)
@@ -281,26 +336,26 @@ module cpu (
 
     Fetch fetch_stage(
 
-    .clock(clock), 
-    .reset(reset),
+        .clock(clock), 
+        .reset(reset),
 
-    // ------------ TO/FROM MEMORY ------------- //
-    .i_buffer_inputs(i_buffer_inputs),    // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
-    .inputs_valid(inputs_valid),  // To distinguish invalid instructions being passed in from Dispatch (A number, NOT one hot)
-    .PC_reg(PC_reg),
-    
-    // ------------- FROM BRANCH STACK -------------- //
-    .recovery_PC(recovery_PC),  // Retire module tells the ROB how many entries can be cleared
-    
-    // ------------ FROM EXECUTE ------------- //
-    .target_PC(target_PC),
-    .mispredict(mispredict),
-    .taken(taken),            //original prediction was taken
+        // ------------ TO/FROM MEMORY ------------- //
+        .i_buffer_inputs(i_buffer_inputs),    // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+        .inputs_valid(inputs_valid),  // To distinguish invalid instructions being passed in from Dispatch (A number, NOT one hot)
+        .PC_reg(PC_reg),
+        
+        // ------------- FROM BRANCH STACK -------------- //
+        .recovery_PC(recovery_PC),  // Retire module tells the ROB how many entries can be cleared
+        
+        // ------------ FROM EXECUTE ------------- //
+        .target_PC(target_PC),
+        .mispredict(mispredict),
+        .taken(taken),            //original prediction was taken
 
-    // ------------ TO/FROM DISPATCH ------------- //
-    .i_buffer_outputs(i_buffer_outputs),   // For retire to check eligibility
-    .outputs_valid(outputs_valid), // If not all N rob entries are valid entries they should not be considered  
-);
+        // ------------ TO/FROM DISPATCH ------------- //
+        .i_buffer_outputs(i_buffer_outputs),   // For retire to check eligibility
+        .outputs_valid(outputs_valid), // If not all N rob entries are valid entries they should not be considered  
+    );
 
     //////////////////////////////////////////////////
     //                                              //
@@ -352,6 +407,27 @@ module cpu (
     //                  RETIRE                      //
     //                                              //
     //////////////////////////////////////////////////
+
+    retire retire_stage (
+        .clock                (clock),
+        .reset                (reset),
+    // ------------- TO/FROM ROB -------------- //
+
+        .rob_outputs(rob_outputs),
+        .rob_outputs_valid(rob_outputs_valid),             // Coming from rob, to check which output is valid, only valid rob outputs can be retired
+        .num_retiring(num_retiring),                  // Send to rob, how many rob_outputs can be retired
+
+    // ------------- TO/FROM FREDDYLIST -------------- //
+        .complete_list_exposed,         // Coming from freddylist, to find out which rob_output is actually completed and ready to retire
+        .phys_regs_retiring,             // Send to freddylist, which physical registers are being retired
+
+    // ------------- TO CPU -------------- //
+        .committed_insts,
+
+    /*---------------- FROM/TO REGFILE ---------------------------*/
+        .retire_phys_regs_reading,
+        .retire_read_data
+    );
 
     //////////////////////////////////////////////////
     //                                              //

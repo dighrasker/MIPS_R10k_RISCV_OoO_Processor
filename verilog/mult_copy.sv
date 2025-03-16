@@ -14,11 +14,14 @@ module mult # (
 
     // From the CDB, for the last stage to finish execute
     input logic         cdb_en,
+    input B_MASK        b_mm_resolve,
+    input logic         b_mm_mispred,
+    
     
     // TODO: make sure the outputs are correct
-    output logic        fu_free, // tells execute if it should apply backpressure on this FU
-    output logic        cdb_valid, // tells cdb this FU has a valid inst
-    output DATA         result,
+    output logic                  fu_free, // tells execute if it should apply backpressure on this FU
+    output logic                  cdb_valid, // tells cdb this FU has a valid inst
+    output CDB_REG_PACKET         mult_result,
 );
 
     typedef struct {
@@ -36,7 +39,15 @@ module mult # (
 
     logic [`MULT_STAGES-2:0] internal_free;
 
-    assign cdb_valid = internal_mult_packets[`MULT_STAGES-3].valid;
+    // always_ff @(posedge clock) begin //TODO: Decide between letting issue know vs not letting issue know
+    //     if (reset) begin
+    //         cdb_valid <= 0;
+    //     end else begin
+    //         cdb_valid <= internal_mult_packets[`MULT_STAGES-3].valid;
+    //     end
+    // end
+
+    assign cdb_valid = internal_mult_packets[`MULT_STAGES-2].valid;
 
     assign internal_mult_packet_in.valid        = mult_packet_in.valid;
     assign internal_mult_packet_in.prev_sum     = 64'h0;
@@ -63,14 +74,19 @@ module mult # (
         .reset (reset),
         .is_last_stage ({1'b1, `MULT_STAGES-1'b0}),
         .next_stage_free ({cdb_en, internal_free}),
-        .internal_mult_packet_in ({internal_mult_packets, internal_mult_packet_in})
-        .current_stage_free ({internal_free, fu_free})
+        .internal_mult_packet_in ({internal_mult_packets, internal_mult_packet_in}),
+        .b_mm_mispred (b_mm_mispred),
+        .b_mm_resolve (b_mm_resolve),
+        .current_stage_free ({internal_free, fu_free}),
         .internal_mult_packet_out ({internal_mult_packet_out, internal_mult_packets})
     );
 
-    // Use the high or low bits of the product based on the output func
-    assign result = (internal_mult_packet_out.func == M_MUL) ? internal_mult_packet_out.prev_sum[31:0] : internal_mult_packet_out.prev_sum[63:32];
-
+    assign mult_result.result = (internal_mult_packet_out.func == M_MUL) ? internal_mult_packet_out.prev_sum[31:0] : internal_mult_packet_out.prev_sum[63:32];
+    assign mult_result.completing_reg = internal_mult_packet_out.dest_reg_idx;
+    assign mult_result.bmm = '0;
+    assign mult_result.bm_mispred = 0;
+    assign mult_result.taken = 0;
+    assign mult_packet.valid = internal_mult_packet_out.valid;
 endmodule // mult
 
 
@@ -80,28 +96,41 @@ module mult_stage (
     input logic is_last_stage,
     input logic next_stage_free,
     input INTERNAL_MULT_PACKET internal_mult_packet_in,
+    input logic b_mm_mispred,
+    input B_MASK b_mm_resolve,
 
     output logic current_stage_free,
-    output INTERNAL_MULT_PACKET internal_mult_packet_out,
+    output INTERNAL_MULT_PACKET internal_mult_packet_out
 );
 
     parameter SHIFT = 64/`MULT_STAGES;
-    INTERNAL_MULT_PACKET next_internal_mult_packet;
+    INTERNAL_MULT_PACKET internal_mult_packet;
 
-    assign next_internal_mult_packet.valid        = internal_mult_packet_in.valid;
-    assign next_internal_mult_packet.prev_sum     = internal_mult_packet_in.mplier[SHIFT-1:0] * internal_mult_packet_in.mcand;
-    assign next_internal_mult_packet.mplier       = {SHIFT'('b0), internal_mult_packet_in.mplier[63:SHIFT]};
-    assign next_internal_mult_packet.mcand        = {internal_mult_packet_in.mcand[63-SHIFT:0], SHIFT'('b0)};
-    assign next_internal_mult_packet.dest_reg_idx = internal_mult_packet_in.dest_reg_idx;
-    assign next_internal_mult_packet.bm           = internal_mult_packet_in.bm;
-    assign next_internal_mult_packet.func         = internal_mult_packet_in.func;
+    
+    always_comb begin
+        internal_mult_packet_out.valid        = internal_mult_packet.valid;
+        internal_mult_packet_out.prev_sum     = internal_mult_packet.mplier[SHIFT-1:0] * internal_mult_packet.mcand;
+        internal_mult_packet_out.mplier       = {SHIFT'('b0), internal_mult_packet.mplier[63:SHIFT]};
+        internal_mult_packet_out.mcand        = {internal_mult_packet.mcand[63-SHIFT:0], SHIFT'('b0)};
+        internal_mult_packet_out.dest_reg_idx = internal_mult_packet.dest_reg_idx;
+        internal_mult_packet_out.bm           = internal_mult_packet.bm;
+        internal_mult_packet_out.func         = internal_mult_packet.func;
+        if (b_mm_resolve & internal_mult_packet.bm) begin
+            internal_mult_packet_out.bm = internal_mult_packet_out.bm & ~(b_mm_resolve);
+            if (b_mm_mispred) begin
+                internal_mult_packet_out = NOP_MULT_PACKET;
+            end
+        end
+    end
 
-    assign current_stage_free = next_stage_free || (~internal_mult_packet_in.valid && ~is_last_stage); // Either the next stage is free, or the current stage doesn't have anything
+    assign current_stage_free = next_stage_free || (~internal_mult_packet.valid && ~is_last_stage); // Either the next stage is free, or the current stage doesn't have anything
 
     always_ff @(posedge clock) begin
         // use next_stage_free because we are deciding whether we should update the next mult stage, if in last stage, just forward the packet unconditionally
-        if (next_stage_free || is_last_stage) begin
-            internal_mult_packet_out <= next_internal_mult_packet;
+        if (reset) begin
+            internal_mult_packet <= NOP_MULT_PACKET;        // NOP_MULT_PACKET must have valid to 0;
+        end else if (current_stage_free) begin
+            internal_mult_packet <= internal_mult_packet_in;
         end
     end
 
