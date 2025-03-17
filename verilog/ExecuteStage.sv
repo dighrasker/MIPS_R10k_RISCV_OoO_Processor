@@ -1,4 +1,4 @@
-`include "sys_defs.svh"
+`include "verilog/sys_defs.svh"
 
 module ExecuteStage (
     input   logic                               clock,
@@ -9,11 +9,14 @@ module ExecuteStage (
     input ALU_PACKET           [`NUM_FU_ALU-1:0] alu_packets_issuing_in,
     input BRANCH_PACKET     [`NUM_FU_BRANCH-1:0] branch_packets_issuing_in,
     input logic               [`NUM_FU_MULT-1:0] mult_cdb_en,
-    //input logic               [`NUM_FU_LDST-1:0] ldst_cdb_en,
-    input logic [`N-1:0]    [`NUM_FU_TOTAL-1:0] complete_gnt_bus,
+    input logic               [`NUM_FU_LDST-1:0] ldst_cdb_en,
+    input logic [`N-1:0]     [`NUM_FU_TOTAL-1:0] complete_gnt_bus,
 
     output logic              [`NUM_FU_MULT-1:0] mult_free,
     output logic              [`NUM_FU_LDST-1:0] ldst_free,
+
+    output logic              [`NUM_FU_MULT-1:0] mult_cdb_valid,
+    output logic              [`NUM_FU_LDST-1:0] ldst_cdb_valid,
 
     // ------------ TO ALL DATA STRUCTURES ------------- //
     output CDB_ETB_PACKET               [`N-1:0] cdb_completing,
@@ -33,9 +36,6 @@ module ExecuteStage (
     CDB_REG_PACKET [`NUM_FU_ALU-1:0] alu_result;
     CDB_REG_PACKET [`NUM_FU_MULT-1:0] mult_result;
     CDB_REG_PACKET [`NUM_FU_BRANCH-1:0] branch_result;
-
-    logic [`NUM_FU_MULT-1:0] mult_cdb_valid;
-    logic [`NUM_FU_LDST-1:0] ldst_cdb_valid;
 
     CDB_REG_PACKET  [`N-1:0] next_cdb_reg;
     BRANCH_REG_PACKET next_branch_reg;

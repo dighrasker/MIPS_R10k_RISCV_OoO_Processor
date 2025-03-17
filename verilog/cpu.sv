@@ -8,14 +8,14 @@
 //                                                                     //
 /////////////////////////////////////////////////////////////////////////
 
-`include "sys_defs.svh"
-`include "ISA.svh"
+`include "verilog/sys_defs.svh"
+`include "verilog/ISA.svh"
 
 module cpu (
     input clock, // System clock
     input reset, // System reset
 
-    /*
+    
     input MEM_TAG   mem2proc_transaction_tag, // Memory tag for current transaction
     input MEM_BLOCK mem2proc_data,            // Data coming back from memory
     input MEM_TAG   mem2proc_data_tag,        // Tag for which transaction data is for
@@ -24,17 +24,17 @@ module cpu (
     output ADDR        proc2mem_addr,    // Address sent to memory
     output MEM_BLOCK   proc2mem_data,    // Data sent to memory
     output MEM_SIZE    proc2mem_size,    // Data size sent to memory
-    */
+    
 
     // Note: these are assigned at the very bottom of the module
     input  INST          [`N-1:0] inst,
     output COMMIT_PACKET [`N-1:0] committed_insts,
-    output ADDR          [`N-1:0] PC
+    output ADDR          [`N-1:0] PC,
 
     // Debug outputs: these signals are solely used for debugging in testbenches
     // Do not change for project 3
     // You should definitely change these for project 4
-    /*output ADDR  if_NPC_dbg,
+    output ADDR  if_NPC_dbg,
     output DATA  if_inst_dbg,
     output logic if_valid_dbg,
     output ADDR  if_id_NPC_dbg,
@@ -48,7 +48,7 @@ module cpu (
     output logic ex_mem_valid_dbg,
     output ADDR  mem_wb_NPC_dbg,
     output DATA  mem_wb_inst_dbg,
-    output logic mem_wb_valid_dbg*/
+    output logic mem_wb_valid_dbg
 );
 
     // ONLY OUTPUTS ARE UNCOMMENTED
@@ -80,7 +80,7 @@ module cpu (
     PHYS_REG_IDX           [`N-1:0] phys_reg_completing; // decoded signal from cdb_reg
     logic                  [`N-1:0] completing_valid; // decoded signal from cdb_reg
 
-    PHYS_REG_IDX           [`N-1:0] phys_regs_to_use;       // physical register indices for dispatch to use
+    PHYS_REG_IDX           [`N-1:0] regs_to_use;       // physical register indices for dispatch to use
     logic   [`PHYS_REG_SZ_R10K-1:0] free_list;              // bitvector of the phys reg that are complete
 
     logic   [`PHYS_REG_SZ_R10K-1:0] next_complete_list;          // bitvector of the phys reg that are complete
@@ -116,7 +116,7 @@ module cpu (
     /*------- FETCH BUFFER WIRES ----------*/    
     logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots;
     FETCH_PACKET         [`N-1:0] inst_buffer_outputs;   
-    logic  [`NUM_SCALAR_BITS-1:0] outputs_valid;
+    logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_outputs_valid;
 
 
     /*------- DECODER WIRES ----------*/
@@ -143,12 +143,12 @@ module cpu (
     /*------- ISSUE WIRES ----------*/
 
     wor                    [`RS_SZ-1:0] rs_data_issuing;     // set index to 1 when a rs_data is selected to be issued
-    DATA              [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1;
-    DATA              [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2;
-    DATA             [`NUM_FU_MULT-1:0] issue_mult_regs_reading_1;
-    DATA             [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2;
-    DATA           [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1;
-    DATA           [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2;
+    PHYS_REG_IDX      [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1;
+    PHYS_REG_IDX      [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2;
+    PHYS_REG_IDX     [`NUM_FU_MULT-1:0] issue_mult_regs_reading_1;
+    PHYS_REG_IDX     [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2;
+    PHYS_REG_IDX   [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1;
+    PHYS_REG_IDX   [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2;
     logic            [`NUM_FU_MULT-1:0] mult_cdb_gnt;
     logic            [`NUM_FU_LDST-1:0] ldst_cdb_gnt;
     ALU_PACKET        [`NUM_FU_ALU-1:0] alu_packets;
@@ -163,6 +163,8 @@ module cpu (
     CDB_ETB_PACKET               [`N-1:0] cdb_completing;
     CDB_REG_PACKET               [`N-1:0] cdb_reg;
     BRANCH_REG_PACKET                     branch_reg;
+    logic              [`NUM_FU_MULT-1:0] mult_cdb_valid;
+    logic              [`NUM_FU_LDST-1:0] ldst_cdb_valid;
 
     always_comb begin
         for (int i = 0; i < `N; ++i) begin
@@ -236,7 +238,7 @@ module cpu (
         .free_list_restore      (free_list_restore),
         .restore_flag           (restore_valid),
         .updated_free_list      (updated_free_list),
-        .phys_regs_to_use       (phys_regs_to_use),
+        .regs_to_use            (regs_to_use),
         .free_list              (free_list),
         .next_complete_list     (next_complete_list),
         .complete_list          (complete_list)
@@ -284,9 +286,7 @@ module cpu (
         .issue_mult_regs_reading_2(issue_mult_regs_reading_2),
         .issue_mult_read_data_1(issue_mult_read_data_1),
         .issue_mult_read_data_2(issue_mult_read_data_2),
-        .phys_regs_completing(phys_regs_completing),
-        .write_en(write_en),
-        .write_data(write_data)
+        .cdb_reg(cdb_reg)
     );
 
     /*------------------ Inst Buffer --------------------*/
@@ -388,11 +388,10 @@ module cpu (
         // ------------ TO/FROM FREDDY LIST ------------- //
         .next_complete_list(next_complete_list),
         .regs_to_use(regs_to_use),
-        .free_list_copy(free_list_copy),
+        .free_list_copy(free_list),
         .updated_free_list(updated_free_list),
         // ------------ FROM EXECUTE ------------- //
-        .ETB_tags(ETB_tags),
-        .ETB_tags_valid(ETB_tags_valid),
+        .cdb_completing(cdb_completing),
         // ------------ TO ALL DATA STRUCTURES ------------- //
         .num_dispatched(num_dispatched)
         `ifdef DEBUG
@@ -434,13 +433,12 @@ module cpu (
         .issue_branch_regs_reading_1(issue_branch_regs_reading_1),
         .issue_branch_regs_reading_2(issue_branch_regs_reading_2),
          // ------------- FROM CDB -------------- //
-        .CDB_data_forwarded(CDB_data_forwarded),
-        .CDB_tags_forwarded(CDB_tags_forwarded),
+        .cdb_reg(cdb_reg),
         // ------------- TO/FROM EXECUTE -------------- //
         .mult_free(mult_free),
         .ldst_free(ldst_free),
-        .mult_cdb_req(mult_cdb_req),
-        .ldst_cdb_req(ldst_cdb_req),
+        .mult_cdb_req(mult_cdb_valid),
+        .ldst_cdb_req(ldst_cdb_valid),
         .mult_cdb_gnt(mult_cdb_gnt),
         .ldst_cdb_gnt(ldst_cdb_gnt),
         .alu_packets(alu_packets),
@@ -463,9 +461,12 @@ module cpu (
         .alu_packets_issuing_in(alu_packets),
         .branch_packets_issuing_in(branch_packets),
         .mult_cdb_en(mult_cdb_gnt),
+        .ldst_cdb_en(ldst_cdb_gnt),
         .complete_gnt_bus(complete_gnt_bus),
         .mult_free(mult_free),
         .ldst_free(ldst_free),
+        .mult_cdb_valid(mult_cdb_valid),
+        .ldst_cdb_valid(ldst_cdb_valid),
         .cdb_completing(cdb_completing),
         .cdb_reg(cdb_reg),
         .b_mm_resolve(b_mm_out),
@@ -487,7 +488,7 @@ module cpu (
         .rob_outputs_valid(rob_outputs_valid),
         .num_retiring(num_retiring),
         // ------------- TO/FROM FREDDYLIST -------------- //
-        .complete_list_exposed(complete_list_exposed),
+        .complete_list_exposed(complete_list),
         .phys_regs_retiring(phys_regs_retiring),
         // ------------- TO CPU -------------- //
         .committed_insts(committed_insts),

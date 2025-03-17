@@ -1,4 +1,4 @@
-`include "sys_defs.svh"
+`include "verilog/sys_defs.svh"
 
     // TODO: UPDATE THE DRAWING Ald done bro
     // TODO: UPDATE THE DRAWING
@@ -34,16 +34,15 @@ module Issue # (
     input DATA          [`NUM_FU_BRANCH-1:0] issue_branch_read_data_1,
     input DATA          [`NUM_FU_BRANCH-1:0] issue_branch_read_data_2,
 
-    output DATA            [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1,
-    output DATA            [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2,
-    output DATA           [`NUM_FU_MULT-1:0] issue_mult_regs_reading_1,
-    output DATA           [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2,
-    output DATA         [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1,
-    output DATA         [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2,
+    output PHYS_REG_IDX    [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1,
+    output PHYS_REG_IDX    [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2,
+    output PHYS_REG_IDX   [`NUM_FU_MULT-1:0] issue_mult_regs_reading_1,
+    output PHYS_REG_IDX   [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2,
+    output PHYS_REG_IDX [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1,
+    output PHYS_REG_IDX [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2,
     
     // ------------- FROM CDB -------------- //
-    input DATA                        [`N-1:0] CDB_data_forwarded,  // for ETB, data forwarded from CDB to replace data 
-    input PHYS_REG_IDX                [`N-1:0] CDB_tags_forwarded,
+    input CDB_REG_PACKET              [`N-1:0] cdb_reg,
 
     // ------------- TO/FROM EXECUTE -------------- //
     // TODO: include the backpressure signals from each FU. 
@@ -98,7 +97,7 @@ for (i = 0; i < `RS_SZ; ++i) begin
 end
 endgenerate
 
-assign rs_data_issuing = '0;
+//assign rs_data_issuing = '0;
 
 psel_gen #(
     .WIDTH(`RS_SZ),
@@ -173,10 +172,12 @@ generate
     for (i = 0; i < `NUM_FU_BRANCH; ++i) begin : branch_loop
         logic [`RS_SZ_BITS-1:0] branch_index;
         encoder #(`RS_SZ, `RS_SZ_BITS) encoders_branch (branch_inst_gnt_bus[i], branch_index);
+        
+        assign rs_data_issuing = branch_inst_gnt_bus[i] & rs_cdb_gnt;
 
         always_comb begin 
             if (branch_inst_gnt_bus[i] & rs_cdb_gnt) begin
-                rs_data_issuing = branch_inst_gnt_bus[i];
+                //rs_data_issuing = branch_inst_gnt_bus[i];
 
                 //assign regfile_read_indices
                 issue_branch_regs_reading_1[i] = rs_data[branch_index].Source1;
@@ -202,8 +203,8 @@ generate
                 // Cam the CDB to get the forwarded data
                 end else begin
                     for(int j = 0; j < `N; ++j) begin
-                        if (rs_data[branch_index].Source1 == CDB_tags_forwarded[j]) begin
-                        branch_packets[i].source_reg_1 = CDB_data_forwarded[j];
+                        if (rs_data[branch_index].Source1 == cdb_reg[j].completing_reg) begin
+                        branch_packets[i].source_reg_1 = cdb_reg[j].result;
                         end
                     end
                 end
@@ -212,8 +213,8 @@ generate
                     branch_packets[i].source_reg_2 = issue_branch_read_data_2[i];
                 end else begin
                     for(int j = 0; j < `N; ++j) begin
-                        if(rs_data[branch_index].Source2 == CDB_tags_forwarded[j]) begin
-                            branch_packets[i].source_reg_2 = CDB_data_forwarded[j];
+                        if(rs_data[branch_index].Source2 == cdb_reg[j].completing_reg) begin
+                            branch_packets[i].source_reg_2 = cdb_reg[j].result;
                         end
                     end
                 end
@@ -229,16 +230,18 @@ generate
 endgenerate
 
 // Create The ALU Packets Issuing
+
+
 generate
     //loop through alu gnt bus
     for (i = 0; i < `NUM_FU_ALU; ++i) begin : alu_loop
         logic [`RS_SZ_BITS-1:0] alu_index;
         encoder #(`RS_SZ, `RS_SZ_BITS) encoders_alu (alu_inst_gnt_bus[i], alu_index);
 
+        assign rs_data_issuing = alu_inst_gnt_bus[i] & rs_cdb_gnt;
+
         always_comb begin 
             if (alu_inst_gnt_bus[i] & rs_cdb_gnt) begin
-                rs_data_issuing = alu_inst_gnt_bus[i];
-
                 //regfile_read_indices
                 issue_alu_regs_reading_1[i] = rs_data[alu_index].Source1;
                 issue_alu_regs_reading_2[i] = rs_data[alu_index].Source2;
@@ -256,8 +259,8 @@ generate
                     alu_packets[i].source_reg_1 = issue_alu_read_data_1[i];
                 end else begin
                     for(int j = 0; j < `N; ++j) begin
-                        if (rs_data[alu_index].Source1 == CDB_tags_forwarded[j]) begin
-                        alu_packets[i].source_reg_1 = CDB_data_forwarded[j];
+                        if (rs_data[alu_index].Source1 == cdb_reg[j].completing_reg) begin
+                        alu_packets[i].source_reg_1 = cdb_reg[j].result;
                         end
                     end
                 end
@@ -266,8 +269,8 @@ generate
                     alu_packets[i].source_reg_2 = issue_alu_read_data_2[i];
                 end else begin
                     for(int j = 0; j < `N; ++j) begin
-                        if(rs_data[alu_index].Source2 == CDB_tags_forwarded[j]) begin
-                            alu_packets[i].source_reg_2 = CDB_data_forwarded[j];
+                        if(rs_data[alu_index].Source2 == cdb_reg[j].completing_reg) begin
+                            alu_packets[i].source_reg_2 = cdb_reg[j].result;
                         end
                     end
                 end
@@ -287,8 +290,12 @@ generate
     //loop through mult gnt bus
     for (i = 0; i < `NUM_FU_MULT; ++i) begin : mult_loop
         logic [`RS_SZ_BITS-1:0] mult_rs_index;
+        logic [$clog2(`NUM_FU_MULT)-1:0] mult_fu_index;
         encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_mult (mult_inst_gnt_bus[i], mult_rs_index);
-        encoder #(`RS_SZ, `RS_SZ_BITS) fu_encoders_mult (mult_fu_gnt_bus[i], mult_fu_index);
+        encoder #(`NUM_FU_MULT, $clog2(`NUM_FU_MULT)) fu_encoders_mult (mult_fu_gnt_bus[i], mult_fu_index);
+
+        assign rs_data_issuing = (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) ? mult_inst_gnt_bus[i] : '0;
+
         always_comb begin
             if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
                 
@@ -296,7 +303,6 @@ generate
                 issue_mult_regs_reading_1[i] = rs_data[mult_rs_index].Source1;
                 issue_mult_regs_reading_2[i] = rs_data[mult_rs_index].Source2;
 
-                rs_data_issuing = mult_inst_gnt_bus[i];
                 mult_packets[mult_fu_index].valid = rs_data[mult_rs_index].decoded_signals.valid; // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
                 mult_packets[mult_fu_index].dest_reg_idx = rs_data[mult_rs_index].T_new;
                 mult_packets[mult_fu_index].bm = rs_data[mult_rs_index].b_mask;
@@ -307,8 +313,8 @@ generate
                     mult_packets[mult_fu_index].source_reg_1 = issue_mult_read_data_1[i];
                 end else begin
                     for(int j = 0; j < `N; ++j) begin
-                        if (rs_data[mult_rs_index].Source1 == CDB_tags_forwarded[j]) begin
-                        mult_packets[mult_fu_index].source_reg_1 = CDB_data_forwarded[j];
+                        if (rs_data[mult_rs_index].Source1 == cdb_reg[j].completing_reg) begin
+                        mult_packets[mult_fu_index].source_reg_1 = cdb_reg[j].result;
                         end
                     end
                 end
@@ -317,8 +323,8 @@ generate
                     mult_packets[mult_fu_index].source_reg_2 = issue_mult_read_data_2[i];
                 end else begin
                     for(int j = 0; j < `N; ++j) begin
-                        if(rs_data[mult_rs_index].Source2 == CDB_tags_forwarded[j]) begin
-                            mult_packets[mult_fu_index].source_reg_2 = CDB_data_forwarded[j];
+                        if(rs_data[mult_rs_index].Source2 == cdb_reg[j].completing_reg) begin
+                            mult_packets[mult_fu_index].source_reg_2 = cdb_reg[j].result;
                         end
                     end
                 end
@@ -331,22 +337,23 @@ endgenerate
 
 
 // Create The LDST Packets Issuing
+assign ldst_packets = '0;
 // generate
 //     //loop through ldst gnt bus
 //     for (i = 0; i < `NUM_FU_LDST; ++i) begin : ldst_loop
 //         logic [`RS_SZ_BITS-1:0] ldst_rs_index;
 //         encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_ldst (ldst_inst_gnt_bus[i], ldst_rs_index);
-//         encoder #(`RS_SZ, `RS_SZ_BITS) fu_encoders_ldst (ldst_fu_gnt_bus[i], ldst_fu_index);
+//         encoder #(`NUM_FU_LDST, $clog2(`NUM_FU_LDST)) fu_encoders_ldst (ldst_fu_gnt_bus[i], ldst_fu_index);
+//         assign rs_data_issuing = ldst_inst_gnt_bus[i] && ldst_fu_gnt_bus[i];
 //         always_comb begin
 //             if (ldst_inst_gnt_bus[i] && ldst_fu_gnt_bus[i]) begin
-//                 rs_data_issuing = ldst_inst_gnt_bus[i];
-//                 ldst_packets[ldst_fu_index] = // TODO: get the data from rs_entries[ldst_rs_index] to form this ldst packet
+//                 ldst_packets[ldst_fu_index] = '0;// TODO: get the data from rs_entries[ldst_rs_index] to form this ldst packet
 //                 if (complete_list[rs_data[ldst_rs_index].Source1]) begin
 //                     ldst_packets[ldst_fu_index].Source1_value = regfile_outputs; // TODO: change regfile
 //                 end else begin
 //                     for(int j = 0; j < `N; ++j) begin
-//                         if (rs_data[ldst_rs_index].Source1 == CDB_tags_forwarded[j]) begin
-//                         ldst_packets[ldst_fu_index].Source1_value = CDB_data_forwarded[j];
+//                         if (rs_data[ldst_rs_index].Source1 == cdb_reg[j].completing_reg) begin
+//                         ldst_packets[ldst_fu_index].Source1_value = cdb_reg[j].result;
 //                         end
 //                     end
 //                 end
@@ -355,13 +362,13 @@ endgenerate
 //                     ldst_packets[ldst_fu_index].Src2_value = regfile_outputs; // TODO: change regfile
 //                 end else begin
 //                     for(int j = 0; j < `N; ++j) begin
-//                         if(rs_data[ldst_rs_index].Source2 == CDB_tags_forwarded[j]) begin
-//                             ldst_packets[ldst_fu_index].Source2_value = CDB_data_forwarded[j];
+//                         if(rs_data[ldst_rs_index].Source2 == cdb_reg[j].completing_reg) begin
+//                             ldst_packets[ldst_fu_index].Source2_value = cdb_reg[j].result;
 //                         end
 //                     end
 //                 end
 //             end else begin
-//                 ldst_packets[ldst_fu_index] = //NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
+//                 ldst_packets[ldst_fu_index] = '0;//NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
 //             end
 //         end
 //     end
@@ -372,7 +379,7 @@ psel_gen #(
     .WIDTH(`NUM_FU_TOTAL),
     .REQS(`N)
 ) complete_psel (
-    .req({branch_cdb_gnt, alu_cdb_gnt, mult_cdb_gnt, ldst_cdb_gnt}),
+    .req({branch_cdb_gnt, alu_cdb_gnt, mult_cdb_gnt , ldst_cdb_gnt}),
     .gnt_bus(next_complete_gnt_bus),
     .empty(empty)
 );

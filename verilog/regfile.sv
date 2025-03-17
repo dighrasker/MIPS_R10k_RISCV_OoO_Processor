@@ -7,7 +7,7 @@
 //                                                                     //
 /////////////////////////////////////////////////////////////////////////
 
-`include "sys_defs.svh"
+`include "verilog/sys_defs.svh"
 
 // P4 TODO: update this with the new parameters from sys_defs
 // namely: PHYS_REG_SZ_P6 or PHYS_REG_SZ_R10K
@@ -40,10 +40,7 @@ module regfile (
     // TODO: ldst
     
     // note: no system reset, register values must be written before they can be read
-    input PHYS_REG_IDX [`N-1:0] phys_regs_completing,
-    input              [`N-1:0] write_en, //phys regs valid
-    input DATA         [`N-1:0] write_data //cdb results
-
+    input CDB_REG_PACKET [`N-1:0] cdb_reg
 );
     genvar i;
 
@@ -90,8 +87,8 @@ module regfile (
             reg_file <= '0;
         end else begin
             for(int i = 0; i < `N; ++i) begin
-                if (write_en[i] && (phys_regs_completing[i] != 0)) begin
-                    reg_file[phys_regs_completing[i]] <= write_data[i];
+                if (cdb_reg[i].valid && (cdb_reg[i].completing_reg != 0)) begin
+                    reg_file[cdb_reg[i].completing_reg] <= cdb_reg[i].result;
                 end
             end
         end

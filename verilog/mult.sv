@@ -61,7 +61,7 @@ module mult # (
     mult_stage mstage [`MULT_STAGES-1:0] (
         .clock (clock),
         .reset (reset),
-        .is_last_stage ({1'b1, `MULT_STAGES-1'b0}),
+        .is_last_stage ({1'b1, {(`MULT_STAGES-1){1'b0}}}),
         .next_stage_free ({cdb_en, internal_free}),
         .internal_mult_packet_in ({internal_mult_packets, internal_mult_packet_in}),
         .b_mm_mispred (b_mm_mispred),

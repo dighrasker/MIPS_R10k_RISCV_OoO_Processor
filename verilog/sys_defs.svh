@@ -33,7 +33,7 @@
 `define NUM_FU_BRANCH 1
 `define NUM_FU_ALU `N
 `define NUM_FU_MULT `N
-`define NUM_FU_LDST 0
+`define NUM_FU_LDST 1
 `define NUM_FU_LOAD 0
 `define NUM_FU_STORE 0
 `define NUM_FU_TOTAL `NUM_FU_ALU + `NUM_FU_MULT + `NUM_FU_BRANCH +`NUM_FU_LDST

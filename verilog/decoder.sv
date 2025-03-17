@@ -5,7 +5,7 @@
 // Pass these to the mult module with inst.r.funct3 as the MULT_FUNC
 
 `include "verilog/sys_defs.svh"
-`include "ISA.svh"
+`include "verilog/ISA.svh"
 
 // Decode an instruction: generate useful datapath control signals by matching the RISC-V ISA
 // This module is purely combinational

@@ -1,3 +1,5 @@
+`include "verilog/sys_defs.svh"
+
 module MapTable #(
     parameter LENGTH = `PHYS_REG_SZ_R10K,
     parameter LENGTH_BITS = `PHYS_REG_ID_BITS

@@ -1,4 +1,4 @@
-`include "sys_defs.svh"
+`include "verilog/sys_defs.svh"
 
 module retire (
     input logic                         clock,

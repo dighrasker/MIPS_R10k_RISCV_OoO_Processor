@@ -21,28 +21,29 @@ module Fetch #() (
 );
 
     ADDR Next_PC_reg;
+    ADDR curr_PC_reg;
     
     always_comb begin
         inst_buffer_inputs = '0;
-        Next_PC_reg = PC_reg[0];
+        Next_PC_reg = curr_PC_reg;
         for (int i = 0; i < `N; ++i) begin
             PC_reg[i] = Next_PC_reg;
             if (i < inst_buffer_spots) begin
                 inst_buffer_inputs[i].inst = inst[i];
                 inst_buffer_inputs[i].PC = Next_PC_reg;
                 inst_buffer_inputs[i].taken = 0;
-                Next_PC_reg = PC_reg + (4 * i); 
+                Next_PC_reg = curr_PC_reg + (4 * i); 
             end
         end
     end
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            PC_reg <= 0;             // initial PC value is 0 (the memory address where our program starts)
+            curr_PC_reg <= 0;             // initial PC value is 0 (the memory address where our program starts)
         end else if (restore_valid) begin
-            PC_reg <= PC_restore;    // or transition to next PC if valid
+            curr_PC_reg <= PC_restore;    // or transition to next PC if valid
         end else begin
-            PC_reg <= Next_PC_reg;
+            curr_PC_reg <= Next_PC_reg;
         end
     end
 endmodule

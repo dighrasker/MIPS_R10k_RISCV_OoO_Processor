@@ -17,7 +17,7 @@ module freddylist #(
     input  logic   [`PHYS_REG_SZ_R10K-1:0] updated_free_list,      // freelist from dispatch
     // input  logic    [`NUM_SCALAR_BITS-1:0] num_dispatched,
     // ------------- TO DISPATCH -------------- //
-    output PHYS_REG_IDX           [`N-1:0] phys_regs_to_use,       // physical register indices for dispatch to use
+    output PHYS_REG_IDX           [`N-1:0] regs_to_use,       // physical register indices for dispatch to use
     // output logic    [`NUM_SCALAR_BITS-1:0] free_list_spots,        // how many physical registers are free
     output logic   [`PHYS_REG_SZ_R10K-1:0] free_list,              // bitvector of the phys reg that are complete
     // ------------- TO ISSUE -------------- //
@@ -59,7 +59,7 @@ module freddylist #(
                 .OUTPUT_LENGTH(`PHYS_REG_ID_BITS)
             ) u_encoder (
                 .in(psel_output[i]), 
-                .out(phys_regs_to_use[i])
+                .out(regs_to_use[i])
             );
         end
     endgenerate

@@ -42,8 +42,7 @@ module Dispatch (
     //input   logic        [`NUM_SCALAR_BITS-1:0] num_issuing,
 
     // ------------ FROM EXECUTE ------------- //
-    input   PHYS_REG_IDX               [`N-1:0] ETB_tags,
-    input   logic                      [`N-1:0] ETB_tags_valid,
+    input   CDB_ETB_PACKET             [`N-1:0] cdb_completing,
 
     // ------------ TO ALL DATA STRUCTURES ------------- //
     output   logic       [`NUM_SCALAR_BITS-1:0] num_dispatched
@@ -110,7 +109,7 @@ module Dispatch (
                 end else begin
                     rs_entries[i].Source1_ready = 1'b0;
                     for(int j = 0; j < `N; j++) begin
-                        if(rs_entries[i].Source1 == ETB_tags[j] && ETB_tags_valid[j])begin
+                        if(rs_entries[i].Source1 == cdb_completing[j].completing_reg && cdb_completing[j].valid)begin
                             rs_entries[i].Source1_ready = 1'b1;
                         end
                     end
@@ -123,7 +122,7 @@ module Dispatch (
                 end else begin
                     rs_entries[i].Source2_ready = 1'b0;
                     for(int j = 0; j < `N; j++) begin
-                        if(rs_entries[i].Source2 == ETB_tags[j] && ETB_tags_valid[j])begin
+                        if(rs_entries[i].Source2 == cdb_completing[j].completing_reg && cdb_completing[j].valid)begin
                             rs_entries[i].Source2_ready = 1'b1;
                         end
                     end

@@ -1,3 +1,5 @@
+`include "verilog/sys_defs.svh"
+
 module alu (
     input ALU_PACKET alu_packet,
     output CDB_REG_PACKET alu_result

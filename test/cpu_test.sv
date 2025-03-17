@@ -6,7 +6,7 @@
 //                                                                     //
 /////////////////////////////////////////////////////////////////////////
 
-`include "sys_defs.svh"
+`include "verilog/sys_defs.svh"
 
 // P4 TODO: Add your own debugging framework. Basic printing of data structures
 //          is an absolute necessity for the project. You can use C functions 
@@ -46,7 +46,7 @@ module testbench;
     logic [31:0] clock_count; // also used for terminating infinite loops
     logic [31:0] instr_count;
 
-    /*
+    
     MEM_COMMAND proc2mem_command;
     ADDR        proc2mem_addr;
     MEM_BLOCK   proc2mem_data;
@@ -54,12 +54,9 @@ module testbench;
     MEM_BLOCK   mem2proc_data;
     MEM_TAG     mem2proc_data_tag;
     MEM_SIZE    proc2mem_size;
-    */
-
-    //COMMIT_PACKET [`N-1:0] committed_insts;
+    
     EXCEPTION_CODE error_status = NO_ERROR;
 
-    /*
     ADDR  if_NPC_dbg;
     DATA  if_inst_dbg;
     logic if_valid_dbg;
@@ -75,17 +72,17 @@ module testbench;
     ADDR  mem_wb_NPC_dbg;
     DATA  mem_wb_inst_dbg;
     logic mem_wb_valid_dbg;
-    */
+    
     INST          [`N-1:0] insts;
-    COMMIT_PACKET [`N-1:0] committed_insts;
     ADDR          [`N-1:0] PCs;
+    COMMIT_PACKET [`N-1:0] committed_insts;
 
     // Instantiate the Pipeline
     cpu verisimpleV (
         // Inputs
         .clock (clock),
         .reset (reset),
-        /*
+        
         .mem2proc_transaction_tag (mem2proc_transaction_tag),
         .mem2proc_data            (mem2proc_data),
         .mem2proc_data_tag        (mem2proc_data_tag),
@@ -97,9 +94,6 @@ module testbench;
 `ifndef CACHE_MODE
         .proc2mem_size    (proc2mem_size),
 `endif
-
-        .committed_insts (committed_insts),
-
         .if_NPC_dbg       (if_NPC_dbg),
         .if_inst_dbg      (if_inst_dbg),
         .if_valid_dbg     (if_valid_dbg),
@@ -114,8 +108,8 @@ module testbench;
         .ex_mem_valid_dbg (ex_mem_valid_dbg),
         .mem_wb_NPC_dbg   (mem_wb_NPC_dbg),
         .mem_wb_inst_dbg  (mem_wb_inst_dbg),
-        .mem_wb_valid_dbg (mem_wb_valid_dbg)
-        */
+        .mem_wb_valid_dbg (mem_wb_valid_dbg),
+        
         .inst(insts),
         .committed_insts(committed_insts),
         .PC(PCs)
@@ -149,7 +143,7 @@ module testbench;
     genvar i;
         for(i = 0; i < `N; ++i) begin
             logic [63:0] mem_block;
-            assign mem_block = memory.unified_memory[PCs[15:3]];
+            assign mem_block = memory.unified_memory[PCs[i][15:3]];
             assign insts[i] = PCs[i][2] ? mem_block[63:32] : mem_block[31:0];
         end
     endgenerate

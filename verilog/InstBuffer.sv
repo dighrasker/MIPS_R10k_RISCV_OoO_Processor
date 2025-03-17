@@ -1,5 +1,4 @@
-// Simple FIFO with parametrizable depth and width
-`include "sys_defs.svh"
+`include "verilog/sys_defs.svh"
 
 module instbuffer #() (
     input   logic                        clock, 
