@@ -286,54 +286,54 @@ endgenerate
 
 
 // Create The Mult Packets Issuing
-generate
-    //loop through mult gnt bus
+
+logic [`NUM_FU_MULT-1:0] [`RS_SZ_BITS-1:0]  mult_rs_index;
+logic [`NUM_FU_MULT-1:0] [$clog2(`NUM_FU_MULT)-1:0] mult_fu_index;
+encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_mult [`NUM_FU_MULT-1:0] (mult_inst_gnt_bus, mult_rs_index);
+encoder #(`NUM_FU_MULT, $clog2(`NUM_FU_MULT)) fu_encoders_mult [`NUM_FU_MULT-1:0] (mult_fu_gnt_bus, mult_fu_index);
+
+for (i = 0; i < `NUM_FU_MULT; ++i) begin 
+    assign rs_data_issuing = (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) ? mult_inst_gnt_bus[i] : '0;
+end
+
+always_comb begin
     for (i = 0; i < `NUM_FU_MULT; ++i) begin : mult_loop
-        logic [`RS_SZ_BITS-1:0] mult_rs_index;
-        logic [$clog2(`NUM_FU_MULT)-1:0] mult_fu_index;
-        encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_mult (mult_inst_gnt_bus[i], mult_rs_index);
-        encoder #(`NUM_FU_MULT, $clog2(`NUM_FU_MULT)) fu_encoders_mult (mult_fu_gnt_bus[i], mult_fu_index);
+        if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
+            // Reading RegFile
+            issue_mult_regs_reading_1[i] = rs_data[mult_rs_index].Source1;
+            issue_mult_regs_reading_2[i] = rs_data[mult_rs_index].Source2;
 
-        assign rs_data_issuing = (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) ? mult_inst_gnt_bus[i] : '0;
-
-        always_comb begin
-            if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
-                
-                // Reading RegFile
-                issue_mult_regs_reading_1[i] = rs_data[mult_rs_index].Source1;
-                issue_mult_regs_reading_2[i] = rs_data[mult_rs_index].Source2;
-
-                mult_packets[mult_fu_index].valid = rs_data[mult_rs_index].decoded_signals.valid; // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
-                mult_packets[mult_fu_index].dest_reg_idx = rs_data[mult_rs_index].T_new;
-                mult_packets[mult_fu_index].bm = rs_data[mult_rs_index].b_mask;
-                mult_packets[mult_fu_index].mult_func = rs_data[mult_rs_index].decoded_signals.mult_func;
+            mult_packets[mult_fu_index].valid = rs_data[mult_rs_index].decoded_signals.valid; // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
+            mult_packets[mult_fu_index].dest_reg_idx = rs_data[mult_rs_index].T_new;
+            mult_packets[mult_fu_index].bm = rs_data[mult_rs_index].b_mask;
+            mult_packets[mult_fu_index].mult_func = rs_data[mult_rs_index].decoded_signals.mult_func;
 
 
-                if (complete_list[rs_data[mult_rs_index].Source1]) begin
-                    mult_packets[mult_fu_index].source_reg_1 = issue_mult_read_data_1[i];
-                end else begin
-                    for(int j = 0; j < `N; ++j) begin
-                        if (rs_data[mult_rs_index].Source1 == cdb_reg[j].completing_reg) begin
-                        mult_packets[mult_fu_index].source_reg_1 = cdb_reg[j].result;
-                        end
-                    end
-                end
-
-                if (complete_list[rs_data[mult_rs_index].Source2]) begin
-                    mult_packets[mult_fu_index].source_reg_2 = issue_mult_read_data_2[i];
-                end else begin
-                    for(int j = 0; j < `N; ++j) begin
-                        if(rs_data[mult_rs_index].Source2 == cdb_reg[j].completing_reg) begin
-                            mult_packets[mult_fu_index].source_reg_2 = cdb_reg[j].result;
-                        end
-                    end
-                end
+            if (complete_list[rs_data[mult_rs_index].Source1]) begin
+                mult_packets[mult_fu_index].source_reg_1 = issue_mult_read_data_1[i];
             end else begin
-                mult_packets[mult_fu_index] = NOP_MULT_PACKET; //NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
+                for(int j = 0; j < `N; ++j) begin
+                    if (rs_data[mult_rs_index].Source1 == cdb_reg[j].completing_reg) begin
+                        mult_packets[mult_fu_index].source_reg_1 = cdb_reg[j].result;
+                    end
+                end
             end
+
+            if (complete_list[rs_data[mult_rs_index].Source2]) begin
+                mult_packets[mult_fu_index].source_reg_2 = issue_mult_read_data_2[i];
+            end else begin
+                for(int j = 0; j < `N; ++j) begin
+                    if(rs_data[mult_rs_index].Source2 == cdb_reg[j].completing_reg) begin
+                        mult_packets[mult_fu_index].source_reg_2 = cdb_reg[j].result;
+                    end
+                end
+            end
+        end else begin
+            mult_packets[mult_fu_index] = NOP_MULT_PACKET; //NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
         end
     end
-endgenerate
+end
+
 
 
 // Create The LDST Packets Issuing

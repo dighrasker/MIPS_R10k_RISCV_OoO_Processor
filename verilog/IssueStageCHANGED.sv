@@ -1,63 +1,5 @@
 `include "verilog/sys_defs.svh"
 
-module alu (
-    input ALU_PACKET alu_packet,
-    output CDB_REG_PACKET alu_result
-);
-
-    assign alu_result.completing_reg = alu_packet.dest_reg_idx;
-    //assign alu_result.bmm = '0;
-    //assign alu_result.bm_mispred = 0;
-    //assign alu_result.taken = 0;
-    assign alu_result.valid = alu_packet.valid;
-
-    DATA opa, opb;
-
-    // ALU opA mux
-    always_comb begin
-        case (alu_packet.opa_select)
-            OPA_IS_RS1:  opa = alu_packet.source_reg_1;
-            OPA_IS_NPC:  opa = alu_packet.NPC;
-            OPA_IS_PC:   opa = alu_packet.PC;
-            OPA_IS_ZERO: opa = 0;
-            default:     opa = 32'hdeadface; // dead face
-        endcase
-    end
-
-    // ALU opB mux
-    always_comb begin
-        case (alu_packet.opb_select)
-            OPB_IS_RS2:   opb = alu_packet.source_reg_2;
-            OPB_IS_I_IMM: opb = `RV32_signext_Iimm(alu_packet.inst);
-            OPB_IS_S_IMM: opb = `RV32_signext_Simm(alu_packet.inst);
-            OPB_IS_B_IMM: opb = `RV32_signext_Bimm(alu_packet.inst);
-            OPB_IS_U_IMM: opb = `RV32_signext_Uimm(alu_packet.inst);
-            OPB_IS_J_IMM: opb = `RV32_signext_Jimm(alu_packet.inst);
-            default:      opb = 32'hfacefeed; // face feed
-        endcase
-    end
-
-    always_comb begin
-        case (alu_packet.alu_func)
-            ALU_ADD:  alu_result.result = opa + opb;
-            ALU_SUB:  alu_result.result = opa - opb;
-            ALU_AND:  alu_result.result = opa & opb;
-            ALU_SLT:  alu_result.result = signed'(opa) < signed'(opb);
-            ALU_SLTU: alu_result.result = opa < opb;
-            ALU_OR:   alu_result.result = opa | opb;
-            ALU_XOR:  alu_result.result = opa ^ opb;
-            ALU_SRL:  alu_result.result = opa >> opb[4:0];
-            ALU_SLL:  alu_result.result = opa << opb[4:0];
-            ALU_SRA:  alu_result.result = signed'(opa) >>> opb[4:0]; // arithmetic from logical shift
-            // here to prevent latches:
-            default:  alu_result.result = 32'hfacebeec;
-        endcase
-    end
-
-endmodule // alu
-
-`include "verilog/sys_defs.svh"
-
     // TODO: UPDATE THE DRAWING Ald done bro
     // TODO: UPDATE THE DRAWING
     // TODO: UPDATE THE DRAWING
@@ -344,54 +286,54 @@ endgenerate
 
 
 // Create The Mult Packets Issuing
-
-logic [`NUM_FU_MULT-1:0] [`RS_SZ_BITS-1:0]  mult_rs_index;
-logic [`NUM_FU_MULT-1:0] [$clog2(`NUM_FU_MULT)-1:0] mult_fu_index;
-encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_mult [`NUM_FU_MULT-1:0] (mult_inst_gnt_bus, mult_rs_index);
-encoder #(`NUM_FU_MULT, $clog2(`NUM_FU_MULT)) fu_encoders_mult [`NUM_FU_MULT-1:0] (mult_fu_gnt_bus, mult_fu_index);
-
-for (i = 0; i < `NUM_FU_MULT; ++i) begin 
-    assign rs_data_issuing = (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) ? mult_inst_gnt_bus[i] : '0;
-end
-
-always_comb begin
+generate
+    //loop through mult gnt bus
     for (i = 0; i < `NUM_FU_MULT; ++i) begin : mult_loop
-        if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
-            // Reading RegFile
-            issue_mult_regs_reading_1[i] = rs_data[mult_rs_index].Source1;
-            issue_mult_regs_reading_2[i] = rs_data[mult_rs_index].Source2;
+        logic [`RS_SZ_BITS-1:0] mult_rs_index;
+        logic [$clog2(`NUM_FU_MULT)-1:0] mult_fu_index;
+        encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_mult (mult_inst_gnt_bus[i], mult_rs_index);
+        encoder #(`NUM_FU_MULT, $clog2(`NUM_FU_MULT)) fu_encoders_mult (mult_fu_gnt_bus[i], mult_fu_index);
 
-            mult_packets[mult_fu_index].valid = rs_data[mult_rs_index].decoded_signals.valid; // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
-            mult_packets[mult_fu_index].dest_reg_idx = rs_data[mult_rs_index].T_new;
-            mult_packets[mult_fu_index].bm = rs_data[mult_rs_index].b_mask;
-            mult_packets[mult_fu_index].mult_func = rs_data[mult_rs_index].decoded_signals.mult_func;
+        assign rs_data_issuing = (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) ? mult_inst_gnt_bus[i] : '0;
+
+        always_comb begin
+            if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
+                
+                // Reading RegFile
+                issue_mult_regs_reading_1[i] = rs_data[mult_rs_index].Source1;
+                issue_mult_regs_reading_2[i] = rs_data[mult_rs_index].Source2;
+
+                mult_packets[mult_fu_index].valid = rs_data[mult_rs_index].decoded_signals.valid; // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
+                mult_packets[mult_fu_index].dest_reg_idx = rs_data[mult_rs_index].T_new;
+                mult_packets[mult_fu_index].bm = rs_data[mult_rs_index].b_mask;
+                mult_packets[mult_fu_index].mult_func = rs_data[mult_rs_index].decoded_signals.mult_func;
 
 
-            if (complete_list[rs_data[mult_rs_index].Source1]) begin
-                mult_packets[mult_fu_index].source_reg_1 = issue_mult_read_data_1[i];
-            end else begin
-                for(int j = 0; j < `N; ++j) begin
-                    if (rs_data[mult_rs_index].Source1 == cdb_reg[j].completing_reg) begin
+                if (complete_list[rs_data[mult_rs_index].Source1]) begin
+                    mult_packets[mult_fu_index].source_reg_1 = issue_mult_read_data_1[i];
+                end else begin
+                    for(int j = 0; j < `N; ++j) begin
+                        if (rs_data[mult_rs_index].Source1 == cdb_reg[j].completing_reg) begin
                         mult_packets[mult_fu_index].source_reg_1 = cdb_reg[j].result;
+                        end
                     end
                 end
-            end
 
-            if (complete_list[rs_data[mult_rs_index].Source2]) begin
-                mult_packets[mult_fu_index].source_reg_2 = issue_mult_read_data_2[i];
-            end else begin
-                for(int j = 0; j < `N; ++j) begin
-                    if(rs_data[mult_rs_index].Source2 == cdb_reg[j].completing_reg) begin
-                        mult_packets[mult_fu_index].source_reg_2 = cdb_reg[j].result;
+                if (complete_list[rs_data[mult_rs_index].Source2]) begin
+                    mult_packets[mult_fu_index].source_reg_2 = issue_mult_read_data_2[i];
+                end else begin
+                    for(int j = 0; j < `N; ++j) begin
+                        if(rs_data[mult_rs_index].Source2 == cdb_reg[j].completing_reg) begin
+                            mult_packets[mult_fu_index].source_reg_2 = cdb_reg[j].result;
+                        end
                     end
                 end
+            end else begin
+                mult_packets[mult_fu_index] = NOP_MULT_PACKET; //NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
             end
-        end else begin
-            mult_packets[mult_fu_index] = NOP_MULT_PACKET; //NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
         end
     end
-end
-
+endgenerate
 
 
 // Create The LDST Packets Issuing
