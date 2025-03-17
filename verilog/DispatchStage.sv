@@ -168,7 +168,8 @@ module Dispatch (
                 updated_free_list[regs_to_use[i]] = 0;
                 next_map_table[dest_arch_reg[i]] = decoder_out[i].has_dest ? regs_to_use[i] : next_map_table[dest_arch_reg[i]];
 
-                num_dispatched = i + 1;
+                num_dispatched += 1;
+
             end
         end
     end
@@ -179,6 +180,14 @@ module Dispatch (
                 map_table[i] <= i[`ARCH_REG_ID_BITS-1:0];
             end
         end else begin
+            $display(
+                "num_dispatched: %d\ni_num_dispatched: %d\nbs_empty: %b\nrob_spots: %d\nrs_spots: %d",
+                num_dispatched,
+                i_num_dispatched,
+                bs_empty,
+                rob_spots,
+                rs_spots
+            );
             map_table <= next_map_table;
         end
     end

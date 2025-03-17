@@ -27,8 +27,8 @@ module rs #(
     `endif
 );
 
-    logic [`RS_SZ-1:0] RS_valid;
-    //Need to handle corner case where RS_SZ is odd - maybe with genvar
+    logic [`RS_SZ-1:0] RS_valid, Next_RS_valid;
+    //TODO Need to handle corner case where RS_SZ is odd - maybe with genvar
 
     logic [`RS_NUM_ENTRIES_BITS-1:0] rs_num_available;
     logic [`N-1:0][`RS_SZ-1:0] rs_gnt_bus;
@@ -53,12 +53,23 @@ module rs #(
         .count_ones(rs_num_available)
     );
 
+
+
     always_comb begin
         rs_spots = rs_num_available > `N ? `N : rs_num_available;
         //B_mask camming
+        rs_valid_next = RS_valid;
         for(int i = 0; i < `RS_SZ; ++i) begin
             //squashing step
             rs_valid_next[i] = (b_mm_mispred && (b_mm_resolve & rs_data[i].b_mask)) ? 0 : RS_valid[i];
+        end
+        Next_RS_valid = rs_valid_next;
+        for (int i = 0; i < `N; ++i) begin
+            for(int j = 0; j < `RS_SZ; ++j) begin
+                if (i < num_dispatched && rs_gnt_bus[i][j]) begin
+                    Next_RS_valid[j] = 1;
+                end 
+            end
         end
     end
 
@@ -67,7 +78,7 @@ module rs #(
             rs_data <= '0;
             RS_valid <= '0;
         end else begin
-            RS_valid <= rs_valid_next & ~(rs_data_issuing);
+            RS_valid <= Next_RS_valid & ~(rs_data_issuing);
             for(int i = 0; i < `RS_SZ; ++i) begin
                 //resolving mask
                 rs_data[i].b_mask <= rs_data[i].b_mask & ~(b_mm_resolve);
@@ -84,14 +95,22 @@ module rs #(
             //Maybe can make this more efficient by using wor/wand or smth
             for (int i = 0; i < `N; ++i) begin
                 for(int j = 0; j < `RS_SZ; ++j) begin
-                    if (i < num_dispatched & rs_gnt_bus[i][j]) begin
+                    if (i < num_dispatched && rs_gnt_bus[i][j]) begin
                         rs_data[j] <= rs_entries[i];
-                        RS_valid[j] <= 1;
-                    end
+                        //RS_valid[j] <= 1;
+                    end 
+                    // else begin
+                    //     RS_valid[j] <= rs_valid_next[j][j] & ~(rs_data_issuing[j]);
+                    // end
                 end
             end
         end
     end
+
+    always_comb begin
+        $display("rs_valid  : %b", RS_valid);
+    end
+
 `ifdef DEBUG
     assign rs_debug = {
         rs_valid:   RS_valid,

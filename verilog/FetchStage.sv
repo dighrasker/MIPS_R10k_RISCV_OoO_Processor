@@ -22,6 +22,8 @@ module Fetch #() (
 
     ADDR Next_PC_reg;
     ADDR curr_PC_reg;
+
+    assign instructions_valid = inst_buffer_spots;
     
     always_comb begin
         inst_buffer_inputs = '0;
@@ -33,6 +35,14 @@ module Fetch #() (
                 inst_buffer_inputs[i].PC = Next_PC_reg;
                 inst_buffer_inputs[i].taken = 0;
                 Next_PC_reg = curr_PC_reg + (4 * i); 
+                
+                // $display(
+                //     "inst_buffer_inputs[%d].inst : %b\ninst_buffer_inputs[%d].PC : %b\ninst_buffer_inputs[%d].taken : %b\ninstructions_valid: %b\n", 
+                //     i, inst_buffer_inputs[i].inst, 
+                //     i, inst_buffer_inputs[i].PC, 
+                //     i, inst_buffer_inputs[i].taken,
+                //     instructions_valid
+                // );
             end
         end
     end

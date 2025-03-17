@@ -23,7 +23,7 @@ module Issue # (
     // ------------- TO/FROM RS -------------- //
     input RS_PACKET               [`RS_SZ-1:0] rs_data,             // full RS data exposed to issue for psel and FU packets generating
     input logic                   [`RS_SZ-1:0] rs_valid_next,
-    output  wor                   [`RS_SZ-1:0] rs_data_issuing,     // set index to 1 when a rs_data is selected to be issued
+    output logic                  [`RS_SZ-1:0] rs_data_issuing,     // set index to 1 when a rs_data is selected to be issued
 
     // ------------- TO/FROM REGFILE -------------- //
     
@@ -97,7 +97,22 @@ for (i = 0; i < `RS_SZ; ++i) begin
 end
 endgenerate
 
-//assign rs_data_issuing = '0;
+always_comb begin
+    rs_data_issuing = '0;
+    for (int i = 0; i < `NUM_FU_MULT; ++i) begin
+        rs_data_issuing |= (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) ? mult_inst_gnt_bus[i] : '0;
+    end
+    for (int i = 0; i < `NUM_FU_ALU; ++i) begin
+        rs_data_issuing |= alu_inst_gnt_bus[i] & rs_cdb_gnt;
+    end
+    for (int i = 0; i < `NUM_FU_BRANCH; ++i) begin
+        rs_data_issuing |= branch_inst_gnt_bus[i] & rs_cdb_gnt;
+    end
+
+    // for (int i = 0; i < `NUM_FU_LDST; ++i) begin
+        
+    // end
+end
 
 psel_gen #(
     .WIDTH(`RS_SZ),
@@ -173,7 +188,7 @@ generate
         logic [`RS_SZ_BITS-1:0] branch_index;
         encoder #(`RS_SZ, `RS_SZ_BITS) encoders_branch (branch_inst_gnt_bus[i], branch_index);
         
-        assign rs_data_issuing = branch_inst_gnt_bus[i] & rs_cdb_gnt;
+        //assign rs_data_issuing = branch_inst_gnt_bus[i] & rs_cdb_gnt;
 
         always_comb begin 
             if (branch_inst_gnt_bus[i] & rs_cdb_gnt) begin
@@ -238,7 +253,7 @@ generate
         logic [`RS_SZ_BITS-1:0] alu_index;
         encoder #(`RS_SZ, `RS_SZ_BITS) encoders_alu (alu_inst_gnt_bus[i], alu_index);
 
-        assign rs_data_issuing = alu_inst_gnt_bus[i] & rs_cdb_gnt;
+        // assign rs_data_issuing = alu_inst_gnt_bus[i] & rs_cdb_gnt;
 
         always_comb begin 
             if (alu_inst_gnt_bus[i] & rs_cdb_gnt) begin
@@ -292,9 +307,9 @@ logic [`NUM_FU_MULT-1:0] [$clog2(`NUM_FU_MULT)-1:0] mult_fu_index;
 encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_mult [`NUM_FU_MULT-1:0] (mult_inst_gnt_bus, mult_rs_index);
 encoder #(`NUM_FU_MULT, $clog2(`NUM_FU_MULT)) fu_encoders_mult [`NUM_FU_MULT-1:0] (mult_fu_gnt_bus, mult_fu_index);
 
-for (i = 0; i < `NUM_FU_MULT; ++i) begin 
-    assign rs_data_issuing = (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) ? mult_inst_gnt_bus[i] : '0;
-end
+// for (i = 0; i < `NUM_FU_MULT; ++i) begin 
+//     assign rs_data_issuing = (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) ? mult_inst_gnt_bus[i] : '0;
+// end
 
 always_comb begin
     for (int i = 0; i < `NUM_FU_MULT; ++i) begin : mult_loop
@@ -389,6 +404,17 @@ always_ff @(posedge clock) begin
         complete_gnt_bus <= '0;
     end else begin
         complete_gnt_bus <= next_complete_gnt_bus;
+        $display("rs_data_issuing  : %b", rs_data_issuing);
+        $display("rs_cdb_gnt  : %b", rs_cdb_gnt);
+        for (int i = 0; i < `NUM_FU_ALU; ++i) begin
+            $display("alu_inst_gnt_bus[%d]  : %b", i, alu_inst_gnt_bus);
+        end
+        for (int i = 0; i < `NUM_FU_ALU; ++i) begin
+            $display("branch_inst_gnt_bus[%d]  : %b", i, branch_inst_gnt_bus);
+        end
+        for (int i = 0; i < `NUM_FU_ALU; ++i) begin
+            $display("mult_inst_gnt_bus[%d]  : %b", i, mult_inst_gnt_bus[i]);
+        end
     end
 end
 

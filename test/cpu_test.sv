@@ -227,7 +227,7 @@ module testbench;
             // print_membus({30'b0,proc2mem_command}, proc2mem_addr[31:0],
             //              proc2mem_data[63:32], proc2mem_data[31:0]);
 
-            print_custom_data();
+            // print_custom_data();
 
             output_reg_writeback_and_maybe_halt();
 
@@ -343,9 +343,9 @@ module testbench;
     // OPTIONAL: Print our your data here
     // It will go to the $program.log file
     task print_custom_data;
-        //$display("%3d: YOUR DATA HERE", 
-        //    clock_count-1
-        //);
+        $display("%3d: YOUR DATA HERE", 
+           clock_count-1
+        );
     endtask
 
 
