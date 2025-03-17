@@ -16,7 +16,7 @@ module Dispatch (
     input   ARCH_REG_IDX               [`N-1:0] dest_arch_reg,
 
     // ------------ TO/FROM BRANCH STACK ------------- //
-    input   PHYS_REG_IDX    [`ARCH_REG_SZ_R10K] map_table_restore,
+    input  PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore,
     input   logic                               restore_valid,
     input   B_MASK                              b_mask_combinational,
     output  BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack_entries,
