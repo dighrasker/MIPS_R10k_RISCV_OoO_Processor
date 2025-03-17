@@ -297,7 +297,7 @@ for (i = 0; i < `NUM_FU_MULT; ++i) begin
 end
 
 always_comb begin
-    for (i = 0; i < `NUM_FU_MULT; ++i) begin : mult_loop
+    for (int i = 0; i < `NUM_FU_MULT; ++i) begin : mult_loop
         if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
             // Reading RegFile
             issue_mult_regs_reading_1[i] = rs_data[mult_rs_index].Source1;

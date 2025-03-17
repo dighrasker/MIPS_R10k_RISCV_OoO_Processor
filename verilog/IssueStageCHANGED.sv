@@ -12,7 +12,7 @@
     // TODO: UPDATE THE DRAWING
     // TODO: UPDATE THE DRAWING
 
-module Issue # (
+module Issue_Old # (
 ) (
     input logic                                clock,
     input logic                                reset,
