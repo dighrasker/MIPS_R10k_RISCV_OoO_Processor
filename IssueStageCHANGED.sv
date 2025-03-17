@@ -239,8 +239,8 @@ generate
         encoder #(`RS_SZ, `RS_SZ_BITS) encoders_alu (alu_inst_gnt_bus[i], alu_index);
 
         assign rs_data_issuing = alu_inst_gnt_bus[i] & rs_cdb_gnt;
-
         always_comb begin 
+            alu_packets[i] = '0;
             if (alu_inst_gnt_bus[i] & rs_cdb_gnt) begin
                 //regfile_read_indices
                 issue_alu_regs_reading_1[i] = rs_data[alu_index].Source1;

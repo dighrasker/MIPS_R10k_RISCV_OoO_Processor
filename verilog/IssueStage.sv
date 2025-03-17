@@ -176,7 +176,7 @@ psel_gen #(
     .WIDTH(`CDB_ARBITER_SZ),
     .REQS(`N)
 ) cdb_psel (
-    .req({single_cycle_entries_valid, mult_cdb_req, ldst_cdb_req}),
+    .req({single_cycle_entries_valid, mult_cdb_req, 1'b0}),
     .gnt({rs_cdb_gnt, mult_cdb_gnt, ldst_cdb_gnt}),
     .empty(empty)
 );
@@ -191,6 +191,8 @@ generate
         //assign rs_data_issuing = branch_inst_gnt_bus[i] & rs_cdb_gnt;
 
         always_comb begin 
+            issue_branch_regs_reading_1[i] = '0;
+            issue_branch_regs_reading_2[i] = '0;
             if (branch_inst_gnt_bus[i] & rs_cdb_gnt) begin
                 //rs_data_issuing = branch_inst_gnt_bus[i];
 
@@ -315,36 +317,36 @@ always_comb begin
     for (int i = 0; i < `NUM_FU_MULT; ++i) begin : mult_loop
         if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
             // Reading RegFile
-            issue_mult_regs_reading_1[i] = rs_data[mult_rs_index].Source1;
-            issue_mult_regs_reading_2[i] = rs_data[mult_rs_index].Source2;
+            issue_mult_regs_reading_1[i] = rs_data[mult_rs_index[i]].Source1;
+            issue_mult_regs_reading_2[i] = rs_data[mult_rs_index[i]].Source2;
 
-            mult_packets[mult_fu_index].valid = rs_data[mult_rs_index].decoded_signals.valid; // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
-            mult_packets[mult_fu_index].dest_reg_idx = rs_data[mult_rs_index].T_new;
-            mult_packets[mult_fu_index].bm = rs_data[mult_rs_index].b_mask;
-            mult_packets[mult_fu_index].mult_func = rs_data[mult_rs_index].decoded_signals.mult_func;
+            mult_packets[mult_fu_index[i]].valid = rs_data[mult_rs_index[i]].decoded_signals.valid; // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
+            mult_packets[mult_fu_index[i]].dest_reg_idx = rs_data[mult_rs_index[i]].T_new;
+            mult_packets[mult_fu_index[i]].bm = rs_data[mult_rs_index[i]].b_mask;
+            mult_packets[mult_fu_index[i]].mult_func = rs_data[mult_rs_index[i]].decoded_signals.mult_func;
 
 
-            if (complete_list[rs_data[mult_rs_index].Source1]) begin
-                mult_packets[mult_fu_index].source_reg_1 = issue_mult_read_data_1[i];
+            if (complete_list[rs_data[mult_rs_index[i]].Source1]) begin
+                mult_packets[mult_fu_index[i]].source_reg_1 = issue_mult_read_data_1[i];
             end else begin
                 for(int j = 0; j < `N; ++j) begin
-                    if (rs_data[mult_rs_index].Source1 == cdb_reg[j].completing_reg) begin
-                        mult_packets[mult_fu_index].source_reg_1 = cdb_reg[j].result;
+                    if (rs_data[mult_rs_index[i]].Source1 == cdb_reg[j].completing_reg) begin
+                        mult_packets[mult_fu_index[i]].source_reg_1 = cdb_reg[j].result;
                     end
                 end
             end
 
-            if (complete_list[rs_data[mult_rs_index].Source2]) begin
-                mult_packets[mult_fu_index].source_reg_2 = issue_mult_read_data_2[i];
+            if (complete_list[rs_data[mult_rs_index[i]].Source2]) begin
+                mult_packets[mult_fu_index[i]].source_reg_2 = issue_mult_read_data_2[i];
             end else begin
                 for(int j = 0; j < `N; ++j) begin
-                    if(rs_data[mult_rs_index].Source2 == cdb_reg[j].completing_reg) begin
-                        mult_packets[mult_fu_index].source_reg_2 = cdb_reg[j].result;
+                    if(rs_data[mult_rs_index[i]].Source2 == cdb_reg[j].completing_reg) begin
+                        mult_packets[mult_fu_index[i]].source_reg_2 = cdb_reg[j].result;
                     end
                 end
             end
         end else begin
-            mult_packets[mult_fu_index] = NOP_MULT_PACKET; //NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
+            mult_packets[mult_fu_index[i]] = NOP_MULT_PACKET; //NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
         end
     end
 end
@@ -406,13 +408,14 @@ always_ff @(posedge clock) begin
         complete_gnt_bus <= next_complete_gnt_bus;
         $display("rs_data_issuing  : %b", rs_data_issuing);
         $display("rs_cdb_gnt  : %b", rs_cdb_gnt);
+        $display("single_cycle_inst : %b", {single_cycle_entries_valid, mult_cdb_req, 1'b1});
         for (int i = 0; i < `NUM_FU_ALU; ++i) begin
-            $display("alu_inst_gnt_bus[%d]  : %b", i, alu_inst_gnt_bus);
+            $display("alu_inst_gnt_bus[%d]  : %b", i, alu_inst_gnt_bus[i]);
         end
-        for (int i = 0; i < `NUM_FU_ALU; ++i) begin
-            $display("branch_inst_gnt_bus[%d]  : %b", i, branch_inst_gnt_bus);
+        for (int i = 0; i < `NUM_FU_BRANCH; ++i) begin
+            $display("branch_inst_gnt_bus[%d]  : %b", i, branch_inst_gnt_bus[i]);
         end
-        for (int i = 0; i < `NUM_FU_ALU; ++i) begin
+        for (int i = 0; i < `NUM_FU_MULT; ++i) begin
             $display("mult_inst_gnt_bus[%d]  : %b", i, mult_inst_gnt_bus[i]);
         end
     end
