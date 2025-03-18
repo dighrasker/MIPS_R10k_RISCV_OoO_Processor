@@ -426,8 +426,8 @@ typedef struct packed {
  */
 typedef struct packed {
     ADDR    NPC;
-    DATA    data;
-    REG_IDX reg_idx;
+    DATA    data; 
+    PHYS_REG_IDX reg_idx;
     logic   halt;
     logic   illegal;
     logic   valid;

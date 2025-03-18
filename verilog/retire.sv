@@ -84,6 +84,7 @@ always_ff @(posedge clock) begin
         $display("num_retiring: %d\nrob_outputs_valid: %d\n", 
         num_retiring,
         rob_outputs_valid);
+        
     end
 end
 

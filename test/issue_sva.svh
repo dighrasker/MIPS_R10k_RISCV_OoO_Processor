@@ -94,30 +94,18 @@ module Issue_sva #(
 
         //1. All instructions in the output packets should have their source registers cleared
         property valid_alu_packet (int i, int j);
-            for(int i = 0; i < `RS_SZ; ++i) begin
-               for(int j = 0; j < `NUM_FU_ALU; ++j) begin
-                    (alu_packets[j].valid && alu_packets[j].inst == prev_rs_data[i].decoded_signals.inst) 
-                    |=> (prev_rs_data[i].Source1_ready && prev_rs_data[i].Source2_ready);
-               end
-            end
+            (alu_packets[j].valid && alu_packets[j].inst == prev_rs_data[i].decoded_signals.inst) 
+            |=> (prev_rs_data[i].Source1_ready && prev_rs_data[i].Source2_ready);
         endproperty
 
-        property valid_branch_packet(int i, j);
-            for(int i = 0; i < `RS_SZ; ++i) begin
-               for(int j = 0; j < `NUM_FU_ALU; ++j) begin
-                    (branch_packets[j].valid && branch_packets[j].inst == prev_rs_data[i].decoded_signals.inst) 
-                    |=> (prev_rs_data[i].Source1_ready && prev_rs_data[i].Source2_ready);
-               end
-            end
+        property valid_branch_packet(int i, int j);
+            (branch_packets[j].valid && branch_packets[j].inst == prev_rs_data[i].decoded_signals.inst) 
+            |=> (prev_rs_data[i].Source1_ready && prev_rs_data[i].Source2_ready);
         endproperty
 
         property valid_mult_packet(int i, int j);
-            for(int i = 0; i < `RS_SZ; ++i) begin
-               for(int j = 0; j < `NUM_FU_ALU; ++j) begin
-                    (mult_packets[j].valid && mult_packets[j].inst == prev_rs_data[i].decoded_signals.inst) 
-                    |=> (prev_rs_data[i].Source1_ready && prev_rs_data[i].Source2_ready);
-               end
-            end
+            (mult_packets[j].valid && mult_packets[j].dest_reg_idx == prev_rs_data[i].T_new) 
+            |=> (prev_rs_data[i].Source1_ready && prev_rs_data[i].Source2_ready);
         endproperty
 
         /*property mult_structural;
@@ -130,27 +118,41 @@ module Issue_sva #(
     
 
 
-    
-    always @(posedge clock) begin
-        assert property (issue_props.valid_alu_packet)
-            else begin
-                $error("Tags for instructions in ALU Packet have not been cleared");
-                $finish;
-            end
-
-        assert property (issue_props.valid_branch_packet)
-            else begin
-                $error("Tags for instructions in Branch Packet have not been cleared");
-                $finish;
-            end
-
-        assert property (issue_props.valid_mult_packet)
-            else begin
-                $error("Tags for instructions in Mult Packet have not been cleared");
-                $finish;
-            end
-
+generate
+genvar i;
+genvar j;
+for (i = 0; i < `RS_SZ; ++i) begin
+    for (j = 0; j < `NUM_FU_ALU; ++j) begin
+        always_ff @(posedge clock) begin
+            assert property (issue_props.valid_alu_packet(i, j))
+                else begin
+                    $error("Tags for instructions in ALU Packet have not been cleared");
+                    $finish;
+                end
+        end
     end
+
+    for(j = 0; j < `NUM_FU_BRANCH; ++j) begin
+        always_ff @(posedge clock) begin
+            assert property (issue_props.valid_branch_packet(i, j))
+                else begin
+                    $error("Tags for instructions in Branch Packet have not been cleared");
+                    $finish;
+                end
+        end
+    end
+
+    for(j = 0; j < `NUM_FU_MULT; ++j) begin
+        always_ff @(posedge clock) begin
+            assert property (issue_props.valid_mult_packet(i, j))
+                else begin
+                    $error("Tags for instructions in Mult Packet have not been cleared");
+                    $finish;
+                end
+        end
+    end
+end
+endgenerate
 
 endmodule
 

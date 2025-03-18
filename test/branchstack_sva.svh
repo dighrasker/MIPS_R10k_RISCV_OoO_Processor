@@ -71,7 +71,7 @@ module BranchStack_sva #(
 
     clocking prop_with_dispatch @(posedge clock);
         property branch_stacks_do_not_overlap;
-            (~reset) |=> ((prev_next_branch_stack & prev_branch_stack_entries) == 0);
+            (branch_stack_entries[0] === 0 || branch_stack_entries[0] === 1) |=> ((prev_next_branch_stack & prev_branch_stack_entries) == 0);
         endproperty
 
         property dispatched_branch_update_branchstack(int index);

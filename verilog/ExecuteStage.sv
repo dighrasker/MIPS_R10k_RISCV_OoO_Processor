@@ -29,8 +29,8 @@ module ExecuteStage (
 );
 
     // MULT_PACKET   mult_packets_issuing;
-    ALU_PACKET    alu_packets_issuing;
-    BRANCH_PACKET branch_packets_issuing;
+    ALU_PACKET   [`NUM_FU_ALU-1:0] alu_packets_issuing;
+    BRANCH_PACKET [`NUM_FU_BRANCH-1:0] branch_packets_issuing;
     //add ldst packet later
 
     CDB_REG_PACKET [`NUM_FU_ALU-1:0] alu_result;
@@ -50,7 +50,7 @@ module ExecuteStage (
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            for(int i  = 0; i < `NUM_FU_ALU; ++i) begin
+            for(int i = 0; i < `NUM_FU_ALU; ++i) begin
                 alu_packets_issuing[i] <= NOP_ALU_PACKET;
             end
             for(int i = 0; i < `NUM_FU_BRANCH; ++i) begin
@@ -64,7 +64,7 @@ module ExecuteStage (
 
     CDB_REG_PACKET [`NUM_FU_TOTAL-1:0] fu_result;
 
-    assign fu_result = {branch_result, alu_result, mult_result};
+    assign fu_result = {branch_result, alu_result, mult_result, branch_result};
 
     always_comb begin
         next_cdb_reg = '0;
@@ -72,6 +72,8 @@ module ExecuteStage (
         for (int i = 0; i < `N; ++i) begin
             for (int j = 0; j < `NUM_FU_TOTAL; ++j) begin
                 if (complete_gnt_bus[i][j]) begin
+                    $display("HIIIIIIIIIIIII");
+                    $display("completing!!!!!: %d", fu_result[j].completing_reg);
                     next_cdb_reg[i] = fu_result[j];
                     cdb_completing[i].completing_reg = next_cdb_reg[i].completing_reg;
                     cdb_completing[i].valid = next_cdb_reg[i].valid;
@@ -87,7 +89,7 @@ module ExecuteStage (
             cdb_reg <= next_cdb_reg;
 
             for (int i = 0; i < `N; ++i) begin
-                $display("cdb_completing[%d]  : %d", i, cdb_completing[i].completing_reg);
+                $display("cdb_reg[%d].completing_reg : %d", i, cdb_reg[i].completing_reg);
             end
 
         end
@@ -132,6 +134,12 @@ module ExecuteStage (
             branch_reg <= '0;
         end else begin
             branch_reg <= next_branch_reg;
+            for (int i = 0; i < `NUM_FU_TOTAL; ++i) begin
+                $display(
+                    "fu_result[%d].completing_reg: %d\n",
+                    i, fu_result[i].completing_reg
+                );
+            end
         end
     end
     //add logic to set the mispredict signal

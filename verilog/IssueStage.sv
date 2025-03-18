@@ -312,7 +312,6 @@ logic [`NUM_FU_MULT-1:0] [`RS_SZ_BITS-1:0]  mult_rs_index;
 logic [`NUM_FU_MULT-1:0] [LOG_NUM_FU_MULT-1:0] mult_fu_index;
 encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_mult [`NUM_FU_MULT-1:0] (mult_inst_gnt_bus, mult_rs_index);
 encoder #(`NUM_FU_MULT, LOG_NUM_FU_MULT) fu_encoders_mult [`NUM_FU_MULT-1:0] (mult_fu_gnt_bus, mult_fu_index);
-
 // for (i = 0; i < `NUM_FU_MULT; ++i) begin 
 //     assign rs_data_issuing = (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) ? mult_inst_gnt_bus[i] : '0;
 // end

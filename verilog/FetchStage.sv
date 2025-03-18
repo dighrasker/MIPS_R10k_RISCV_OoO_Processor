@@ -34,7 +34,7 @@ module Fetch #() (
                 inst_buffer_inputs[i].inst = inst[i];
                 inst_buffer_inputs[i].PC = Next_PC_reg;
                 inst_buffer_inputs[i].taken = 0;
-                Next_PC_reg = curr_PC_reg + (4 * i); 
+                Next_PC_reg = curr_PC_reg + (4 * (i + 1)); 
                 
                 // $display(
                 //     "inst_buffer_inputs[%d].inst : %b\ninst_buffer_inputs[%d].PC : %b\ninst_buffer_inputs[%d].taken : %b\ninstructions_valid: %b\n", 

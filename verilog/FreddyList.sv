@@ -95,12 +95,6 @@ module freddylist #(
         end else begin
             complete_list <= next_complete_list;
             free_list <= restore_flag ? next_free_list | free_list_restore : next_free_list;
-            for (int i = 0; i < `PHYS_REG_SZ_R10K; ++i) begin
-                $display(
-                    "free_list[%d]: %d complete_list[%d]: %d\n",
-                    i, free_list[i], i, complete_list[i]
-                );
-            end
             // entries <= next_entries;
         end
     end

@@ -6,9 +6,6 @@ module alu (
 );
 
     assign alu_result.completing_reg = alu_packet.dest_reg_idx;
-    //assign alu_result.bmm = '0;
-    //assign alu_result.bm_mispred = 0;
-    //assign alu_result.taken = 0;
     assign alu_result.valid = alu_packet.valid;
 
     DATA opa, opb;
