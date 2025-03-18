@@ -36,6 +36,9 @@ module ExecuteStage (
     CDB_REG_PACKET [`NUM_FU_ALU-1:0] alu_result;
     CDB_REG_PACKET [`NUM_FU_MULT-1:0] mult_result;
     CDB_REG_PACKET [`NUM_FU_BRANCH-1:0] branch_result;
+    CDB_REG_PACKET [`NUM_FU_LDST-1:0] ldst_result;
+
+    assign ldst_result = branch_result;
 
     CDB_REG_PACKET  [`N-1:0] next_cdb_reg;
     BRANCH_REG_PACKET next_branch_reg;
@@ -64,7 +67,7 @@ module ExecuteStage (
 
     CDB_REG_PACKET [`NUM_FU_TOTAL-1:0] fu_result;
 
-    assign fu_result = {branch_result, alu_result, mult_result, branch_result};
+    assign fu_result = {branch_result, alu_result, mult_result, ldst_result};
 
     always_comb begin
         next_cdb_reg = '0;
@@ -90,6 +93,7 @@ module ExecuteStage (
 
             for (int i = 0; i < `N; ++i) begin
                 $display("cdb_reg[%d].completing_reg : %d", i, cdb_reg[i].completing_reg);
+                $display("mult_cdb_valid: %b", mult_cdb_valid);
             end
 
         end
@@ -136,8 +140,8 @@ module ExecuteStage (
             branch_reg <= next_branch_reg;
             for (int i = 0; i < `NUM_FU_TOTAL; ++i) begin
                 $display(
-                    "fu_result[%d].completing_reg: %d\n",
-                    i, fu_result[i].completing_reg
+                    "fu_result[%d].completing_reg: %d\nfu_result[%d].result",
+                    i, fu_result[i].completing_reg, i, fu_result[i].result
                 );
             end
         end

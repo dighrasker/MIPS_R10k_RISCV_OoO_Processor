@@ -87,8 +87,8 @@ module rs #(
             for(int i = 0; i < `N; ++i) begin
                 if(ETB_tags[i].valid) begin
                     for(int j = 0; j < `RS_SZ; ++j)begin
-                        if (rs_data[j].Source1 == ETB_tags[i]) rs_data[j].Source1_ready <= 1;
-                        if (rs_data[j].Source2 == ETB_tags[i]) rs_data[j].Source2_ready <= 1;
+                        if (rs_data[j].Source1 == ETB_tags[i].completing_reg) rs_data[j].Source1_ready <= 1;
+                        if (rs_data[j].Source2 == ETB_tags[i].completing_reg) rs_data[j].Source2_ready <= 1;
                     end
                 end 
             end
@@ -108,7 +108,12 @@ module rs #(
     end
 
     always_comb begin
+        // for (int i = 0; i < `RS_SZ; ++i) begin
+        //     $display("rs_data[%d].Source1_ready: %b, rs_data[%d].Source2_ready: %b\n",
+        //     i, rs_data[i].Source1_ready, i, rs_data[i].Source2_ready);
+        // end
         $display("rs_valid  : %b", RS_valid);
+
     end
 
 `ifdef DEBUG

@@ -19,7 +19,7 @@ module mult # (
     
     // TODO: make sure the outputs are correct
     output logic                  fu_free, // tells execute if it should apply backpressure on this FU
-    output logic                  cdb_valid, // tells cdb this FU has a valid inst
+    output logic                  cdb_valid, // tells cdb this FU has a valid inst TODO: Change the name of this to cdb_req (to match with issue)
     output CDB_REG_PACKET         mult_result
 );
 
@@ -70,7 +70,8 @@ module mult # (
         .internal_mult_packet_out ({internal_mult_packet_out, internal_mult_packets})
     );
 
-    assign mult_result.result = (internal_mult_packet_out.func == M_MUL) ? internal_mult_packet_out.prev_sum[31:0] : internal_mult_packet_out.prev_sum[63:32];
+    // assign mult_result.result = (internal_mult_packet_out.func == M_MUL) ? internal_mult_packet_out.prev_sum[31:0]
+    assign mult_result.result = internal_mult_packet_out.prev_sum[31:0];
     assign mult_result.completing_reg = internal_mult_packet_out.dest_reg_idx;
     assign mult_result.valid = internal_mult_packet_out.valid;
 endmodule // mult
@@ -92,10 +93,9 @@ module mult_stage (
     parameter SHIFT = 64/`MULT_STAGES;
     INTERNAL_MULT_PACKET internal_mult_packet;
 
-    
     always_comb begin
         internal_mult_packet_out.valid        = internal_mult_packet.valid;
-        internal_mult_packet_out.prev_sum     = internal_mult_packet.mplier[SHIFT-1:0] * internal_mult_packet.mcand;
+        internal_mult_packet_out.prev_sum     = internal_mult_packet.prev_sum + (internal_mult_packet.mplier[SHIFT-1:0] * internal_mult_packet.mcand);
         internal_mult_packet_out.mplier       = {SHIFT'('b0), internal_mult_packet.mplier[63:SHIFT]};
         internal_mult_packet_out.mcand        = {internal_mult_packet.mcand[63-SHIFT:0], SHIFT'('b0)};
         internal_mult_packet_out.dest_reg_idx = internal_mult_packet.dest_reg_idx;
@@ -113,6 +113,8 @@ module mult_stage (
 
     always_ff @(posedge clock) begin
         // use next_stage_free because we are deciding whether we should update the next mult stage, if in last stage, just forward the packet unconditionally
+        $display("internal_mult_packet_out.dest_reg_idx: %d\ninternal_mult_packet_out.valid: %b\ninternal_mult_packet_out.mplier: %d\ninternal_mult_packet_out.mcand: %d\ninternal_mult_packet_out.prev_sum: %d\n",
+        internal_mult_packet_out.dest_reg_idx, internal_mult_packet_out.valid, internal_mult_packet_out.mplier, internal_mult_packet_out.mcand, internal_mult_packet_out.prev_sum);
         if (reset) begin
             internal_mult_packet <= NOP_MULT_PACKET;        // NOP_MULT_PACKET must have valid to 0;
         end else if (current_stage_free) begin
