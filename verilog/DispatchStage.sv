@@ -62,7 +62,23 @@ module Dispatch (
                                 ((rob_spots <= (rs_spots)) && (rob_spots <= inst_buffer_instructions_valid)) ? rob_spots : inst_buffer_instructions_valid;
 
 
+    logic [`B_MASK_ID_BITS-1:0] empty_bs_index;
+
+    parameter MIN_BRANCH_WIDTH_N = (`B_MASK_WIDTH < `N) ? `B_MASK_WIDTH : `N;
+
+    logic [MIN_BRANCH_WIDTH_N-1:0] [`B_MASK_WIDTH-1:0] psel_output;
+    logic [`NUM_B_MASK_BITS-1:0] branches_dispatching;
+
+    psel_gen #(
+         .WIDTH(`B_MASK_WIDTH),  // The width of the request bus
+         .REQS(MIN_BRANCH_WIDTH_N) // The number of requests that can be simultaenously granted
+    ) psel_inst (
+         .req(~b_mask_combinational), // Input request bus
+         .gnt_bus(psel_output)  // Output bus for each request
+    );
+
     assign i_num_dispatched = restore_valid ? 0 : min; //if not restoring, num_dispatching = min (rs_entries, rob_entries, free_list)
+
 
     always_comb begin
         branch_stack_entries = '0;
@@ -72,6 +88,7 @@ module Dispatch (
         updated_free_list = free_list_copy;
         rs_entries = '0;
         rob_entries = '0;
+        branches_dispatching = 0;
         for (int i = 0; i < `N; ++i) begin
             if(i < i_num_dispatched) begin
                 // Create rob/rs/branch-stack entries
@@ -127,19 +144,18 @@ module Dispatch (
                     // empty_bs_index -> the index of the empty bs to put in smth
                         updated_free_list[regs_to_use[i]] = 0;
                         next_map_table[dest_arch_reg[i]] = decoder_out[i].has_dest ? regs_to_use[i] : next_map_table[dest_arch_reg[i]];
-                        rs_entries[i].b_mask_mask = 0;
                         for (int j = 0; j < `B_MASK_WIDTH; ++j) begin
-                            if (~next_b_mask[j]) begin
+                            if (psel_output[branches_dispatching][j]) begin
                                 branch_stack_entries[j].recovery_PC = decoder_out[i].PC; // TODO: change to instruction PC
-                                branch_stack_entries[j].rob_tail = (rob_tail + i) % `ROB_SZ;
+                                branch_stack_entries[j].rob_tail = (rob_tail + i + 1) % `ROB_SZ;
                                 branch_stack_entries[j].free_list = updated_free_list;
                                 branch_stack_entries[j].map_table = next_map_table;
                                 branch_stack_entries[j].b_m = next_b_mask;
                                 next_b_mask[j] = 1'b1;
                                 rs_entries[i].b_mask_mask[j] = 1'b1;
-                                break;
                             end
-                        end      
+                        end
+                        branches_dispatching += 1;
                     end else begin
                         break;
                     end
