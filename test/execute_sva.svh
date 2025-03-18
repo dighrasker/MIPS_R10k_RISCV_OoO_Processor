@@ -36,15 +36,21 @@ module execute_sva #(
 
 
 /*Conditions that must be met
-    1. All single cycle instructions being sent by issue should correctly output results to cdb packet
-    2. Multi cycle instructions should send their free signals 
-        - mult cdb valid should be high if there is a valid inst in 2nd last mul stage
-        - mult free should be high if the mult unit is free 
-    3. Branches that are completing should be sent to branch stack via branch reg
+    1. All single cycle instructions being sent by issue should have results on cdb by end of cycle
+    2. Multiplier should 
 
 */
 
 
+
+property valid_single_cycles 
+
+
+
+
+
+
+endproperty
 
 
 

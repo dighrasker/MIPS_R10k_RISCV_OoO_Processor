@@ -86,15 +86,9 @@ module ExecuteStage (
         end else begin
             cdb_reg <= next_cdb_reg;
 
-            // for (int i = 0; i < `NUM_FU_ALU; ++i) begin
-            //     $display("alu_inst_gnt_bus[%d]  : %b", i, alu_inst_gnt_bus[i]);
-            // end
-            // for (int i = 0; i < `NUM_FU_BRANCH; ++i) begin
-            //     $display("branch_inst_gnt_bus[%d]  : %b", i, branch_inst_gnt_bus[i]);
-            // end
-            // for (int i = 0; i < `NUM_FU_MULT; ++i) begin
-            //     $display("mult_inst_gnt_bus[%d]  : %b", i, mult_inst_gnt_bus[i]);
-            // end
+            for (int i = 0; i < `N; ++i) begin
+                $display("cdb_completing[%d]  : %d", i, cdb_completing[i].completing_reg);
+            end
 
         end
     end

@@ -33,6 +33,8 @@ module BranchStack_sva #(
 ); 
 
     B_MASK  b_mm_resolve;
+    B_MASK  b_mm_mispred;
+    assign b_mm_mispred = branch_completing.bm_mispred;
     assign b_mm_resolve = branch_completing.bmm;
 
     logic [`B_MASK_WIDTH-1:0] prev_b_mm_resolve;

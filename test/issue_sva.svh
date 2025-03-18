@@ -71,7 +71,7 @@ module Issue_sva #(
 
     logic mult_granted;
 
-    assign mult_granted =| |mult_cdb_gnt;
+    assign mult_granted =| mult_cdb_gnt;
 
     RS_PACKET [`RS_SZ-1:0] prev_rs_data;
     
@@ -93,7 +93,7 @@ module Issue_sva #(
     clocking issue_props @(posedge clock);
 
         //1. All instructions in the output packets should have their source registers cleared
-        property valid_alu_packet;
+        property valid_alu_packet (int i, int j);
             for(int i = 0; i < `RS_SZ; ++i) begin
                for(int j = 0; j < `NUM_FU_ALU; ++j) begin
                     (alu_packets[j].valid && alu_packets[j].inst == prev_rs_data[i].decoded_signals.inst) 
@@ -102,7 +102,7 @@ module Issue_sva #(
             end
         endproperty
 
-        property valid_branch_packet;
+        property valid_branch_packet(int i, j);
             for(int i = 0; i < `RS_SZ; ++i) begin
                for(int j = 0; j < `NUM_FU_ALU; ++j) begin
                     (branch_packets[j].valid && branch_packets[j].inst == prev_rs_data[i].decoded_signals.inst) 
@@ -111,7 +111,7 @@ module Issue_sva #(
             end
         endproperty
 
-        property valid_mult_packet;
+        property valid_mult_packet(int i, int j);
             for(int i = 0; i < `RS_SZ; ++i) begin
                for(int j = 0; j < `NUM_FU_ALU; ++j) begin
                     (mult_packets[j].valid && mult_packets[j].inst == prev_rs_data[i].decoded_signals.inst) 
@@ -120,11 +120,11 @@ module Issue_sva #(
             end
         endproperty
 
-        property mult_structural;
+        /*property mult_structural;
             for(int i = 0; i < `NUM_FU_MULT; ++i) begin
                 
             end
-        endproperty
+        endproperty*/
 
     endclocking
     
@@ -138,13 +138,13 @@ module Issue_sva #(
                 $finish;
             end
 
-        assert property (issue_props.valid_alu_packet)
+        assert property (issue_props.valid_branch_packet)
             else begin
                 $error("Tags for instructions in Branch Packet have not been cleared");
                 $finish;
             end
 
-        assert property (issue_props.valid_alu_packet)
+        assert property (issue_props.valid_mult_packet)
             else begin
                 $error("Tags for instructions in Mult Packet have not been cleared");
                 $finish;

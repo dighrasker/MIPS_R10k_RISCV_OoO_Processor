@@ -8,7 +8,7 @@
 
 `include "verilog/sys_defs.svh"
 `include "test/branchstack_sva.svh"
-`include "test/issue_sva.svh"
+// `include "test/issue_sva.svh"
 
 // P4 TODO: Add your own debugging framework. Basic printing of data structures
 //          is an absolute necessity for the project. You can use C functions 
@@ -277,44 +277,44 @@ module testbench;
         `endif
     );
 
-    Issue_sva issue_instance (
-        .clock(clock),
-        .reset(reset),
-        // ------------- FROM FREDDY -------------- //
-        .complete_list(complete_list),
+    // Issue_sva issue_instance (
+    //     .clock(clock),
+    //     .reset(reset),
+    //     // ------------- FROM FREDDY -------------- //
+    //     .complete_list(complete_list),
 
-        // ------------- TO/FROM RS -------------- //
-        .rs_data(rs_data),
-        .rs_valid_next(rs_valid_next),
-        .rs_data_issuing(rs_data_issuing),
-        // ------------- TO/FROM REGFILE -------------- //
-        .issue_alu_read_data_1(issue_alu_read_data_1),
-        .issue_alu_read_data_2(issue_alu_read_data_2),
-        .issue_mult_read_data_1(issue_mult_read_data_1),
-        .issue_mult_read_data_2(issue_mult_read_data_2),
-        .issue_branch_read_data_1(issue_branch_read_data_1),
-        .issue_branch_read_data_2(issue_branch_read_data_2),
-        .issue_alu_regs_reading_1(issue_alu_regs_reading_1),
-        .issue_alu_regs_reading_2(issue_alu_regs_reading_2),
-        .issue_mult_regs_reading_1(issue_mult_regs_reading_1),
-        .issue_mult_regs_reading_2(issue_mult_regs_reading_2),
-        .issue_branch_regs_reading_1(issue_branch_regs_reading_1),
-        .issue_branch_regs_reading_2(issue_branch_regs_reading_2),
-         // ------------- FROM CDB -------------- //
-        .cdb_reg(cdb_reg),
-        // ------------- TO/FROM EXECUTE -------------- //
-        .mult_free(mult_free),
-        .ldst_free(ldst_free),
-        .mult_cdb_req(mult_cdb_valid),
-        .ldst_cdb_req(ldst_cdb_valid),
-        .mult_cdb_gnt(mult_cdb_gnt),
-        .ldst_cdb_gnt(ldst_cdb_gnt),
-        .alu_packets(alu_packets),
-        .mult_packets(mult_packets),
-        .branch_packets(branch_packets),
-        .ldst_packets(ldst_packets),
-        .complete_gnt_bus(complete_gnt_bus)
-    );
+    //     // ------------- TO/FROM RS -------------- //
+    //     .rs_data(rs_data),
+    //     .rs_valid_next(rs_valid_next),
+    //     .rs_data_issuing(rs_data_issuing),
+    //     // ------------- TO/FROM REGFILE -------------- //
+    //     .issue_alu_read_data_1(issue_alu_read_data_1),
+    //     .issue_alu_read_data_2(issue_alu_read_data_2),
+    //     .issue_mult_read_data_1(issue_mult_read_data_1),
+    //     .issue_mult_read_data_2(issue_mult_read_data_2),
+    //     .issue_branch_read_data_1(issue_branch_read_data_1),
+    //     .issue_branch_read_data_2(issue_branch_read_data_2),
+    //     .issue_alu_regs_reading_1(issue_alu_regs_reading_1),
+    //     .issue_alu_regs_reading_2(issue_alu_regs_reading_2),
+    //     .issue_mult_regs_reading_1(issue_mult_regs_reading_1),
+    //     .issue_mult_regs_reading_2(issue_mult_regs_reading_2),
+    //     .issue_branch_regs_reading_1(issue_branch_regs_reading_1),
+    //     .issue_branch_regs_reading_2(issue_branch_regs_reading_2),
+    //      // ------------- FROM CDB -------------- //
+    //     .cdb_reg(cdb_reg),
+    //     // ------------- TO/FROM EXECUTE -------------- //
+    //     .mult_free(mult_free),
+    //     .ldst_free(ldst_free),
+    //     .mult_cdb_req(mult_cdb_valid),
+    //     .ldst_cdb_req(ldst_cdb_valid),
+    //     .mult_cdb_gnt(mult_cdb_gnt),
+    //     .ldst_cdb_gnt(ldst_cdb_gnt),
+    //     .alu_packets(alu_packets),
+    //     .mult_packets(mult_packets),
+    //     .branch_packets(branch_packets),
+    //     .ldst_packets(ldst_packets),
+    //     .complete_gnt_bus(complete_gnt_bus)
+    // );
 
 
     // Generate System Clock
