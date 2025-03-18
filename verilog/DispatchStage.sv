@@ -90,14 +90,14 @@ module Dispatch (
     always_comb begin
         branch_stack_entries = '0;
         next_b_mask = b_mask_combinational;
-        num_dispatched = 0;
+        num_dispatched = '0;
         next_map_table = map_table;
         updated_free_list = free_list_copy;
+        rs_entries = '0;
+        rob_entries = '0;
         for (int i = 0; i < `N; ++i) begin
             if(i < i_num_dispatched) begin
                 // Create rob/rs/branch-stack entries
-                
-                
                 //Create RS Packet
                 rs_entries[i].decoded_signals = decoder_out[i];
                 rs_entries[i].T_new = regs_to_use[i];

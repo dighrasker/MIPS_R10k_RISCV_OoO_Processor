@@ -11,7 +11,7 @@ module encoder #( // Parametize this module
     integer i;
     
     always @(*) begin
-        out   = 0;
+        out   = '0;
         for (i = 0; i < INPUT_LENGTH; ++i) begin
             if (in[i]) begin
                 out   = i[OUTPUT_LENGTH-1:0];  // Assign the index as output

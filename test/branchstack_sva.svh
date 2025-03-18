@@ -4,28 +4,36 @@ module BranchStack_sva #(
 ) (
     input   logic                                clock, 
     input   logic                                reset,
-
+    // ------------- TO ALL -------------- //
     input  logic                                restore_valid,
     // ------------- TO FETCH -------------- //
     input  ADDR                                 PC_restore,
     // ------------- FROM COMPLETE -------------- //
-    input   B_MASK_MASK                          b_mm_resolve,
-    input   logic                                b_mm_mispred,
+    input   BRANCH_REG_PACKET                    branch_completing,
+    
     // ------------- TO ROB ------------------- //
     input  logic             [`ROB_SZ_BITS-1:0] rob_tail_restore,
     // ------------- TO FREDDY LIST ----------- //
     input  logic        [`PHYS_REG_SZ_R10K-1:0] free_list_restore,
     // ------------- TO/FROM DISPATCH -------------- //
     input   BS_ENTRY_PACKET  [`B_MASK_WIDTH-1:0] branch_stack_entries,
-    input   logic            [`B_MASK_WIDTH-1:0] next_b_mask,
-    input  PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore,     // exit packet: recovery_PC, rob_tail, map_table, freelist
+    input   B_MASK                               next_b_mask,
+    input  PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore,     
     input  B_MASK                               b_mask_combinational,
-    input  logic         [`NUM_B_MASK_BITS-1:0] branch_stack_spots,
+    //output  logic         [`NUM_B_MASK_BITS-1:0] branch_stack_spots,
+
+    // ------------- TO RS/EXECUTE -------------- //
+    input  B_MASK                               b_mm_out,
+
     // ------------- TO LSQ ------------------ //
-    // input logic                                 lsq_tail_restore  //<--- STILL NEED TO UPDATE THIS
+    // output logic                                 lsq_tail_restore  //<--- STILL NEED TO UPDATE THIS
     // branch prediction repair?
     input BS_DEBUG                            bs_debug
+
 ); 
+
+    B_MASK  b_mm_resolve;
+    assign b_mm_resolve = branch_completing.bmm;
 
     logic [`B_MASK_WIDTH-1:0] prev_b_mm_resolve;
 

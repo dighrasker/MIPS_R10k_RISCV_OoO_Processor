@@ -68,6 +68,7 @@ module ExecuteStage (
 
     always_comb begin
         next_cdb_reg = '0;
+        cdb_completing = '0;
         for (int i = 0; i < `N; ++i) begin
             for (int j = 0; j < `NUM_FU_TOTAL; ++j) begin
                 if (complete_gnt_bus[i][j]) begin
@@ -84,6 +85,17 @@ module ExecuteStage (
             cdb_reg <= '0;        
         end else begin
             cdb_reg <= next_cdb_reg;
+
+            // for (int i = 0; i < `NUM_FU_ALU; ++i) begin
+            //     $display("alu_inst_gnt_bus[%d]  : %b", i, alu_inst_gnt_bus[i]);
+            // end
+            // for (int i = 0; i < `NUM_FU_BRANCH; ++i) begin
+            //     $display("branch_inst_gnt_bus[%d]  : %b", i, branch_inst_gnt_bus[i]);
+            // end
+            // for (int i = 0; i < `NUM_FU_MULT; ++i) begin
+            //     $display("mult_inst_gnt_bus[%d]  : %b", i, mult_inst_gnt_bus[i]);
+            // end
+
         end
     end
 

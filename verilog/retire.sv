@@ -63,7 +63,7 @@ always_comb begin
             committed_insts[i].NPC = rob_outputs[i].NPC;
             committed_insts[i].valid = 1'b1;
             phys_regs_retiring[num_retiring] = rob_outputs[i].T_old;
-            num_retiring = num_retiring + 1'b1;
+            num_retiring = num_retiring + 1;
             next_halt = rob_outputs[i].halt;
         end else begin
             break;
@@ -76,6 +76,14 @@ always_ff @(posedge clock) begin
         halt <= '0;
     end else begin
         halt <= next_halt;
+        for (int i = 0; i < `N; ++i) begin
+            $display("complete_list_exposed[rob_outputs[%d].T_new]: %d",
+                i, complete_list_exposed[rob_outputs[i].T_new]
+            );
+        end
+        $display("num_retiring: %d\nrob_outputs_valid: %d\n", 
+        num_retiring,
+        rob_outputs_valid);
     end
 end
 

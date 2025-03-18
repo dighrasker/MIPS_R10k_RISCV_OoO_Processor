@@ -258,6 +258,8 @@ generate
         // assign rs_data_issuing = alu_inst_gnt_bus[i] & rs_cdb_gnt;
 
         always_comb begin 
+            issue_alu_regs_reading_1[i] = 1'b0;
+            issue_alu_regs_reading_2[i] = 1'b0;
             if (alu_inst_gnt_bus[i] & rs_cdb_gnt) begin
                 //regfile_read_indices
                 issue_alu_regs_reading_1[i] = rs_data[alu_index].Source1;
@@ -304,16 +306,20 @@ endgenerate
 
 // Create The Mult Packets Issuing
 
+parameter LOG_NUM_FU_MULT = ($clog2(`NUM_FU_MULT) < 1) ? 1 : $clog2(`NUM_FU_MULT);
+
 logic [`NUM_FU_MULT-1:0] [`RS_SZ_BITS-1:0]  mult_rs_index;
-logic [`NUM_FU_MULT-1:0] [$clog2(`NUM_FU_MULT)-1:0] mult_fu_index;
+logic [`NUM_FU_MULT-1:0] [LOG_NUM_FU_MULT-1:0] mult_fu_index;
 encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_mult [`NUM_FU_MULT-1:0] (mult_inst_gnt_bus, mult_rs_index);
-encoder #(`NUM_FU_MULT, $clog2(`NUM_FU_MULT)) fu_encoders_mult [`NUM_FU_MULT-1:0] (mult_fu_gnt_bus, mult_fu_index);
+encoder #(`NUM_FU_MULT, LOG_NUM_FU_MULT) fu_encoders_mult [`NUM_FU_MULT-1:0] (mult_fu_gnt_bus, mult_fu_index);
 
 // for (i = 0; i < `NUM_FU_MULT; ++i) begin 
 //     assign rs_data_issuing = (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) ? mult_inst_gnt_bus[i] : '0;
 // end
 
 always_comb begin
+    issue_mult_regs_reading_1 = '0;
+    issue_mult_regs_reading_2 = '0;
     for (int i = 0; i < `NUM_FU_MULT; ++i) begin : mult_loop
         if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
             // Reading RegFile
@@ -408,7 +414,7 @@ always_ff @(posedge clock) begin
         complete_gnt_bus <= next_complete_gnt_bus;
         $display("rs_data_issuing  : %b", rs_data_issuing);
         $display("rs_cdb_gnt  : %b", rs_cdb_gnt);
-        $display("single_cycle_inst : %b", {single_cycle_entries_valid, mult_cdb_req, 1'b1});
+        $display("single_cycle_inst : %b", {single_cycle_entries_valid, mult_cdb_req, 1'b0});
         for (int i = 0; i < `NUM_FU_ALU; ++i) begin
             $display("alu_inst_gnt_bus[%d]  : %b", i, alu_inst_gnt_bus[i]);
         end
