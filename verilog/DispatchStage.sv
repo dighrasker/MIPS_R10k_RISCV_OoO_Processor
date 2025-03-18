@@ -53,29 +53,6 @@ module Dispatch (
 
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table, next_map_table;
 
-    // For BS entry ordering
-    logic bs_empty;
-    logic [`B_MASK_WIDTH-1:0] gnt;
-    logic [`B_MASK_ID_BITS-1:0] empty_bs_index;
-    logic [`B_MASK_WIDTH-1:0] psel_output; // might be useless
-
-    psel_gen #(
-         .WIDTH(`B_MASK_WIDTH),  // The width of the request bus
-         .REQS(1) // The number of requests that can be simultaenously granted
-    ) psel_inst (
-         .req(~next_b_mask), // Input request bus
-         .gnt(gnt),          // Output with all granted requests on a bus
-         .gnt_bus(psel_output),  // Output bus for each request
-         .empty(bs_empty)       // Output asserted when there are no requests
-    );
-
-    encoder #(
-        .INPUT_LENGTH(`B_MASK_WIDTH),
-        .OUTPUT_LENGTH(`B_MASK_ID_BITS)
-    ) encoder_inst (
-        .in(gnt),
-        .out(empty_bs_index)
-    );
 
     logic [`NUM_SCALAR_BITS-1:0] i_num_dispatched;
 
@@ -145,21 +122,24 @@ module Dispatch (
 
                 // create the branch checkpoint
                 if(decoder_out[i].cond_branch || decoder_out[i].uncond_branch) begin // TODO: need to check 'branch' to an actual flag
-                    if(~bs_empty) begin // checking that there is room in the BS
+                    if(~next_b_mask) begin // checking that there is room in the BS
                     //allocate BS entry (snapshotting recovery PC, map table, rob_tail, free_list, b_m)
                     // empty_bs_index -> the index of the empty bs to put in smth
                         updated_free_list[regs_to_use[i]] = 0;
                         next_map_table[dest_arch_reg[i]] = decoder_out[i].has_dest ? regs_to_use[i] : next_map_table[dest_arch_reg[i]];
-
-                        branch_stack_entries[empty_bs_index].recovery_PC = decoder_out[i].PC; // TODO: change to instruction PC
-                        branch_stack_entries[empty_bs_index].rob_tail = (rob_tail + i) % `ROB_SZ;
-                        branch_stack_entries[empty_bs_index].free_list = updated_free_list;
-                        branch_stack_entries[empty_bs_index].map_table = next_map_table;
-                        branch_stack_entries[empty_bs_index].b_m = next_b_mask;
-
-                        rs_entries[i].b_mask_mask = psel_output;
-                        
-                        next_b_mask[empty_bs_index] = 1'b1;
+                        rs_entries[i].b_mask_mask = 0;
+                        for (int j = 0; j < `B_MASK_WIDTH; ++j) begin
+                            if (~next_b_mask[j]) begin
+                                branch_stack_entries[j].recovery_PC = decoder_out[i].PC; // TODO: change to instruction PC
+                                branch_stack_entries[j].rob_tail = (rob_tail + i) % `ROB_SZ;
+                                branch_stack_entries[j].free_list = updated_free_list;
+                                branch_stack_entries[j].map_table = next_map_table;
+                                branch_stack_entries[j].b_m = next_b_mask;
+                                next_b_mask[j] = 1'b1;
+                                rs_entries[i].b_mask_mask[j] = 1'b1;
+                                break;
+                            end
+                        end      
                     end else begin
                         break;
                     end
@@ -181,10 +161,9 @@ module Dispatch (
             end
         end else begin
             $display(
-                "num_dispatched: %d\ni_num_dispatched: %d\nbs_empty: %b\nrob_spots: %d\nrs_spots: %d",
+                "num_dispatched: %d\ni_num_dispatched: %d\nrob_spots: %d\nrs_spots: %d",
                 num_dispatched,
                 i_num_dispatched,
-                bs_empty,
                 rob_spots,
                 rs_spots
             );
