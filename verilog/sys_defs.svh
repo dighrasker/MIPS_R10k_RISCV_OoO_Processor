@@ -22,8 +22,8 @@
 // this is *your* processor, you decide these values (try analyzing which is best!)
 
 // superscalar width
-`define N 10
-`define B_MASK_WIDTH 8
+`define N 6
+`define B_MASK_WIDTH 4
 `define NUM_B_MASK_BITS $clog2(`B_MASK_WIDTH + 1)
 `define CDB_SZ `N // This MUST match your superscalar width
 `define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]
@@ -427,7 +427,7 @@ typedef struct packed {
 typedef struct packed {
     ADDR    NPC;
     DATA    data; 
-    PHYS_REG_IDX reg_idx;
+    ARCH_REG_IDX reg_idx;
     logic   halt;
     logic   illegal;
     logic   valid;
@@ -441,7 +441,7 @@ typedef struct packed {
     logic           halt;
     PHYS_REG_IDX    T_new; // Use as unique rob id
     PHYS_REG_IDX    T_old;
-    ARCH_REG_IDX    Arch_reg;
+    ARCH_REG_IDX    arch_reg;
 } ROB_PACKET;
 
 

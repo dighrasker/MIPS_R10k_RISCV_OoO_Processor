@@ -133,7 +133,7 @@ module Dispatch (
                 */
                 rob_entries[i].T_new = regs_to_use[i];                          //this should be the output from freddy
                 rob_entries[i].halt = decoder_out[i].halt;
-                rob_entries[i].Arch_reg = dest_arch_reg[i];         //this should come from instruction dest_reg
+                rob_entries[i].arch_reg = decoder_out[i].has_dest ? dest_arch_reg[i] : 0;         //this should come from instruction dest_reg
                 rob_entries[i].T_old = decoder_out[i].has_dest ? next_map_table[dest_arch_reg[i]] : rob_entries[i].T_new;      //this should be coming from map table
                 rob_entries[i].illegal = decoder_out[i].illegal;
                 rob_entries[i].NPC = decoder_out[i].NPC;
