@@ -243,42 +243,16 @@ module testbench;
         .PC(PCs)
     );
 
-//     cpu_sva cpu_sva (
-//         // Inputs
-//         .clock (clock),
-//         .reset (reset),
-        
-//         .mem2proc_transaction_tag (mem2proc_transaction_tag),
-//         .mem2proc_data            (mem2proc_data),
-//         .mem2proc_data_tag        (mem2proc_data_tag),
+    // cpu_sva cpu_sva (
+    //     // Inputs
+    //     .clock (clock),
+    //     .reset (reset),
 
-//         // Outputs
-//         .proc2mem_command (proc2mem_command),
-//         .proc2mem_addr    (proc2mem_addr),
-//         .proc2mem_data    (proc2mem_data),
-// `ifndef CACHE_MODE
-//         .proc2mem_size    (proc2mem_size),
-// `endif
-//         .if_NPC_dbg       (if_NPC_dbg),
-//         .if_inst_dbg      (if_inst_dbg),
-//         .if_valid_dbg     (if_valid_dbg),
-//         .if_id_NPC_dbg    (if_id_NPC_dbg),
-//         .if_id_inst_dbg   (if_id_inst_dbg),
-//         .if_id_valid_dbg  (if_id_valid_dbg),
-//         .id_ex_NPC_dbg    (id_ex_NPC_dbg),
-//         .id_ex_inst_dbg   (id_ex_inst_dbg),
-//         .id_ex_valid_dbg  (id_ex_valid_dbg),
-//         .ex_mem_NPC_dbg   (ex_mem_NPC_dbg),
-//         .ex_mem_inst_dbg  (ex_mem_inst_dbg),
-//         .ex_mem_valid_dbg (ex_mem_valid_dbg),
-//         .mem_wb_NPC_dbg   (mem_wb_NPC_dbg),
-//         .mem_wb_inst_dbg  (mem_wb_inst_dbg),
-//         .mem_wb_valid_dbg (mem_wb_valid_dbg),
         
-//         .inst(insts),
-//         .committed_insts(committed_insts),
-//         .PC(PCs)
-//     );
+    //     .inst(insts),
+    //     .committed_insts(committed_insts),
+    //     .PC(PCs)
+    // );
 
     // Instantiate the Data Memory
     mem memory (
