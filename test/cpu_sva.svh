@@ -11,49 +11,55 @@
 
 `include "verilog/sys_defs.svh"
 `include "verilog/ISA.svh"
+`include "test/rob_sva.svh"
+`include "test/rs_sva.svh"
+`include "test/branchstack_sva.svh"
+
 
 module cpu_sva (
+    input logic                         clock,
+    input logic                         reset,
     /*------- ROB WIRES ----------*/
 
     input logic  [`NUM_SCALAR_BITS-1:0] rob_spots,
     input logic      [`ROB_SZ_BITS-1:0] rob_tail,
     input ROB_PACKET           [`N-1:0] rob_outputs;
-    input logic  [`NUM_SCALAR_BITS-1:0] rob_outputs_valid;
+    input logic  [`NUM_SCALAR_BITS-1:0] rob_outputs_valid,
 
 `ifdef DEBUG
-    input ROB_DEBUG                   rob_debug;
+    input ROB_DEBUG                   rob_debug,
 `endif
 
     /*------- RS WIRES ----------*/
 
-    input logic  [`NUM_SCALAR_BITS-1:0] rs_spots;
-    input RS_PACKET       [`RS_SZ-1:0] rs_data;              // The entire RS data 
-    input logic           [`RS_SZ-1:0] rs_valid_next;        // 1 if RS data is valid <-- Coded
+    input logic  [`NUM_SCALAR_BITS-1:0] rs_spots,
+    input RS_PACKET       [`RS_SZ-1:0] rs_data,             // The entire RS data 
+    input logic           [`RS_SZ-1:0] rs_valid_next,        // 1 if RS data is valid <-- Coded
 
 `ifdef DEBUG
-    input RS_DEBUG               rs_debug;
+    input RS_DEBUG               rs_debug,
 `endif
 
 
     /*------- FREDDYLIST WIRES ----------*/  
     
-    input PHYS_REG_IDX           [`N-1:0] phys_reg_completing; // decoded signal from cdb_reg
-    input logic                  [`N-1:0] completing_valid; // decoded signal from cdb_reg
+    input PHYS_REG_IDX           [`N-1:0] phys_reg_completing, // decoded signal from cdb_reg
+    input logic                  [`N-1:0] completing_valid, // decoded signal from cdb_reg
 
-    input PHYS_REG_IDX           [`N-1:0] regs_to_use;       // physical register indices for dispatch to use
-    input logic   [`PHYS_REG_SZ_R10K-1:0] free_list;              // bitvector of the phys reg that are complete
+    input PHYS_REG_IDX           [`N-1:0] regs_to_use,       // physical register indices for dispatch to use
+    input logic   [`PHYS_REG_SZ_R10K-1:0] free_list,              // bitvector of the phys reg that are complete
 
-    input logic   [`PHYS_REG_SZ_R10K-1:0] next_complete_list;          // bitvector of the phys reg that are complete
-    input logic   [`PHYS_REG_SZ_R10K-1:0] complete_list;
+    input logic   [`PHYS_REG_SZ_R10K-1:0] next_complete_list,          // bitvector of the phys reg that are complete
+    input logic   [`PHYS_REG_SZ_R10K-1:0] complete_list,
     
 
     /*------- BRANCH STACK WIRES ----------*/
-    input logic                                restore_valid;
-    input ADDR                                 PC_restore;
-    input logic             [`ROB_SZ_BITS-1:0] rob_tail_restore;
-    input logic        [`PHYS_REG_SZ_R10K-1:0] free_list_restore;
-    input PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore;     
-    input B_MASK                               b_mask_combinational;
+    input logic                                restore_valid,
+    input ADDR                                 PC_restore,
+    input logic             [`ROB_SZ_BITS-1:0] rob_tail_restore,
+    input logic        [`PHYS_REG_SZ_R10K-1:0] free_list_restore,
+    input PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore,     
+    input B_MASK                               b_mask_combinational,
     input B_MASK                               b_mm_out,
     `ifdef DEBUG
     input BS_DEBUG                             bs_debug,
@@ -62,211 +68,77 @@ module cpu_sva (
     /*------- REGFILE WIRES ----------*/
     
     input DATA        [`N-1:0] retire_read_data;
-    input DATA        [`NUM_FU_ALU-1:0] issue_alu_read_data_1;
-    input DATA        [`NUM_FU_ALU-1:0] issue_alu_read_data_2;
-    input DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_1;
-    DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_2;
-    DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_1;
-    DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_2;
+    input DATA        [`NUM_FU_ALU-1:0] issue_alu_read_data_1,
+    input DATA        [`NUM_FU_ALU-1:0] issue_alu_read_data_2,
+    input DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_1,
+    input DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_2,
+    input DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_1,
+    input DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_2,
 
     /*------- FETCH WIRES ----------*/  
-    FETCH_PACKET         [`N-1:0] inst_buffer_inputs;   //instructions going to instruction buffer
-    logic  [`NUM_SCALAR_BITS-1:0] instructions_valid;
+    input FETCH_PACKET         [`N-1:0] inst_buffer_inputs,   //instructions going to instruction buffer
+    input logic  [`NUM_SCALAR_BITS-1:0] instructions_valid,
 
     /*------- FETCH BUFFER WIRES ----------*/    
-    logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots;
-    FETCH_PACKET         [`N-1:0] inst_buffer_outputs;   
-    logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_outputs_valid;
+    input logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,
+    input FETCH_PACKET         [`N-1:0] inst_buffer_outputs,   
+    input logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_outputs_valid,
 
 
     /*------- DECODER WIRES ----------*/
-    FETCH_PACKET  [`N-1:0] inst_buffer_input;
-    DECODE_PACKET [`N-1:0] decoder_out;
-    logic         [`N-1:0] is_rs1_used;
-    logic         [`N-1:0] is_rs2_used;
-    ARCH_REG_IDX  [`N-1:0] source1_arch_reg;
-    ARCH_REG_IDX  [`N-1:0] source2_arch_reg;
-    ARCH_REG_IDX  [`N-1:0] dest_arch_reg;
+    input FETCH_PACKET  [`N-1:0] inst_buffer_input,
+    input DECODE_PACKET [`N-1:0] decoder_out,
+    input logic         [`N-1:0] is_rs1_used,
+    input logic         [`N-1:0] is_rs2_used,
+    input ARCH_REG_IDX  [`N-1:0] source1_arch_reg,
+    input ARCH_REG_IDX  [`N-1:0] source2_arch_reg,
+    input ARCH_REG_IDX  [`N-1:0] dest_arch_reg,
 
     /*------- DISPATCH WIRES ----------*/
 
-    BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack_entries;
-    B_MASK next_b_mask;
-    ROB_PACKET [`N-1:0] rob_entries;
-    RS_PACKET [`N-1:0] rs_entries;
-    logic [`PHYS_REG_SZ_R10K-1:0] updated_free_list;
-    logic [`NUM_SCALAR_BITS-1:0] num_dispatched;
+    input BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack_entries,
+    input B_MASK next_b_mask,
+    input ROB_PACKET [`N-1:0] rob_entries,
+    input RS_PACKET [`N-1:0] rs_entries,
+    input logic [`PHYS_REG_SZ_R10K-1:0] updated_free_list,
+    input logic [`NUM_SCALAR_BITS-1:0] num_dispatched,
     `ifdef DEBUG
-        DISPATCH_DEBUG dispatch_debug;
+        input DISPATCH_DEBUG dispatch_debug,
     `endif
 
     /*------- ISSUE WIRES ----------*/
 
-    wor                    [`RS_SZ-1:0] rs_data_issuing;     // set index to 1 when a rs_data is selected to be issued
-    PHYS_REG_IDX      [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1;
-    PHYS_REG_IDX      [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2;
-    PHYS_REG_IDX     [`NUM_FU_MULT-1:0] issue_mult_regs_reading_1;
-    PHYS_REG_IDX     [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2,
-    PHYS_REG_IDX   [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1,
-    PHYS_REG_IDX   [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2,
-    logic            [`NUM_FU_MULT-1:0] mult_cdb_gnt,
-    logic            [`NUM_FU_LDST-1:0] ldst_cdb_gnt,
-    ALU_PACKET        [`NUM_FU_ALU-1:0] alu_packets,
-    MULT_PACKET      [`NUM_FU_MULT-1:0] mult_packets,
-    BRANCH_PACKET  [`NUM_FU_BRANCH-1:0] branch_packets,
-    LDST_PACKET      [`NUM_FU_LDST-1:0] ldst_packets    logic [`N-1:0]  [`NUM_FU_TOTAL-1:0] complete_gnt_bus,
+    input wor                    [`RS_SZ-1:0] rs_data_issuing,     // set index to 1 when a rs_data is selected to be issued
+    input PHYS_REG_IDX      [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1,
+    input PHYS_REG_IDX      [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2,
+    input PHYS_REG_IDX     [`NUM_FU_MULT-1:0] issue_mult_regs_reading_1,
+    input PHYS_REG_IDX     [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2,
+    input PHYS_REG_IDX   [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1,
+    input PHYS_REG_IDX   [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2,
+    input logic            [`NUM_FU_MULT-1:0] mult_cdb_gnt,
+    input logic            [`NUM_FU_LDST-1:0] ldst_cdb_gnt,
+    input ALU_PACKET        [`NUM_FU_ALU-1:0] alu_packets,
+    input MULT_PACKET      [`NUM_FU_MULT-1:0] mult_packets,
+    input BRANCH_PACKET  [`NUM_FU_BRANCH-1:0] branch_packets,
+    input LDST_PACKET      [`NUM_FU_LDST-1:0] ldst_packets,
+    input logic [`N-1:0]  [`NUM_FU_TOTAL-1:0] complete_gnt_bus,
     
     /*----------EXECUTE WIRES -------------*/
-    logic              [`NUM_FU_MULT-1:0] mult_free,
-    logic              [`NUM_FU_LDST-1:0] ldst_free,
-    CDB_ETB_PACKET               [`N-1:0] cdb_completing,
-    CDB_REG_PACKET               [`N-1:0] cdb_reg,
-    BRANCH_REG_PACKET                     branch_reg,
-    logic              [`NUM_FU_MULT-1:0] mult_cdb_valid,
-    logic              [`NUM_FU_LDST-1:0] ldst_cdb_valid,
-
-    always_comb begin
-        for (int i = 0; i < `N; ++i) begin
-            phys_reg_completing[i] = cdb_reg[i].completing_reg; // decoding cdb_reg for freddylist
-            completing_valid[i] = cdb_reg[i].valid; // decoding cdb_reg for freddylist
-        end
-    end
+    input logic              [`NUM_FU_MULT-1:0] mult_free,
+    input logic              [`NUM_FU_LDST-1:0] ldst_free,
+    input CDB_ETB_PACKET               [`N-1:0] cdb_completing,
+    input CDB_REG_PACKET               [`N-1:0] cdb_reg,
+    input BRANCH_REG_PACKET                     branch_reg,
+    input logic              [`NUM_FU_MULT-1:0] mult_cdb_valid,
+    input logic              [`NUM_FU_LDST-1:0] ldst_cdb_valid,
 
     /*------- RETIRE WIRES ----------*/
 
-    logic [`NUM_SCALAR_BITS-1:0] num_retiring,
-    PHYS_REG_IDX [`N-1:0] phys_regs_retiring,
-    PHYS_REG_IDX [`N-1:0] retire_phys_regs_reading,
+    input logic [`NUM_SCALAR_BITS-1:0] num_retiring,
+    input PHYS_REG_IDX [`N-1:0] phys_regs_retiring,
+    input PHYS_REG_IDX [`N-1:0] retire_phys_regs_reading
 
 );
-
-    // ONLY OUTPUTS ARE UNCOMMENTED
-
-    /*------- ROB WIRES ----------*/
-
-    logic  [`NUM_SCALAR_BITS-1:0] rob_spots;
-    logic      [`ROB_SZ_BITS-1:0] rob_tail;
-    ROB_PACKET           [`N-1:0] rob_outputs;
-    logic  [`NUM_SCALAR_BITS-1:0] rob_outputs_valid;
-
-`ifdef DEBUG
-    ROB_DEBUG                   rob_debug;
-`endif
-
-    /*------- RS WIRES ----------*/
-
-    logic  [`NUM_SCALAR_BITS-1:0] rs_spots;
-    RS_PACKET       [`RS_SZ-1:0] rs_data;              // The entire RS data 
-    logic           [`RS_SZ-1:0] rs_valid_next;        // 1 if RS data is valid <-- Coded
-
-`ifdef DEBUG
-    RS_DEBUG               rs_debug;
-`endif
-
-
-    /*------- FREDDYLIST WIRES ----------*/  
-    
-    PHYS_REG_IDX           [`N-1:0] phys_reg_completing; // decoded signal from cdb_reg
-    logic                  [`N-1:0] completing_valid; // decoded signal from cdb_reg
-
-    PHYS_REG_IDX           [`N-1:0] regs_to_use;       // physical register indices for dispatch to use
-    logic   [`PHYS_REG_SZ_R10K-1:0] free_list;              // bitvector of the phys reg that are complete
-
-    logic   [`PHYS_REG_SZ_R10K-1:0] next_complete_list;          // bitvector of the phys reg that are complete
-    logic   [`PHYS_REG_SZ_R10K-1:0] complete_list;
-    
-
-    /*------- BRANCH STACK WIRES ----------*/
-    logic                                restore_valid;
-    ADDR                                 PC_restore;
-    logic             [`ROB_SZ_BITS-1:0] rob_tail_restore;
-    logic        [`PHYS_REG_SZ_R10K-1:0] free_list_restore;
-    PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore;     
-    B_MASK                               b_mask_combinational;
-    B_MASK                               b_mm_out;
-    `ifdef DEBUG
-    BS_DEBUG                             bs_debug;
-    `endif
-
-    /*------- REGFILE WIRES ----------*/
-    
-    DATA        [`N-1:0] retire_read_data;
-    DATA        [`NUM_FU_ALU-1:0] issue_alu_read_data_1;
-    DATA        [`NUM_FU_ALU-1:0] issue_alu_read_data_2;
-    DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_1;
-    DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_2;
-    DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_1;
-    DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_2;
-
-    /*------- FETCH WIRES ----------*/  
-    FETCH_PACKET         [`N-1:0] inst_buffer_inputs;   //instructions going to instruction buffer
-    logic  [`NUM_SCALAR_BITS-1:0] instructions_valid;
-
-    /*------- FETCH BUFFER WIRES ----------*/    
-    logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots;
-    FETCH_PACKET         [`N-1:0] inst_buffer_outputs;   
-    logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_outputs_valid;
-
-
-    /*------- DECODER WIRES ----------*/
-    FETCH_PACKET  [`N-1:0] inst_buffer_input;
-    DECODE_PACKET [`N-1:0] decoder_out;
-    logic         [`N-1:0] is_rs1_used;
-    logic         [`N-1:0] is_rs2_used;
-    ARCH_REG_IDX  [`N-1:0] source1_arch_reg;
-    ARCH_REG_IDX  [`N-1:0] source2_arch_reg;
-    ARCH_REG_IDX  [`N-1:0] dest_arch_reg;
-
-    /*------- DISPATCH WIRES ----------*/
-
-    BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack_entries;
-    B_MASK next_b_mask;
-    ROB_PACKET [`N-1:0] rob_entries;
-    RS_PACKET [`N-1:0] rs_entries;
-    logic [`PHYS_REG_SZ_R10K-1:0] updated_free_list;
-    logic [`NUM_SCALAR_BITS-1:0] num_dispatched;
-    `ifdef DEBUG
-        DISPATCH_DEBUG dispatch_debug;
-    `endif
-
-    /*------- ISSUE WIRES ----------*/
-
-    wor                    [`RS_SZ-1:0] rs_data_issuing;     // set index to 1 when a rs_data is selected to be issued
-    PHYS_REG_IDX      [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1;
-    PHYS_REG_IDX      [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2;
-    PHYS_REG_IDX     [`NUM_FU_MULT-1:0] issue_mult_regs_reading_1;
-    PHYS_REG_IDX     [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2;
-    PHYS_REG_IDX   [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1;
-    PHYS_REG_IDX   [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2;
-    logic            [`NUM_FU_MULT-1:0] mult_cdb_gnt;
-    logic            [`NUM_FU_LDST-1:0] ldst_cdb_gnt;
-    ALU_PACKET        [`NUM_FU_ALU-1:0] alu_packets;
-    MULT_PACKET      [`NUM_FU_MULT-1:0] mult_packets;
-    BRANCH_PACKET  [`NUM_FU_BRANCH-1:0] branch_packets;
-    LDST_PACKET      [`NUM_FU_LDST-1:0] ldst_packets;
-    logic [`N-1:0]  [`NUM_FU_TOTAL-1:0] complete_gnt_bus;
-    
-    /*----------EXECUTE WIRES -------------*/
-    logic              [`NUM_FU_MULT-1:0] mult_free;
-    logic              [`NUM_FU_LDST-1:0] ldst_free;
-    CDB_ETB_PACKET               [`N-1:0] cdb_completing;
-    CDB_REG_PACKET               [`N-1:0] cdb_reg;
-    BRANCH_REG_PACKET                     branch_reg;
-    logic              [`NUM_FU_MULT-1:0] mult_cdb_valid;
-    logic              [`NUM_FU_LDST-1:0] ldst_cdb_valid;
-
-    always_comb begin
-        for (int i = 0; i < `N; ++i) begin
-            phys_reg_completing[i] = cdb_reg[i].completing_reg; // decoding cdb_reg for freddylist
-            completing_valid[i] = cdb_reg[i].valid; // decoding cdb_reg for freddylist
-        end
-    end
-
-    /*------- RETIRE WIRES ----------*/
-
-    logic [`NUM_SCALAR_BITS-1:0] num_retiring;
-    PHYS_REG_IDX [`N-1:0] phys_regs_retiring;
-    PHYS_REG_IDX [`N-1:0] retire_phys_regs_reading;
 
     //////////////////////////////////////////////////
     //                                              //
@@ -277,7 +149,7 @@ module cpu_sva (
 
     /*----------------Reorder Buffer----------------*/
 
-    rob rob_instance (
+    ROB_sva rob_instance (
         .clock             (clock),
         .reset             (reset),
         .rob_inputs        (rob_entries),
@@ -297,7 +169,7 @@ module cpu_sva (
 
     /*---------------Reservation Station------------*/
 
-    rs rs_instance (
+    RS_sva rs_instance (
         .clock             (clock),
         .reset             (reset),
         .num_dispatched    (num_dispatched),
@@ -317,7 +189,7 @@ module cpu_sva (
 
     /*-------------Freddy List--------------------*/
 
-    freddylist fl_instance (
+    FreddyList_sva fl_instance (
         .clock                  (clock),
         .reset                  (reset),
         .phys_reg_completing    (phys_reg_completing),
@@ -336,7 +208,7 @@ module cpu_sva (
 
     /*-------------Branch Stack--------------------*/
 
-    branchstack bs_instance (
+    BranchStack_sva bs_instance (
         .clock                  (clock),
         .reset                  (reset),
         .restore_valid          (restore_valid),
@@ -344,12 +216,12 @@ module cpu_sva (
         .branch_completing      (branch_reg),
         .rob_tail_restore       (rob_tail_restore),
         .free_list_in           (free_list),
-        .free_list_restore       (free_list_restore),
+        .free_list_restore      (free_list_restore),
         .branch_stack_entries   (branch_stack_entries),
         .next_b_mask            (next_b_mask),
         .map_table_restore      (map_table_restore),
         .b_mask_combinational   (b_mask_combinational),
-        .b_mm_out                (b_mm_out)
+        .b_mm_out               (b_mm_out)
         `ifdef DEBUG
         , .bs_debug(bs_debug)
         `endif
@@ -452,7 +324,7 @@ module cpu_sva (
     //                                              //
     //////////////////////////////////////////////////
 
-    Dispatch dispatch_instance (
+    Dispatch_sva dispatch_instance (
         .clock(clock),
         .reset(reset),
         // ------------ FROM INST BUFFER ------------- //
