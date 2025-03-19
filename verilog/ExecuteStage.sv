@@ -140,7 +140,7 @@ module ExecuteStage (
             branch_reg <= next_branch_reg;
             for (int i = 0; i < `NUM_FU_TOTAL; ++i) begin
                 $display(
-                    "fu_result[%d].completing_reg: %d\nfu_result[%d].result",
+                    "fu_result[%d].completing_reg: %d\nfu_result[%d].result: %h",
                     i, fu_result[i].completing_reg, i, fu_result[i].result
                 );
             end

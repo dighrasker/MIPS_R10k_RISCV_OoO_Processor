@@ -10,10 +10,10 @@ module branchstack #(
     output  ADDR                                 PC_restore,
     // ------------- FROM COMPLETE -------------- //
     input   BRANCH_REG_PACKET                    branch_completing,
-    
     // ------------- TO ROB ------------------- //
     output  logic             [`ROB_SZ_BITS-1:0] rob_tail_restore,
     // ------------- TO FREDDY LIST ----------- //
+    input   logic        [`PHYS_REG_SZ_R10K-1:0] free_list_in,
     output  logic        [`PHYS_REG_SZ_R10K-1:0] free_list_restore,
     // ------------- TO/FROM DISPATCH -------------- //
     input   BS_ENTRY_PACKET  [`B_MASK_WIDTH-1:0] branch_stack_entries,
@@ -54,13 +54,25 @@ module branchstack #(
         next_branch_stack = branch_stack;
         b_mask_combinational = b_mask_reg;
         for (int i = 0; i < `B_MASK_WIDTH; i++) begin
-            if ((b_mm_mispred && ((branch_stack[i].b_m & b_mm_resolve) != 0)) | b_mm_resolve[i]) begin
-                b_mask_combinational[i] = 0;
-                next_branch_stack[i] = 0;
+            if ((b_mm_mispred && (branch_stack[i].b_m & b_mm_resolve)) | b_mm_resolve[i]) begin
+                b_mask_combinational[i] = 1'b0;
+                next_branch_stack[i] = '0;
             end else begin
                 next_branch_stack[i].b_m = branch_stack[i].b_m & ~b_mm_resolve;
             end
         end
+
+        // for (int i = 0; i < `B_MASK_WIDTH; i++) begin
+        //     next_branch_stack[i].recovery_PC = next_branch_stack[i].recovery_PC | branch_stack_entries[i].recovery_PC;
+        //     branch_stack[i].rob_tail <= next_branch_stack[i].rob_tail | branch_stack_entries[i].rob_tail;
+        //     branch_stack[i].map_table <= next_branch_stack[i].map_table | branch_stack_entries[i].map_table;
+        //     branch_stack[i].b_m <= next_branch_stack[i].b_m | branch_stack_entries[i].b_m;
+        //     if (next_branch_stack[i]) begin
+        //         branch_stack[i].free_list <= free_list_in | next_branch_stack[i].free_list | branch_stack_entries[i].free_list;
+        //     end else begin
+        //         branch_stack[i].free_list <= next_branch_stack[i].free_list | branch_stack_entries[i].free_list;
+        //     end
+        // end
     end
 
     always_comb begin
@@ -95,9 +107,22 @@ module branchstack #(
         end else begin
             //branch_stack_spots <= next_branch_stack_spots;
             b_mask_reg <= next_b_mask;
+
+            $display("b_mask_reg: %b", b_mask_reg);
             for (int i = 0; i < `B_MASK_WIDTH; i++) begin
-                branch_stack[i] <= next_branch_stack[i] | branch_stack_entries[i];
+                branch_stack[i].recovery_PC <= next_branch_stack[i].recovery_PC | branch_stack_entries[i].recovery_PC;
+                branch_stack[i].rob_tail <= next_branch_stack[i].rob_tail | branch_stack_entries[i].rob_tail;
+                branch_stack[i].map_table <= next_branch_stack[i].map_table | branch_stack_entries[i].map_table;
+                branch_stack[i].b_m <= next_branch_stack[i].b_m | branch_stack_entries[i].b_m;
+                if (next_branch_stack[i]) begin
+                    branch_stack[i].free_list <= free_list_in | next_branch_stack[i].free_list | branch_stack_entries[i].free_list;
+                end else begin
+                    branch_stack[i].free_list <= next_branch_stack[i].free_list | branch_stack_entries[i].free_list;
+                end
+                $display("branch_stack[%d].recovery_pc: %h", i, branch_stack[i].recovery_PC);
+
             end
+            $display("PC_restore: %h", PC_restore);
         end
     end
 

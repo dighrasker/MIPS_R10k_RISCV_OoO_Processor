@@ -55,5 +55,8 @@ module Fetch #() (
         end else begin
             curr_PC_reg <= Next_PC_reg;
         end
+        for (int i = 0; i < `N; ++i) begin
+            $display("PC_reg[%d]: %h", i, PC_reg[i]);
+        end
     end
 endmodule

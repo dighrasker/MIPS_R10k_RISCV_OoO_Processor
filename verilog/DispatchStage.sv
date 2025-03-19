@@ -52,7 +52,8 @@ module Dispatch (
 );
 
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table, next_map_table;
-
+    // PHYS_REG_IDX [`N:0] [`ARCH_REG_SZ_R10K-1:0] next_map_table;
+    // assign next_map_table[0] = map_table;
 
     logic [`NUM_SCALAR_BITS-1:0] i_num_dispatched;
 
@@ -90,9 +91,9 @@ module Dispatch (
         rob_entries = '0;
         branches_dispatching = 0;
         for (int i = 0; i < `N; ++i) begin
+            // next_map_table[i+1] = next_map_table[i];             // Create rob/rs/branch-stack entries
             if(i < i_num_dispatched) begin
-                // Create rob/rs/branch-stack entries
-                //Create RS Packet
+                
                 rs_entries[i].decoded_signals = decoder_out[i];
                 rs_entries[i].T_new = regs_to_use[i];
                 rs_entries[i].Source1 = next_map_table[source1_arch_reg[i]];
@@ -146,7 +147,7 @@ module Dispatch (
                         next_map_table[dest_arch_reg[i]] = decoder_out[i].has_dest ? regs_to_use[i] : next_map_table[dest_arch_reg[i]];
                         for (int j = 0; j < `B_MASK_WIDTH; ++j) begin
                             if (psel_output[branches_dispatching][j]) begin
-                                branch_stack_entries[j].recovery_PC = decoder_out[i].PC; // TODO: change to instruction PC
+                                branch_stack_entries[j].recovery_PC = decoder_out[i].NPC; // TODO: change to instruction PC
                                 branch_stack_entries[j].rob_tail = (rob_tail + i + 1) % `ROB_SZ;
                                 branch_stack_entries[j].free_list = updated_free_list;
                                 branch_stack_entries[j].map_table = next_map_table;
@@ -176,6 +177,12 @@ module Dispatch (
                 map_table[i] <= i[`ARCH_REG_ID_BITS-1:0];
             end
         end else begin
+            /*for (int i = 0; i < `ARCH_REG_SZ_R10K; ++i) begin
+                $display("map_table[%d]: %d", i, map_table[i]);
+            end*/
+            for (int i = 0; i < `N; ++i) begin
+                $display("dest_arch_reg[%d]: %d\ndecoder_out[%d].has_dest: %b\nregs_to_use[%d]: %d", i, dest_arch_reg[i], i, decoder_out[i].has_dest, i, regs_to_use[i]);
+            end
             $display(
                 "num_dispatched: %d\ni_num_dispatched: %d\nrob_spots: %d\nrs_spots: %d",
                 num_dispatched,
@@ -183,7 +190,7 @@ module Dispatch (
                 rob_spots,
                 rs_spots
             );
-            map_table <= next_map_table;
+            map_table <= restore_valid ? map_table_restore : next_map_table;
         end
     end
 

@@ -113,8 +113,8 @@ module mult_stage (
 
     always_ff @(posedge clock) begin
         // use next_stage_free because we are deciding whether we should update the next mult stage, if in last stage, just forward the packet unconditionally
-        $display("internal_mult_packet_out.dest_reg_idx: %d\ninternal_mult_packet_out.valid: %b\ninternal_mult_packet_out.mplier: %d\ninternal_mult_packet_out.mcand: %d\ninternal_mult_packet_out.prev_sum: %d\n",
-        internal_mult_packet_out.dest_reg_idx, internal_mult_packet_out.valid, internal_mult_packet_out.mplier, internal_mult_packet_out.mcand, internal_mult_packet_out.prev_sum);
+        //$display("internal_mult_packet_out.dest_reg_idx: %d\ninternal_mult_packet_out.valid: %b\ninternal_mult_packet_out.mplier: %d\ninternal_mult_packet_out.mcand: %d\ninternal_mult_packet_out.prev_sum: %d\n",
+        //internal_mult_packet_out.dest_reg_idx, internal_mult_packet_out.valid, internal_mult_packet_out.mplier, internal_mult_packet_out.mcand, internal_mult_packet_out.prev_sum);
         if (reset) begin
             internal_mult_packet <= NOP_MULT_PACKET;        // NOP_MULT_PACKET must have valid to 0;
         end else if (current_stage_free) begin

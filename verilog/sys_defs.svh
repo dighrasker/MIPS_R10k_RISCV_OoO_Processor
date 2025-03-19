@@ -22,8 +22,8 @@
 // this is *your* processor, you decide these values (try analyzing which is best!)
 
 // superscalar width
-`define N 1
-`define B_MASK_WIDTH 4
+`define N 10
+`define B_MASK_WIDTH 8
 `define NUM_B_MASK_BITS $clog2(`B_MASK_WIDTH + 1)
 `define CDB_SZ `N // This MUST match your superscalar width
 `define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]

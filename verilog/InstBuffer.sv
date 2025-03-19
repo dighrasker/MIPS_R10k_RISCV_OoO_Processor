@@ -1,4 +1,4 @@
-`include "verilog/sys_defs.svh"
+ `include "verilog/sys_defs.svh"
 
 module instbuffer #() (
     input   logic                        clock, 
@@ -22,7 +22,7 @@ module instbuffer #() (
     
     logic   [`FB_SZ_BITS-1:0] head, next_head;
     logic   [`FB_SZ_BITS-1:0] tail, next_tail;
-    logic [`NUM_SCALAR_BITS-1:0] entries, next_entries;
+    logic [$clog2(`FB_SZ + 1)-1:0] entries, next_entries;
     
     always_comb begin
         next_head = (head + num_dispatched) % `FB_SZ;
@@ -49,6 +49,13 @@ module instbuffer #() (
                 if (i < instructions_valid) begin
                     inst_buffer[(tail + i) % `FB_SZ] <= inst_buffer_inputs[i]; 
                 end
+            end  
+            $display("inst_buffer_outputs_valid: %d", inst_buffer_outputs_valid);
+            $display("entries: %d", entries);
+            $display("inst_buffer_head: %d", head);
+            $display("inst_buffer_tail: %d", tail);
+            for (int i = 0; i < `FB_SZ; ++i) begin
+                $display("inst_buffer[%d].PC: %h", i, inst_buffer[i].PC);
             end
             head <= next_head;
             tail <= next_tail;

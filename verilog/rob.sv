@@ -52,8 +52,9 @@ module rob #(
             rob_tail <= 0;
             entries <= 0;
         end else if(tail_restore_valid) begin
+            head <= next_head;
             rob_tail <= tail_restore;
-            entries <= (tail_restore == head) ? `ROB_SZ : (tail_restore - head + `ROB_SZ) % `ROB_SZ;
+            entries <= (tail_restore == next_head) ? `ROB_SZ : (tail_restore - next_head + `ROB_SZ) % `ROB_SZ;
         end else begin
             for (int i = 0; i < `N; ++i) begin
                 if (i < rob_inputs_valid) begin
@@ -64,6 +65,7 @@ module rob #(
             rob_tail <= next_tail;
             entries <= next_entries;
         end
+        $display("rob_entries: %d\nrob_head: %d\nrob_tail: %d", entries, head, rob_tail);
     end
 
 // Debug signals

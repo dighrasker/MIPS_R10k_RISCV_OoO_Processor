@@ -9,6 +9,7 @@
 `include "verilog/sys_defs.svh"
 `include "test/branchstack_sva.svh"
 `include "test/issue_sva.svh"
+//`include "test/rob_sva.svh"
 
 // P4 TODO: Add your own debugging framework. Basic printing of data structures
 //          is an absolute necessity for the project. You can use C functions 
@@ -242,6 +243,43 @@ module testbench;
         .PC(PCs)
     );
 
+//     cpu_sva cpu_sva (
+//         // Inputs
+//         .clock (clock),
+//         .reset (reset),
+        
+//         .mem2proc_transaction_tag (mem2proc_transaction_tag),
+//         .mem2proc_data            (mem2proc_data),
+//         .mem2proc_data_tag        (mem2proc_data_tag),
+
+//         // Outputs
+//         .proc2mem_command (proc2mem_command),
+//         .proc2mem_addr    (proc2mem_addr),
+//         .proc2mem_data    (proc2mem_data),
+// `ifndef CACHE_MODE
+//         .proc2mem_size    (proc2mem_size),
+// `endif
+//         .if_NPC_dbg       (if_NPC_dbg),
+//         .if_inst_dbg      (if_inst_dbg),
+//         .if_valid_dbg     (if_valid_dbg),
+//         .if_id_NPC_dbg    (if_id_NPC_dbg),
+//         .if_id_inst_dbg   (if_id_inst_dbg),
+//         .if_id_valid_dbg  (if_id_valid_dbg),
+//         .id_ex_NPC_dbg    (id_ex_NPC_dbg),
+//         .id_ex_inst_dbg   (id_ex_inst_dbg),
+//         .id_ex_valid_dbg  (id_ex_valid_dbg),
+//         .ex_mem_NPC_dbg   (ex_mem_NPC_dbg),
+//         .ex_mem_inst_dbg  (ex_mem_inst_dbg),
+//         .ex_mem_valid_dbg (ex_mem_valid_dbg),
+//         .mem_wb_NPC_dbg   (mem_wb_NPC_dbg),
+//         .mem_wb_inst_dbg  (mem_wb_inst_dbg),
+//         .mem_wb_valid_dbg (mem_wb_valid_dbg),
+        
+//         .inst(insts),
+//         .committed_insts(committed_insts),
+//         .PC(PCs)
+//     );
+
     // Instantiate the Data Memory
     mem memory (
         // Inputs
@@ -315,6 +353,21 @@ module testbench;
         .ldst_packets(ldst_packets),
         .complete_gnt_bus(complete_gnt_bus)
     );
+
+    // ROB_sva rob_instance (
+    //     .clock             (clock),
+    //     .reset             (reset),
+    //     .rob_inputs        (rob_inputs),
+    //     .rob_inputs_valid  (rob_inputs_valid), 
+    //     .rob_spots         (rob_spots),
+    //     .rob_tail          (rob_tail),
+    //     .num_retiring      (num_retiring),
+    //     .rob_outputs       (rob_outputs),
+    //     .rob_outputs_valid (rob_outputs_valid),
+    //     .tail_restore_valid(tail_restore_valid),
+    //     .tail_restore      (tail_restore),
+    //     .rob_debug         (rob_debug)
+    // );
 
 
     // Generate System Clock

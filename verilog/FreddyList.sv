@@ -93,6 +93,14 @@ module freddylist #(
             free_list[`ARCH_REG_SZ_R10K-1:0] <= 0;
             // entries <= `0;
         end else begin
+            
+            $display("free_list:     %b", free_list);
+            $display("complete_list: %b", complete_list);
+            // for (int i = 0; i < `PHYS_REG_SZ_R10K; ++i) begin
+            //     $display("free_list[%d]: %d", i, free_list[i]);
+            //     // $display("free_list_restore[%d]: %d", i, free_list_restore[i]);
+            //     // $display("next_free_list[%d]: %d", i, next_free_list[i]);
+            // end
             complete_list <= next_complete_list;
             free_list <= restore_flag ? next_free_list | free_list_restore : next_free_list;
             // entries <= next_entries;
