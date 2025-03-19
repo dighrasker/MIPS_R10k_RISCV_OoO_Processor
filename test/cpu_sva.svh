@@ -11,6 +11,8 @@
 
 `include "verilog/sys_defs.svh"
 `include "verilog/ISA.svh"
+`include "test/rob_sva.svh"
+
 
 module cpu_sva (
     input logic                         clock,
@@ -145,7 +147,7 @@ module cpu_sva (
 
     /*----------------Reorder Buffer----------------*/
 
-    rob_sva rob_instance (
+    ROB_sva rob_instance (
         .clock             (clock),
         .reset             (reset),
         .rob_inputs        (rob_entries),
@@ -165,7 +167,7 @@ module cpu_sva (
 
     /*---------------Reservation Station------------*/
 
-    rs_sva rs_instance (
+    RS_sva rs_instance (
         .clock             (clock),
         .reset             (reset),
         .num_dispatched    (num_dispatched),
