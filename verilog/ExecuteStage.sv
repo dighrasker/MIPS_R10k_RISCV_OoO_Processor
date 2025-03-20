@@ -21,6 +21,7 @@ module ExecuteStage (
     // ------------ TO ALL DATA STRUCTURES ------------- //
     output CDB_ETB_PACKET               [`N-1:0] cdb_completing,
     output CDB_REG_PACKET               [`N-1:0] cdb_reg,
+    output CDB_REG_PACKET               [`N-1:0] next_cdb_reg,
 
     // --------------- TO/FROM BRANCH STACK --------------- //
     input B_MASK_MASK                          b_mm_resolve,        // b_mm_out
@@ -40,7 +41,6 @@ module ExecuteStage (
 
     assign ldst_result = branch_result;
 
-    CDB_REG_PACKET  [`N-1:0] next_cdb_reg;
     BRANCH_REG_PACKET next_branch_reg;
 
     // always_comb begin

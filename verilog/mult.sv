@@ -109,7 +109,7 @@ module mult_stage (
         end
     end
 
-    assign current_stage_free = next_stage_free || (~internal_mult_packet.valid && ~is_last_stage); // Either the next stage is free, or the current stage doesn't have anything
+    assign current_stage_free = next_stage_free || (~internal_mult_packet_out.valid && ~is_last_stage); // Either the next stage is free, or the current stage doesn't have anything
 
     always_ff @(posedge clock) begin
         // use next_stage_free because we are deciding whether we should update the next mult stage, if in last stage, just forward the packet unconditionally

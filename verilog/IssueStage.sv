@@ -21,8 +21,8 @@ module Issue # (
     input logic        [`PHYS_REG_SZ_R10K-1:0] complete_list,       // The entire complete list of each register
 
     // ------------- TO/FROM RS -------------- //
-    input RS_PACKET               [`RS_SZ-1:0] rs_data,             // full RS data exposed to issue for psel and FU packets generating
-    input logic                   [`RS_SZ-1:0] rs_valid_next,
+    input RS_PACKET               [`RS_SZ-1:0] rs_data_next,             // full RS data exposed to issue for psel and FU packets generating
+    input logic                   [`RS_SZ-1:0] rs_valid_issue,
     output logic                  [`RS_SZ-1:0] rs_data_issuing,     // set index to 1 when a rs_data is selected to be issued
 
     // ------------- TO/FROM REGFILE -------------- //
@@ -43,6 +43,7 @@ module Issue # (
     
     // ------------- FROM CDB -------------- //
     input CDB_REG_PACKET              [`N-1:0] cdb_reg,
+    input CDB_REG_PACKET              [`N-1:0] next_cdb_reg,
 
     // ------------- TO/FROM EXECUTE -------------- //
     // TODO: include the backpressure signals from each FU. 
@@ -90,10 +91,10 @@ logic [`NUM_FU_LDST-1:0]    [`NUM_FU_LDST-1:0] ldst_fu_gnt_bus;
 
 generate
 for (i = 0; i < `RS_SZ; ++i) begin
-    assign branch_entries_valid[i] = rs_valid_next[i] && rs_data[i].Source1_ready && rs_data[i].Source2_ready && (rs_data[i].decoded_signals.FU_type == BU);
-    assign mult_entries_valid[i] = rs_valid_next[i] && rs_data[i].Source1_ready && rs_data[i].Source2_ready && (rs_data[i].decoded_signals.FU_type == MULT); 
-    assign alu_entries_valid[i] = rs_valid_next[i] && rs_data[i].Source1_ready && rs_data[i].Source2_ready && (rs_data[i].decoded_signals.FU_type == ALU); 
-    assign ldst_entries_valid[i] = rs_valid_next[i] && rs_data[i].Source1_ready && rs_data[i].Source2_ready && (rs_data[i].decoded_signals.FU_type == LDST); 
+    assign branch_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == BU);
+    assign mult_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == MULT); 
+    assign alu_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == ALU); 
+    assign ldst_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == LDST); 
 end
 endgenerate
 
@@ -193,53 +194,62 @@ generate
         always_comb begin 
             issue_branch_regs_reading_1[i] = '0;
             issue_branch_regs_reading_2[i] = '0;
+            branch_packets[i] = NOP_BRANCH_PACKET; //NOP
+            branch_cdb_gnt[i] = 1'b0;
             if (branch_inst_gnt_bus[i] & rs_cdb_gnt) begin
                 //rs_data_issuing = branch_inst_gnt_bus[i];
 
                 //assign regfile_read_indices
-                issue_branch_regs_reading_1[i] = rs_data[branch_index].Source1;
-                issue_branch_regs_reading_2[i] = rs_data[branch_index].Source2;
+                issue_branch_regs_reading_1[i] = rs_data_next[branch_index].Source1;
+                issue_branch_regs_reading_2[i] = rs_data_next[branch_index].Source2;
 
                 // TODO: get the data from rs_entries[branch_index] to form this branch packet
-                branch_packets[i].inst = rs_data[branch_index].decoded_signals.inst;
-                branch_packets[i].valid = rs_data[branch_index].decoded_signals.valid;
-                branch_packets[i].PC = rs_data[branch_index].decoded_signals.PC;
-                branch_packets[i].NPC = rs_data[branch_index].decoded_signals.NPC;
-                branch_packets[i].conditional = rs_data[branch_index].decoded_signals.cond_branch;
-                branch_packets[i].opa_select = rs_data[branch_index].decoded_signals.opa_select;
-                branch_packets[i].opb_select = rs_data[branch_index].decoded_signals.opb_select;            
-                branch_packets[i].dest_reg_idx = rs_data[branch_index].T_new;
-                branch_packets[i].taken = rs_data[branch_index].decoded_signals.taken;
-                branch_packets[i].branch_func = rs_data[branch_index].decoded_signals.branch_func;
-                branch_packets[i].bmm = rs_data[branch_index].b_mask_mask;
+                branch_packets[i].inst = rs_data_next[branch_index].decoded_signals.inst;
+                branch_packets[i].valid = rs_data_next[branch_index].decoded_signals.valid;
+                branch_packets[i].PC = rs_data_next[branch_index].decoded_signals.PC;
+                branch_packets[i].NPC = rs_data_next[branch_index].decoded_signals.NPC;
+                branch_packets[i].conditional = rs_data_next[branch_index].decoded_signals.cond_branch;
+                branch_packets[i].opa_select = rs_data_next[branch_index].decoded_signals.opa_select;
+                branch_packets[i].opb_select = rs_data_next[branch_index].decoded_signals.opb_select;            
+                branch_packets[i].dest_reg_idx = rs_data_next[branch_index].T_new;
+                branch_packets[i].taken = rs_data_next[branch_index].decoded_signals.taken;
+                branch_packets[i].branch_func = rs_data_next[branch_index].decoded_signals.branch_func;
+                branch_packets[i].bmm = rs_data_next[branch_index].b_mask_mask;
 
                 // Get the data from the prf
-                if (complete_list[rs_data[branch_index].Source1]) begin
+                if (complete_list[rs_data_next[branch_index].Source1]) begin
                     branch_packets[i].source_reg_1 = issue_branch_read_data_1[i];
 
                 // Cam the CDB to get the forwarded data
                 end else begin
                     for(int j = 0; j < `N; ++j) begin
-                        if (rs_data[branch_index].Source1 == cdb_reg[j].completing_reg) begin
-                        branch_packets[i].source_reg_1 = cdb_reg[j].result;
+                        if (rs_data_next[branch_index].Source1 == next_cdb_reg[j].completing_reg) begin
+                            branch_packets[i].source_reg_1 = next_cdb_reg[j].result;
+                        end
+                    end
+                    for(int j = 0; j < `N; ++j) begin
+                        if (rs_data_next[branch_index].Source1 == cdb_reg[j].completing_reg) begin
+                            branch_packets[i].source_reg_1 = cdb_reg[j].result;
                         end
                     end
                 end
 
-                if (complete_list[rs_data[branch_index].Source2]) begin
+                if (complete_list[rs_data_next[branch_index].Source2]) begin
                     branch_packets[i].source_reg_2 = issue_branch_read_data_2[i];
                 end else begin
                     for(int j = 0; j < `N; ++j) begin
-                        if(rs_data[branch_index].Source2 == cdb_reg[j].completing_reg) begin
+                        if(rs_data_next[branch_index].Source2 == next_cdb_reg[j].completing_reg) begin
+                            branch_packets[i].source_reg_2 = next_cdb_reg[j].result;
+                        end
+                    end
+                    for(int j = 0; j < `N; ++j) begin
+                        if(rs_data_next[branch_index].Source2 == cdb_reg[j].completing_reg) begin
                             branch_packets[i].source_reg_2 = cdb_reg[j].result;
                         end
                     end
                 end
                 
                 branch_cdb_gnt[i] = 1'b1;
-            end else begin
-                branch_packets[i] = NOP_BRANCH_PACKET; //NOP
-                branch_cdb_gnt[i] = 1'b0;
             end
         end
     end
@@ -260,44 +270,53 @@ generate
         always_comb begin 
             issue_alu_regs_reading_1[i] = 1'b0;
             issue_alu_regs_reading_2[i] = 1'b0;
+            alu_packets[i] = NOP_ALU_PACKET; //NOP
+            alu_cdb_gnt[i] = 1'b0;
             if (alu_inst_gnt_bus[i] & rs_cdb_gnt) begin
                 //regfile_read_indices
-                issue_alu_regs_reading_1[i] = rs_data[alu_index].Source1;
-                issue_alu_regs_reading_2[i] = rs_data[alu_index].Source2;
+                issue_alu_regs_reading_1[i] = rs_data_next[alu_index].Source1;
+                issue_alu_regs_reading_2[i] = rs_data_next[alu_index].Source2;
 
-                alu_packets[i].inst = rs_data[alu_index].decoded_signals.inst;
-                alu_packets[i].valid = rs_data[alu_index].decoded_signals.valid;
-                alu_packets[i].PC = rs_data[alu_index].decoded_signals.PC;
-                alu_packets[i].NPC = rs_data[alu_index].decoded_signals.NPC;
-                alu_packets[i].opa_select = rs_data[alu_index].decoded_signals.opa_select;
-                alu_packets[i].opb_select = rs_data[alu_index].decoded_signals.opb_select;
-                alu_packets[i].dest_reg_idx = rs_data[alu_index].T_new;
-                alu_packets[i].alu_func = rs_data[alu_index].decoded_signals.alu_func;
+                alu_packets[i].inst = rs_data_next[alu_index].decoded_signals.inst;
+                alu_packets[i].valid = rs_data_next[alu_index].decoded_signals.valid;
+                alu_packets[i].PC = rs_data_next[alu_index].decoded_signals.PC;
+                alu_packets[i].NPC = rs_data_next[alu_index].decoded_signals.NPC;
+                alu_packets[i].opa_select = rs_data_next[alu_index].decoded_signals.opa_select;
+                alu_packets[i].opb_select = rs_data_next[alu_index].decoded_signals.opb_select;
+                alu_packets[i].dest_reg_idx = rs_data_next[alu_index].T_new;
+                alu_packets[i].alu_func = rs_data_next[alu_index].decoded_signals.alu_func;
 
-                if (complete_list[rs_data[alu_index].Source1]) begin
+                if (complete_list[rs_data_next[alu_index].Source1]) begin
                     alu_packets[i].source_reg_1 = issue_alu_read_data_1[i];
                 end else begin
                     for(int j = 0; j < `N; ++j) begin
-                        if (rs_data[alu_index].Source1 == cdb_reg[j].completing_reg) begin
-                        alu_packets[i].source_reg_1 = cdb_reg[j].result;
+                        if (rs_data_next[alu_index].Source1 == next_cdb_reg[j].completing_reg) begin
+                            alu_packets[i].source_reg_1 = next_cdb_reg[j].result;
+                        end
+                    end
+                    for(int j = 0; j < `N; ++j) begin
+                        if (rs_data_next[alu_index].Source1 == cdb_reg[j].completing_reg) begin
+                            alu_packets[i].source_reg_1 = cdb_reg[j].result;
                         end
                     end
                 end
 
-                if (complete_list[rs_data[alu_index].Source2]) begin
+                if (complete_list[rs_data_next[alu_index].Source2]) begin
                     alu_packets[i].source_reg_2 = issue_alu_read_data_2[i];
                 end else begin
                     for(int j = 0; j < `N; ++j) begin
-                        if(rs_data[alu_index].Source2 == cdb_reg[j].completing_reg) begin
+                        if(rs_data_next[alu_index].Source2 == next_cdb_reg[j].completing_reg) begin
+                            alu_packets[i].source_reg_2 = next_cdb_reg[j].result;
+                        end
+                    end
+                    for(int j = 0; j < `N; ++j) begin
+                        if(rs_data_next[alu_index].Source2 == cdb_reg[j].completing_reg) begin
                             alu_packets[i].source_reg_2 = cdb_reg[j].result;
                         end
                     end
                 end
                 
                 alu_cdb_gnt[i] = 1'b1;
-            end else begin
-                alu_packets[i] = NOP_ALU_PACKET; //NOP TODO: get the data from rs_entries[alu_index] to form this alu packet
-                alu_cdb_gnt[i] = 1'b0;
             end
         end
     end
@@ -320,38 +339,47 @@ always_comb begin
     issue_mult_regs_reading_1 = '0;
     issue_mult_regs_reading_2 = '0;
     for (int i = 0; i < `NUM_FU_MULT; ++i) begin : mult_loop
+        mult_packets[mult_fu_index[i]] = NOP_MULT_PACKET; //NOP
         if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
             // Reading RegFile
-            issue_mult_regs_reading_1[i] = rs_data[mult_rs_index[i]].Source1;
-            issue_mult_regs_reading_2[i] = rs_data[mult_rs_index[i]].Source2;
+            issue_mult_regs_reading_1[i] = rs_data_next[mult_rs_index[i]].Source1;
+            issue_mult_regs_reading_2[i] = rs_data_next[mult_rs_index[i]].Source2;
 
-            mult_packets[mult_fu_index[i]].valid = rs_data[mult_rs_index[i]].decoded_signals.valid; // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
-            mult_packets[mult_fu_index[i]].dest_reg_idx = rs_data[mult_rs_index[i]].T_new;
-            mult_packets[mult_fu_index[i]].bm = rs_data[mult_rs_index[i]].b_mask;
-            mult_packets[mult_fu_index[i]].mult_func = rs_data[mult_rs_index[i]].decoded_signals.mult_func;
+            mult_packets[mult_fu_index[i]].valid = rs_data_next[mult_rs_index[i]].decoded_signals.valid; // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
+            mult_packets[mult_fu_index[i]].dest_reg_idx = rs_data_next[mult_rs_index[i]].T_new;
+            mult_packets[mult_fu_index[i]].bm = rs_data_next[mult_rs_index[i]].b_mask;
+            mult_packets[mult_fu_index[i]].mult_func = rs_data_next[mult_rs_index[i]].decoded_signals.mult_func;
 
 
-            if (complete_list[rs_data[mult_rs_index[i]].Source1]) begin
+            if (complete_list[rs_data_next[mult_rs_index[i]].Source1]) begin
                 mult_packets[mult_fu_index[i]].source_reg_1 = issue_mult_read_data_1[i];
             end else begin
                 for(int j = 0; j < `N; ++j) begin
-                    if (rs_data[mult_rs_index[i]].Source1 == cdb_reg[j].completing_reg) begin
+                    if (rs_data_next[mult_rs_index[i]].Source1 == next_cdb_reg[j].completing_reg) begin
+                        mult_packets[mult_fu_index[i]].source_reg_1 = next_cdb_reg[j].result;
+                    end
+                end
+                for(int j = 0; j < `N; ++j) begin
+                    if (rs_data_next[mult_rs_index[i]].Source1 == cdb_reg[j].completing_reg) begin
                         mult_packets[mult_fu_index[i]].source_reg_1 = cdb_reg[j].result;
                     end
                 end
             end
 
-            if (complete_list[rs_data[mult_rs_index[i]].Source2]) begin
+            if (complete_list[rs_data_next[mult_rs_index[i]].Source2]) begin
                 mult_packets[mult_fu_index[i]].source_reg_2 = issue_mult_read_data_2[i];
             end else begin
                 for(int j = 0; j < `N; ++j) begin
-                    if(rs_data[mult_rs_index[i]].Source2 == cdb_reg[j].completing_reg) begin
+                    if(rs_data_next[mult_rs_index[i]].Source2 == next_cdb_reg[j].completing_reg) begin
+                        mult_packets[mult_fu_index[i]].source_reg_2 = next_cdb_reg[j].result;
+                    end
+                end
+                for(int j = 0; j < `N; ++j) begin
+                    if(rs_data_next[mult_rs_index[i]].Source2 == cdb_reg[j].completing_reg) begin
                         mult_packets[mult_fu_index[i]].source_reg_2 = cdb_reg[j].result;
                     end
                 end
             end
-        end else begin
-            mult_packets[mult_fu_index[i]] = NOP_MULT_PACKET; //NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
         end
     end
 end
@@ -370,11 +398,11 @@ assign ldst_packets = '0;
 //         always_comb begin
 //             if (ldst_inst_gnt_bus[i] && ldst_fu_gnt_bus[i]) begin
 //                 ldst_packets[ldst_fu_index] = '0;// TODO: get the data from rs_entries[ldst_rs_index] to form this ldst packet
-//                 if (complete_list[rs_data[ldst_rs_index].Source1]) begin
+//                 if (complete_list[rs_data_next[ldst_rs_index].Source1]) begin
 //                     ldst_packets[ldst_fu_index].Source1_value = regfile_outputs; // TODO: change regfile
 //                 end else begin
 //                     for(int j = 0; j < `N; ++j) begin
-//                         if (rs_data[ldst_rs_index].Source1 == cdb_reg[j].completing_reg) begin
+//                         if (rs_data_next[ldst_rs_index].Source1 == cdb_reg[j].completing_reg) begin
 //                         ldst_packets[ldst_fu_index].Source1_value = cdb_reg[j].result;
 //                         end
 //                     end

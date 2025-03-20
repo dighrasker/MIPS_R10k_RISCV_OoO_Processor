@@ -35,6 +35,7 @@ module FreddyList_sva #(
 
     logic   [`PHYS_REG_SZ_R10K-1:0] retiring_list;
     logic   [`PHYS_REG_SZ_R10K-1:0] prev_retiring_list;
+    logic   [`PHYS_REG_SZ_R10K-1:0] prev_phys_regs_retiring;
 
     logic   [`PHYS_REG_SZ_R10K-1:0] FL_restore_to_check;
     logic   [`PHYS_REG_SZ_R10K-1:0] prev_FL_restore_to_check;
@@ -82,9 +83,14 @@ module FreddyList_sva #(
         prev_FL_restore_to_check <= FL_restore_to_check;
         prev_completing_list <= completing_list;
         prev_complete_list <= complete_list;
+        prev_phys_regs_retiring <= phys_regs_retiring;
     end
 
     clocking FL_prop @(posedge clock);
+        property no_zero_reg_retiring(int index);
+            (index < num_retiring_valid) |=> (prev_phys_regs_retiring[index] != 0);
+        endproperty
+    
         property only_updating;
             (only_updated) |=> (prev_updated_free_list == free_list);
         endproperty
@@ -115,7 +121,18 @@ module FreddyList_sva #(
         endproperty
     endclocking
     
-
+genvar i;
+generate
+    for (i = 0; i < `N; ++i) begin
+        always @(posedge clock) begin
+            assert property (FL_prop.no_zero_reg_retiring(i))
+                else begin
+                    $error("Zero reg retired");
+                    $finish;
+                end
+        end
+    end
+endgenerate
 
     
     always @(posedge clock) begin

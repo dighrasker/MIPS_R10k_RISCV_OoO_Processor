@@ -11,13 +11,17 @@ module Fetch #() (
     // ------------- FROM BRANCH STACK -------------- //
     input   ADDR                          PC_restore,  // Retire module tells the ROB how many entries can be cleared                        
     input   logic                         restore_valid,
-       
+  
 
     // ------------ TO/FROM FETCH BUFFER -------- //
     input   logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,     //number of spots in instruction buffer
     output  FETCH_PACKET         [`N-1:0] inst_buffer_inputs,   //instructions going to instruction buffer
     output  logic  [`NUM_SCALAR_BITS-1:0] instructions_valid //number of valid instructions fetch sends to instruction buffer 
 
+    // ------------ TO/FROM BRANCH PREDICTOR -------- //
+    //input     logic   predict_taken,
+    //output    logic   branch_valid,   <-- add logic for this
+    //output    PC      branch_PC       <-- just set this somewhere?
 );
 
     ADDR Next_PC_reg;
@@ -33,7 +37,7 @@ module Fetch #() (
             if (i < inst_buffer_spots) begin
                 inst_buffer_inputs[i].inst = inst[i];
                 inst_buffer_inputs[i].PC = Next_PC_reg;
-                inst_buffer_inputs[i].taken = 0;
+                inst_buffer_inputs[i].taken = 0; //should put branch predictor prediction here
                 Next_PC_reg = curr_PC_reg + (4 * (i + 1)); 
                 
                 // $display(

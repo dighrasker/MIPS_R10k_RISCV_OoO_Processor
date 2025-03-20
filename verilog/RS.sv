@@ -16,8 +16,8 @@ module rs #(
     
     // ------- TO/FROM: ISSUE --------- //
     input  logic           [`RS_SZ-1:0] rs_data_issuing,      // bit vector of rs_data that is being issued by issue stage
-    output RS_PACKET       [`RS_SZ-1:0] rs_data,              // The entire RS data 
-    output logic           [`RS_SZ-1:0] rs_valid_next,        // 1 if RS data is valid <-- Coded
+    output RS_PACKET       [`RS_SZ-1:0] rs_data_next,        // The entire RS data 
+    output logic           [`RS_SZ-1:0] rs_valid_issue,       // 1 if RS data is valid, seperate from next_rs_valid since it shouldn't include dispatched instructions
 
     // ------- FROM: BRANCH STACK --------- //
     input B_MASK_MASK                   b_mm_resolve,         // b_mask_mask to resolve
@@ -27,13 +27,15 @@ module rs #(
     `endif
 );
 
-    logic [`RS_SZ-1:0] RS_valid, Next_RS_valid;
+    RS_PACKET           [`RS_SZ-1:0] rs_data;        // 1 if RS data is valid <-- Coded
+    RS_PACKET           [`RS_SZ-1:0] rs_data_next_next;   // TODO::: DO NNOT CHANGE OR ELSE!!!!!!
+    logic [`RS_SZ-1:0] rs_valid, next_rs_valid;
     //TODO Need to handle corner case where RS_SZ is odd - maybe with genvar
 
     logic [`RS_NUM_ENTRIES_BITS-1:0] rs_num_available;
     logic [`N-1:0][`RS_SZ-1:0] rs_gnt_bus;
     logic [`RS_SZ-1:0] rs_reqs;
-    assign rs_reqs = ~RS_valid;
+    assign rs_reqs = ~rs_valid;
 
     psel_gen #(
          .WIDTH(`RS_SZ),
@@ -43,7 +45,7 @@ module rs #(
          .gnt_bus(rs_gnt_bus)
     );
 
-    //given the RS_valid bit array, this module counts 
+    //given the rs_valid bit array, this module counts 
     //how many valid entries are in the RS and 
     //how many spots are available
     CountOnes #(
@@ -56,54 +58,63 @@ module rs #(
 
 
     always_comb begin
+
         rs_spots = rs_num_available > `N ? `N : rs_num_available;
         //B_mask camming
-        rs_valid_next = RS_valid;
+        rs_valid_issue = rs_valid;
+        rs_data_next = rs_data;
+
+        for(int i = 0; i < `RS_SZ; ++i) begin
+            //resolving mask
+            rs_data_next[i].b_mask = rs_data[i].b_mask & ~(b_mm_resolve);
+        end
         for(int i = 0; i < `RS_SZ; ++i) begin
             //squashing step
-            rs_valid_next[i] = (b_mm_mispred && (b_mm_resolve & rs_data[i].b_mask)) ? 0 : RS_valid[i];
+            if (b_mm_mispred && (b_mm_resolve & rs_data[i].b_mask)) begin
+                rs_valid_issue[i] =  0;
+                rs_data_next[i] = 0;
+            end
         end
-        Next_RS_valid = rs_valid_next;
-        for (int i = 0; i < `N; ++i) begin
-            for(int j = 0; j < `RS_SZ; ++j) begin
-                if (i < num_dispatched && rs_gnt_bus[i][j]) begin
-                    Next_RS_valid[j] = 1;
-                end 
+
+        //Cam logic
+        for(int i = 0; i < `N; ++i) begin
+            if(ETB_tags[i].valid) begin
+                for(int j = 0; j < `RS_SZ; ++j)begin
+                    if (rs_data_next[j].Source1 == ETB_tags[i].completing_reg) rs_data_next[j].Source1_ready = 1;
+                    if (rs_data_next[j].Source2 == ETB_tags[i].completing_reg) rs_data_next[j].Source2_ready = 1;
+                end
             end
         end
     end
 
+
+    always_comb begin
+        rs_data_next_next = rs_data_next;
+        next_rs_valid = rs_valid_issue;
+        //Maybe can make this more efficient by using wor/wand or smth
+        for (int i = 0; i < `N; ++i) begin
+            for(int j = 0; j < `RS_SZ; ++j) begin
+                if (i < num_dispatched && rs_gnt_bus[i][j]) begin
+                    rs_data_next_next[j] = rs_entries[i];
+                    next_rs_valid[j] = 1;
+                end else begin
+                    if (rs_data_issuing[j]) begin
+                        next_rs_valid[j] = 0;
+                        rs_data_next_next[j] = 0;
+                    end
+                end
+            end
+        end
+    end
+
+
     always_ff @(posedge clock) begin
         if (reset) begin
             rs_data <= '0;
-            RS_valid <= '0;
+            rs_valid <= '0;
         end else begin
-            RS_valid <= Next_RS_valid & ~(rs_data_issuing);
-            for(int i = 0; i < `RS_SZ; ++i) begin
-                //resolving mask
-                rs_data[i].b_mask <= rs_data[i].b_mask & ~(b_mm_resolve);
-            end
-            //Cam logic
-            for(int i = 0; i < `N; ++i) begin
-                if(ETB_tags[i].valid) begin
-                    for(int j = 0; j < `RS_SZ; ++j)begin
-                        if (rs_data[j].Source1 == ETB_tags[i].completing_reg) rs_data[j].Source1_ready <= 1;
-                        if (rs_data[j].Source2 == ETB_tags[i].completing_reg) rs_data[j].Source2_ready <= 1;
-                    end
-                end 
-            end
-            //Maybe can make this more efficient by using wor/wand or smth
-            for (int i = 0; i < `N; ++i) begin
-                for(int j = 0; j < `RS_SZ; ++j) begin
-                    if (i < num_dispatched && rs_gnt_bus[i][j]) begin
-                        rs_data[j] <= rs_entries[i];
-                        //RS_valid[j] <= 1;
-                    end 
-                    // else begin
-                    //     RS_valid[j] <= rs_valid_next[j][j] & ~(rs_data_issuing[j]);
-                    // end
-                end
-            end
+            rs_data <= rs_data_next_next;
+            rs_valid <= next_rs_valid;
         end
     end
 
@@ -112,13 +123,17 @@ module rs #(
         //     $display("rs_data[%d].Source1_ready: %b, rs_data[%d].Source2_ready: %b\n",
         //     i, rs_data[i].Source1_ready, i, rs_data[i].Source2_ready);
         // end
-        $display("rs_valid  : %b", RS_valid);
+        for (int i = 0; i < `RS_SZ; ++i) begin
+            $display("rs_data[%d]: %b, rs_data[%d].Source2_ready: %b\n",
+            i, rs_data[i].Source1_ready, i, rs_data[i].Source2_ready);
+        end
+        $display("rs_valid  : %b", rs_valid);
 
     end
 
 `ifdef DEBUG
     assign rs_debug = {
-        rs_valid:   RS_valid,
+        rs_valid:   rs_valid,
         rs_reqs:    rs_reqs
     };
 `endif

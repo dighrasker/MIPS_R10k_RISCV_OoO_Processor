@@ -52,7 +52,8 @@
 `define PHYS_REG_SZ_R10K (`ARCH_REG_SZ_R10K + `ROB_SZ)
 `define PHYS_REG_NUM_ENTRIES_BITS $clog2(`PHYS_REG_SZ_R10K + 1)
 `define CDB_ARBITER_SZ `RS_SZ + `NUM_FU_MULT + `NUM_FU_LDST
-
+`define CTR_SZ 2
+`define HISTORY_BITS 5
 
 // EDITED HERE
 `define ROB_ENTRY_ID_BITS $clog2(`ROB_SZ)
@@ -84,7 +85,7 @@ typedef enum logic [1:0] {
 `define LSQ_SZ xx
 
 // number of mult stages (2, 4) (you likely don't need 8)
-`define MULT_STAGES 8
+`define MULT_STAGES 4
 
 ///////////////////////////////
 // ---- Basic Constants ---- //

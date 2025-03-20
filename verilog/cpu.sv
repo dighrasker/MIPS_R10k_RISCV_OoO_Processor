@@ -68,8 +68,8 @@ module cpu (
     /*------- RS WIRES ----------*/
 
     logic  [`NUM_SCALAR_BITS-1:0] rs_spots;
-    RS_PACKET       [`RS_SZ-1:0] rs_data;              // The entire RS data 
-    logic           [`RS_SZ-1:0] rs_valid_next;        // 1 if RS data is valid <-- Coded
+    RS_PACKET       [`RS_SZ-1:0] rs_data_next;              // The entire RS data 
+    logic           [`RS_SZ-1:0] rs_valid_issue;        // 1 if RS data is valid <-- Coded
 
 `ifdef DEBUG
     RS_DEBUG               rs_debug;
@@ -163,6 +163,7 @@ module cpu (
     logic              [`NUM_FU_LDST-1:0] ldst_free;
     CDB_ETB_PACKET               [`N-1:0] cdb_completing;
     CDB_REG_PACKET               [`N-1:0] cdb_reg;
+    CDB_REG_PACKET               [`N-1:0] next_cdb_reg;
     BRANCH_REG_PACKET                     branch_reg;
     logic              [`NUM_FU_MULT-1:0] mult_cdb_valid;
     logic              [`NUM_FU_LDST-1:0] ldst_cdb_valid;
@@ -217,8 +218,8 @@ module cpu (
         .rs_spots          (rs_spots),
         .ETB_tags          (cdb_completing),
         .rs_data_issuing   (rs_data_issuing),
-        .rs_data           (rs_data),
-        .rs_valid_next     (rs_valid_next),
+        .rs_data_next      (rs_data_next),
+        .rs_valid_issue    (rs_valid_issue),
         .b_mm_resolve      (b_mm_out),
         .b_mm_mispred      (restore_valid)
     `ifdef DEBUG
@@ -420,8 +421,8 @@ module cpu (
         .complete_list(complete_list),
 
         // ------------- TO/FROM RS -------------- //
-        .rs_data(rs_data),
-        .rs_valid_next(rs_valid_next),
+        .rs_data_next(rs_data_next),
+        .rs_valid_issue(rs_valid_issue),
         .rs_data_issuing(rs_data_issuing),
         // ------------- TO/FROM REGFILE -------------- //
         .issue_alu_read_data_1(issue_alu_read_data_1),
@@ -438,6 +439,7 @@ module cpu (
         .issue_branch_regs_reading_2(issue_branch_regs_reading_2),
          // ------------- FROM CDB -------------- //
         .cdb_reg(cdb_reg),
+        .next_cdb_reg(next_cdb_reg),
         // ------------- TO/FROM EXECUTE -------------- //
         .mult_free(mult_free),
         .ldst_free(ldst_free),
@@ -473,6 +475,7 @@ module cpu (
         .ldst_cdb_valid(ldst_cdb_valid),
         .cdb_completing(cdb_completing),
         .cdb_reg(cdb_reg),
+        .next_cdb_reg(next_cdb_reg),
         .b_mm_resolve(b_mm_out),
         .b_mm_mispred(restore_valid),
         .branch_reg(branch_reg)
