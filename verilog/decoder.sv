@@ -187,8 +187,9 @@ module decoder (
                 end
         endcase // casez (inst)
         end // if (valid)
+        decoder_out.has_dest = inst_buffer_input.inst.r.rd ? decoder_out.has_dest : 0; 
     end // always
-
+    
     assign is_rs1_used = decoder_out.cond_branch || (decoder_out.opa_select == OPA_IS_RS1);
     assign is_rs2_used = decoder_out.cond_branch || decoder_out.wr_mem || (decoder_out.opb_select == OPB_IS_RS2);
     assign source1_arch_reg = inst_buffer_input.inst.r.rs1;
