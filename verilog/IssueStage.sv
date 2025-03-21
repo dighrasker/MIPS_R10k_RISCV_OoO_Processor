@@ -338,8 +338,11 @@ encoder #(`NUM_FU_MULT, LOG_NUM_FU_MULT) fu_encoders_mult [`NUM_FU_MULT-1:0] (mu
 always_comb begin
     issue_mult_regs_reading_1 = '0;
     issue_mult_regs_reading_2 = '0;
+    for (int i = 0; i < `NUM_FU_MULT; ++i) begin : nop_loop
+        mult_packets[i] = NOP_MULT_PACKET; //NOP
+    end
     for (int i = 0; i < `NUM_FU_MULT; ++i) begin : mult_loop
-        mult_packets[mult_fu_index[i]] = NOP_MULT_PACKET; //NOP
+        //mult_packets[mult_fu_index[i]] = NOP_MULT_PACKET; //NOP
         if (mult_inst_gnt_bus[i] && mult_fu_gnt_bus[i]) begin
             // Reading RegFile
             issue_mult_regs_reading_1[i] = rs_data_next[mult_rs_index[i]].Source1;

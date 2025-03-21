@@ -22,7 +22,7 @@
 // this is *your* processor, you decide these values (try analyzing which is best!)
 
 // superscalar width
-`define N 2
+`define N 1
 `define B_MASK_WIDTH 4
 `define NUM_B_MASK_BITS $clog2(`B_MASK_WIDTH + 1)
 `define CDB_SZ `N // This MUST match your superscalar width
@@ -85,7 +85,7 @@ typedef enum logic [1:0] {
 `define LSQ_SZ xx
 
 // number of mult stages (2, 4) (you likely don't need 8)
-`define MULT_STAGES 4
+`define MULT_STAGES 8
 
 ///////////////////////////////
 // ---- Basic Constants ---- //
