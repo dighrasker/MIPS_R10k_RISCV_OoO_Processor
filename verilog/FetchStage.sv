@@ -26,10 +26,12 @@ module Fetch #() (
    
    // ------------ FROM BTB -------- //
     input    ADDR      [`N-1:0] target_PC,       //<-- just set this somewhere?
-    input    logic     [`N-1:0] btb_miss
+    input    logic     [`N-1:0] btb_hit
 );
 
     ADDR Next_PC_reg, PC_reg;
+
+    logic   [`N-1:0] valid_jump;
 
     logic [`NUM_SCALAR_BITS-1:0] i_num_fetched;
 
@@ -39,6 +41,7 @@ module Fetch #() (
         instructions_valid = '0;
         inst_buffer_inputs = '0;
         valid_branch = '0;
+        valid_jump = '0;
         Next_PC_reg = PC_reg;
         
         //creating array of N PCs that will be sent to ICache
@@ -53,17 +56,18 @@ module Fetch #() (
                 if(cache_miss[i]) begin
                     break;
                 end
-                valid_branch[i] = (cache_data[i].r.opcode == `RV32_BRANCH) 
-                               || (cache_data[i].r.opcode == `RV32_JALR_OP) 
-                               || (cache_data[i].r.opcode == `RV32_JAL_OP);
+                valid_branch[i] = (cache_data[i].r.opcode == `RV32_BRANCH);
+
+                valid_jump[i] = (cache_data[i].r.opcode == `RV32_JALR_OP) 
+                             || (cache_data[i].r.opcode == `RV32_JAL_OP);
                                
                 inst_buffer_inputs[i].inst = cache_data[i];
                 inst_buffer_inputs[i].PC = PCs[i];
-                inst_buffer_inputs[i].taken = predict_taken[i]; //should put branch predictor prediction here
+                inst_buffer_inputs[i].taken = btb_hit[i] && (predict_taken[i] || valid_jump[i]); //should put branch predictor prediction here
                 
                 instructions_valid = i + 1;
 
-                if(!btb_miss[i] && valid_branch[i] && predict_taken[i]) begin
+                if(btb_hit[i] && valid_branch[i] && predict_taken[i]) begin
                     Next_PC_reg = target_PC[i];
                     break;
                 end else begin
