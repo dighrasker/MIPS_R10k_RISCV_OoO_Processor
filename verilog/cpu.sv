@@ -30,7 +30,7 @@ module cpu (
     // Note: these are assigned at the very bottom of the module
     input  INST          [`N-1:0] inst,
     output COMMIT_PACKET [`N-1:0] committed_insts,
-    output ADDR          [`N-1:0] PC,
+    output ADDR          [`N-1:0] PCs,
 
     // Debug outputs: these signals are solely used for debugging in testbenches
     // Do not change for project 3
@@ -329,7 +329,7 @@ module cpu (
         // ------------ TO/FROM MEMORY ------------- //
         // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
         .inst(inst),  // To distinguish invalid instructions being passed in from Dispatch (A number, NOT one hot)
-        .PC_reg(PC),
+        .PCs(PCs),
         
         // ------------- FROM BRANCH STACK -------------- //
         .PC_restore(PC_restore),  // Retire module tells the ROB how many entries can be cleared

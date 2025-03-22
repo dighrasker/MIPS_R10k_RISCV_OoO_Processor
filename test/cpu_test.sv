@@ -240,7 +240,7 @@ module testbench;
         
         .inst(insts),
         .committed_insts(committed_insts),
-        .PC(PCs)
+        .PCs(PCs)
     );
 
     // cpu_sva cpu_sva (
