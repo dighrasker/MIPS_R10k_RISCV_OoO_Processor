@@ -10,9 +10,11 @@ module btb #(
     output  ADDR                        [`N-1:0] target_PCs,
     output  logic                       [`N-1:0] btb_hit,
 
+
     // ------------- TO/FROM BRANCH STACK -------------- //
-    input  logic                                 resolving_valid,
+    input  logic                                 resolving_valid_branch,
     input  ADDR                                  resolving_target_PC,
+    input  BTB_SET_IDX                           btb_set_idx,
     //NOTE: This is not necessarily PC restore, this is whatever the target address is for a valid resolving branch
 
 `ifdef DEBUG
@@ -30,7 +32,7 @@ always_comb begin
     next_pattern_hist_table = pattern_hist_table;
     next_branch_hist_table = branch_hist_table; 
 
-    if (branch_valid) begin
+    if (branch_valid /*or whatever signal*/) begin
 
         //send prediction to fetch
         predict_taken = pattern_hist_table[branch_hist_table[branch_PC]][`CTR_SZ-1]; //bit 1 is T/NT on the saturating counter

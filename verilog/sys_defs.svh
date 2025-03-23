@@ -27,7 +27,8 @@
 `define NUM_B_MASK_BITS $clog2(`B_MASK_WIDTH + 1)
 `define CDB_SZ `N // This MUST match your superscalar width
 `define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]
-`define PC_STEP 12
+`define HISTORY_BITS 5
+`define NUM_BTB_WAYS 4
 
 // functional units (you should decide if you want more or fewer types of FUs)
 `define NUM_FU_BRANCH 1
@@ -52,8 +53,11 @@
 `define PHYS_REG_SZ_R10K (`ARCH_REG_SZ_R10K + `ROB_SZ)
 `define PHYS_REG_NUM_ENTRIES_BITS $clog2(`PHYS_REG_SZ_R10K + 1)
 `define CDB_ARBITER_SZ `RS_SZ + `NUM_FU_MULT + `NUM_FU_LDST
-`define CTR_SZ 2
-`define HISTORY_BITS 5
+`define BTB_SZ 64
+`define BTB_NUM_SETS `BTB_SZ / `BTB_NUM_WAYS
+`define BTB_SET_IDX_BITS $clog2(`BTB_NUM_SETS)
+`define BTB_TAG_BITS 32 - `BTB_SET_IDX_BITS
+`define PHT_SZ 2 ** `HISTORY_BITS
 
 // EDITED HERE
 `define ROB_ENTRY_ID_BITS $clog2(`ROB_SZ)
@@ -70,6 +74,9 @@ typedef logic [`B_MASK_WIDTH-1:0]           B_MASK;
 typedef logic [`B_MASK_WIDTH-1:0]           B_MASK_MASK;
 typedef logic [2:0]                         BRANCH_FUNC;
 typedef logic [`FU_ID_BITS-1:0]             FU_IDX;
+typedef logic [`HISTORY_BITS-1:0]           PHT_IDX;
+typedef logic [`HISTORY_BITS-1:0]           BHR;
+typedef logic [`BTB_SET_IDX_BITS-1:0]       BTB_SET_IDX;
 
 typedef enum logic [1:0] {
     ALU   = 2'h0,
@@ -77,6 +84,13 @@ typedef enum logic [1:0] {
     BU   = 2'h2,
     LDST = 2'h3
 } FU_TYPE;
+
+typedef enum logic [1:0] {
+    STRONGLY_NOT_TAKEN   = 2'h0,
+    WEAKLY_NOT_TAKEN   = 2'h1,
+    WEAKLY_TAKEN   = 2'h2,
+    STRONGLY_TAKEN = 2'h3
+} TWO_BIT_PREDICTOR;
 
 // EDITED END
 
@@ -640,5 +654,14 @@ typedef struct packed {
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] next_map_table;
     FU_TYPE                     [`N-1:0] fu_type;
 } DISPATCH_DEBUG;
+
+typedef struct packed {
+    logic             predict_taken;
+    PHT_IDX           meta_PHT_idx;
+    PHT_IDX           predictor_PHT_idx;
+    BHR               BHR_state;
+    TWO_BIT_PREDICTOR meta_predictor_state;
+    TWO_BIT_PREDICTOR predictor_state;
+} BRANCH_PREDICTOR_PACKET;
 
 `endif // __SYS_DEFS_SVH__

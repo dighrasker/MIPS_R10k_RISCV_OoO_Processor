@@ -23,7 +23,19 @@ module branchstack #(
     //output  logic         [`NUM_B_MASK_BITS-1:0] branch_stack_spots,
 
     // ------------- TO RS/EXECUTE -------------- //
-    output  B_MASK                               b_mm_out
+    output  B_MASK                               b_mm_out,
+
+    // ------------- TO BRANCH PREDICTOR -------------- //
+    output BRANCH_PREDICTOR_PACKET       [`N-1:0] bs_bp_packets,
+    output B_MASK                                 branches_popping,
+    output B_MASK_MASK                            branch_resolving,
+
+    // ------------- TO BTB -------------- //
+    output  logic                                 resolving_valid_branch,
+    output  ADDR                                  resolving_target_PC,
+    output  BTB_SET_IDX                           btb_set_idx,
+
+
 
     // ------------- TO LSQ ------------------ //
     // output logic                                 lsq_tail_restore  //<--- STILL NEED TO UPDATE THIS

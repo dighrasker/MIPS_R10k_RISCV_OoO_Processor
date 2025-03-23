@@ -1,32 +1,32 @@
 `include "verilog/sys_defs.svh"
 
 module Fetch #() (
-    input   logic                        clock, 
-    input   logic                        reset,
+    input  logic                        clock, 
+    input  logic                        reset,
 
     // ------------ TO I-CACHE + BP + BTB ------------- //
-    output  ADDR                 [`N-1:0] PCs, 
+    output ADDR                    [`N-1:0] PCs, 
 
     // ------------ TO/FROM I-CACHE ------------- //
-    input   INST                 [`N-1:0] cache_data,
-    input   logic                [`N-1:0] cache_miss,
+    input  INST                    [`N-1:0] cache_data,
+    input  logic                   [`N-1:0] cache_miss,
     
     // ------------- FROM BRANCH STACK -------------- //
-    input   ADDR                          PC_restore,                      
-    input   logic                         restore_valid,
+    input  ADDR                             PC_restore,                      
+    input  logic                            restore_valid,
   
     // ------------ TO/FROM INSTRUCTION BUFFER -------- //
-    input   logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,     //number of spots in instruction buffer
-    output  FETCH_PACKET         [`N-1:0] inst_buffer_inputs,   //instructions going to instruction buffer
-    output  logic  [`NUM_SCALAR_BITS-1:0] instructions_valid //number of valid instructions fetch sends to instruction buffer 
+    input  logic     [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,     //number of spots in instruction buffer
+    output FETCH_PACKET            [`N-1:0] inst_buffer_inputs,   //instructions going to instruction buffer
+    output logic     [`NUM_SCALAR_BITS-1:0] instructions_valid //number of valid instructions fetch sends to instruction buffer 
 
     // ------------ TO/FROM BRANCH PREDICTOR -------- //
-    input     logic   [`N-1:0] predict_taken,
-    output    logic   [`N-1:0] valid_branch,   //<-- add logic for this
+    input  BRANCH_PREDICTOR_PACKET [`N-1:0] bp_packets,
+    output logic                   [`N-1:0] valid_branch,   
    
    // ------------ FROM BTB -------- //
-    input    ADDR      [`N-1:0] target_PC,       //<-- just set this somewhere?
-    input    logic     [`N-1:0] btb_hit
+    input  ADDR                    [`N-1:0] target_PC,       //<-- just set this somewhere?
+    input  logic                   [`N-1:0] btb_hit
 );
 
     ADDR Next_PC_reg, PC_reg;
