@@ -2,38 +2,42 @@
 
 module branchstack #(
 ) (
-    input   logic                                clock, 
-    input   logic                                reset,
+    input   logic                                      clock, 
+    input   logic                                      reset,
     // ------------- TO ALL -------------- //
-    output  logic                                restore_valid,
+    output  logic                                      restore_valid,
+
     // ------------- TO FETCH -------------- //
-    output  ADDR                                 PC_restore,
+    output  ADDR                                       PC_restore,
+
     // ------------- FROM COMPLETE -------------- //
-    input   BRANCH_REG_PACKET                    branch_completing,
+    input   BRANCH_REG_PACKET                          branch_completing,
+
     // ------------- TO ROB ------------------- //
-    output  logic             [`ROB_SZ_BITS-1:0] rob_tail_restore,
+    output  logic                   [`ROB_SZ_BITS-1:0] rob_tail_restore,
+
     // ------------- TO FREDDY LIST ----------- //
-    input   logic        [`PHYS_REG_SZ_R10K-1:0] free_list_in,
-    output  logic        [`PHYS_REG_SZ_R10K-1:0] free_list_restore,
+    input   logic              [`PHYS_REG_SZ_R10K-1:0] free_list_in,
+    output  logic              [`PHYS_REG_SZ_R10K-1:0] free_list_restore,
+
     // ------------- TO/FROM DISPATCH -------------- //
-    input   BS_ENTRY_PACKET  [`B_MASK_WIDTH-1:0] branch_stack_entries,
-    input   B_MASK                               next_b_mask,
-    output  PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore,     
-    output  B_MASK                               b_mask_combinational,
-    //output  logic         [`NUM_B_MASK_BITS-1:0] branch_stack_spots,
+    input   BS_ENTRY_PACKET        [`B_MASK_WIDTH-1:0] branch_stack_entries,
+    input   B_MASK                                     next_b_mask,
+    output  PHYS_REG_IDX       [`ARCH_REG_SZ_R10K-1:0] map_table_restore,     
+    output  B_MASK                                     b_mask_combinational,
 
     // ------------- TO RS/EXECUTE -------------- //
-    output  B_MASK                               b_mm_out,
+    output  B_MASK                                     b_mm_out,
 
     // ------------- TO BRANCH PREDICTOR -------------- //
-    output BRANCH_PREDICTOR_PACKET       [`N-1:0] bs_bp_packets,
-    output B_MASK                                 branches_popping,
-    output B_MASK_MASK                            branch_resolving,
+    output BRANCH_PREDICTOR_PACKET [`B_MASK_WIDTH-1:0] bs_bp_packets,
+    output B_MASK                                      branches_popping,
+    output B_MASK_MASK                                 branch_resolving,
 
     // ------------- TO BTB -------------- //
-    output  logic                                 resolving_valid_branch,
-    output  ADDR                                  resolving_target_PC,
-    output  BTB_SET_IDX                           btb_set_idx,
+    output  logic                                      resolving_valid_branch,
+    output  ADDR                                       resolving_target_PC,
+    output  BTB_SET_IDX                                btb_set_idx,
 
 
 
@@ -52,9 +56,11 @@ module branchstack #(
 
 
     assign b_mm_resolve = branch_completing.bmm;
-    assign b_mm_mispred = branch_completing.bm_mispred;
+    //assign b_mm_mispred = is_jump..
+    //assign b_mm_mispred = branch_completing.bm_mispred;
     assign target_PC = branch_completing.target_PC;
     assign taken = branch_completing.taken;
+    assign resolving_target_PC = target_PC;
 
 
     BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack, next_branch_stack;
@@ -65,10 +71,14 @@ module branchstack #(
     always_comb begin 
         next_branch_stack = branch_stack;
         b_mask_combinational = b_mask_reg;
+        bs_bp_packets = '0;
+        branches_popping = '0
         for (int i = 0; i < `B_MASK_WIDTH; i++) begin
-            if ((b_mm_mispred && (branch_stack[i].b_m & b_mm_resolve)) | b_mm_resolve[i]) begin
+            if ((b_mm_mispred && (branch_stack[i].b_m & b_mm_resolve)) || b_mm_resolve[i]) begin
                 b_mask_combinational[i] = 1'b0;
                 next_branch_stack[i] = '0;
+                bs_bp_packets[i] = branch_stack[i].bp_packet;
+                branches_popping[i] = !branch_stack[i].is_jump && b_mask_reg[i];
             end else begin
                 next_branch_stack[i].b_m = branch_stack[i].b_m & ~b_mm_resolve;
             end
@@ -94,14 +104,16 @@ module branchstack #(
         rob_tail_restore = 0;
         free_list_restore = 0;
         map_table_restore = 0;
-        b_mm_out = '0;
+        b_mm_out = '0;   
+        branch_resolving = '0
         
         for (int i = 0; i < `B_MASK_WIDTH; i++) begin
             if (b_mm_resolve[i] && b_mask_reg[i]) begin
                 b_mm_out[i] = 1'b1;
-                if (b_mm_mispred) begin
+                if (b_mm_mispred || (branch_stack[i].is_jump && (target_PC != branch_stack[i].recovery_PC))) begin
+                    branch_resolving[i] = !branch_stack[i].is_jump;
                     restore_valid = 1;
-                    PC_restore = taken ? branch_stack[i].recovery_PC : target_PC;
+                    PC_restore = (taken && !branch_stack[i].is_jump) ? branch_stack[i].recovery_PC : target_PC;
                     rob_tail_restore = branch_stack[i].rob_tail;
                     free_list_restore = branch_stack[i].free_list;
                     map_table_restore = branch_stack[i].map_table;

@@ -147,11 +147,13 @@ module Dispatch (
                         next_map_table[dest_arch_reg[i]] = decoder_out[i].has_dest ? regs_to_use[i] : next_map_table[dest_arch_reg[i]];
                         for (int j = 0; j < `B_MASK_WIDTH; ++j) begin
                             if (psel_output[branches_dispatching][j]) begin
-                                branch_stack_entries[j].recovery_PC = decoder_out[i].NPC; // TODO: change to instruction PC
+                                branch_stack_entries[j].recovery_PC = decoder_out[i].is_jump ? decoder_out[i].predicted_PC : decoder_out[i].NPC; // TODO: change to instruction PC
                                 branch_stack_entries[j].rob_tail = (rob_tail + i + 1) % `ROB_SZ;
                                 branch_stack_entries[j].free_list = updated_free_list;
                                 branch_stack_entries[j].map_table = next_map_table;
                                 branch_stack_entries[j].b_m = next_b_mask;
+                                branch_stack_entries[j].bp_packet = decoder_out[i].bp_packet;
+                                branch_stack_entries[j].is_jump = decoder_out[i].is_jump;
                                 next_b_mask[j] = 1'b1;
                                 rs_entries[i].b_mask_mask[j] = 1'b1;
                             end

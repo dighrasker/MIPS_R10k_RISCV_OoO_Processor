@@ -31,7 +31,7 @@ module Fetch #() (
 
     ADDR Next_PC_reg, PC_reg;
 
-    logic   [`N-1:0] valid_jump;
+    logic [`N-1:0] valid_jump;
 
     logic [`NUM_SCALAR_BITS-1:0] i_num_fetched;
 
@@ -63,8 +63,11 @@ module Fetch #() (
                                
                 inst_buffer_inputs[i].inst = cache_data[i];
                 inst_buffer_inputs[i].PC = PCs[i];
-                inst_buffer_inputs[i].taken = btb_hit[i] && (predict_taken[i] || valid_jump[i]); //should put branch predictor prediction here
-                
+                inst_buffer_inputs[i].taken = btb_hit[i] && ((valid_branch[i] && predict_taken[i]) || valid_jump[i]); //should put branch predictor prediction here
+                inst_buffer_inputs[i].bp_packet = bp_packets[i];
+                inst_buffer_inputs[i].predicted_PC = btb_hit[i] ? target_PC[i] : PCs[i] + 4;
+                inst_buffer_inputs[i].is_jump = valid_jump[i];
+
                 instructions_valid = i + 1;
 
                 if(btb_hit[i] && valid_branch[i] && predict_taken[i]) begin

@@ -459,28 +459,39 @@ typedef struct packed {
     ARCH_REG_IDX    arch_reg;
 } ROB_PACKET;
 
+typedef struct packed {
+    logic             predict_taken;
+    PHT_IDX           meta_PHT_idx;
+    PHT_IDX           predictor_PHT_idx;
+    BHR               BHR_state;
+    TWO_BIT_PREDICTOR meta_predictor_state;
+    TWO_BIT_PREDICTOR predictor_state;
+} BRANCH_PREDICTOR_PACKET;
 
 typedef struct packed{
-    INST           inst;
-    logic          valid; // when low, ignore inst. Output will look like a NOP
-    logic          taken;
-    ADDR           PC;
-    ADDR           NPC;
-    ALU_OPA_SELECT opa_select;
-    ALU_OPB_SELECT opb_select;
-    logic          has_dest; // if there is a destination register
-    ALU_FUNC       alu_func;
-    logic          mult; 
-    MULT_FUNC      mult_func;
-    BRANCH_FUNC    branch_func;
-    logic          rd_mem; 
-    logic          wr_mem; 
-    logic          cond_branch; 
-    logic          uncond_branch;
-    logic          csr_op; // used for CSR operations, we only use this as a cheap way to get the return code out
-    logic          halt;   // non-zero on a halt
-    logic          illegal; // non-zero on an illegal instruction
-    FU_TYPE        FU_type;
+    INST                    inst;
+    logic                   valid; // when low, ignore inst. Output will look like a NOP
+    logic                   taken;
+    ADDR                    PC;
+    ADDR                    NPC;
+    ALU_OPA_SELECT          opa_select;
+    ALU_OPB_SELECT          opb_select;
+    logic                   has_dest; // if there is a destination register
+    ALU_FUNC                alu_func;
+    logic                   mult; 
+    MULT_FUNC               mult_func;
+    BRANCH_FUNC             branch_func;
+    logic                   rd_mem; 
+    logic                   wr_mem; 
+    logic                   cond_branch; 
+    logic                   uncond_branch;
+    logic                   csr_op; // used for CSR operations, we only use this as a cheap way to get the return code out
+    logic                   halt;   // non-zero on a halt
+    logic                   illegal; // non-zero on an illegal instruction
+    FU_TYPE                 FU_type;
+    BRANCH_PREDICTOR_PACKET bp_packet;
+    ADDR                    predicted_PC; //only necessary for jumps
+    logic                   is_jump;
 } DECODE_PACKET;
 
 //TODO: CHANGE FOR RS
@@ -505,6 +516,9 @@ typedef struct packed {
     B_MASK                             b_m;
     // lsq_tail
     // branch prediction repair
+    BRANCH_PREDICTOR_PACKET            bp_packet;
+    ADDR                               predicted_PC; //only necessary for jumps
+    logic                              is_jump;
 } BS_ENTRY_PACKET;
 
 typedef struct packed {
@@ -625,9 +639,12 @@ typedef struct packed {
 } LDST_PACKET;
 
 typedef struct packed {
-    INST            inst;
-    ADDR            PC;
-    logic           taken;
+    INST                     inst;
+    ADDR                     PC;
+    logic                    taken;
+    BRANCH_PREDICTOR_PACKET  bp_packet;
+    ADDR                     predicted_PC; //only necessary for jumps
+    logic                    is_jump;
 } FETCH_PACKET;
 
 typedef struct packed {
@@ -655,13 +672,5 @@ typedef struct packed {
     FU_TYPE                     [`N-1:0] fu_type;
 } DISPATCH_DEBUG;
 
-typedef struct packed {
-    logic             predict_taken;
-    PHT_IDX           meta_PHT_idx;
-    PHT_IDX           predictor_PHT_idx;
-    BHR               BHR_state;
-    TWO_BIT_PREDICTOR meta_predictor_state;
-    TWO_BIT_PREDICTOR predictor_state;
-} BRANCH_PREDICTOR_PACKET;
 
 `endif // __SYS_DEFS_SVH__
