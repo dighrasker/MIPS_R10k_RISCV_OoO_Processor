@@ -58,6 +58,7 @@
 `define BTB_SET_IDX_BITS $clog2(`BTB_NUM_SETS)
 `define BTB_TAG_BITS 32 - `BTB_SET_IDX_BITS
 `define PHT_SZ 2 ** `HISTORY_BITS
+`define CTR_SZ 2 
 
 // EDITED HERE
 `define ROB_ENTRY_ID_BITS $clog2(`ROB_SZ)
