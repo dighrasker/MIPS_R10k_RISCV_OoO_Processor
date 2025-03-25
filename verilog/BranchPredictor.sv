@@ -41,47 +41,51 @@ always_comb begin
     next_meta_pht = meta_pht;
     next_bhr = bhr;
     
-    
-    //TODO: figure out how to update the meta predictor?
-    //TODO: figure out how to update the meta predictor?
-    //TODO: figure out how to update the meta predictor?
-    //TODO: figure out how to update the meta predictor?
-    // initialized to strongly not taken, update the meta predictor at a specific address 
-
     //update branch predictor outputs 
     for (int i = 0; i < `N; ++i) begin  
         if (valid_branch[i]) begin 
             //assign PHT index outputs
-            bp_packets[i].predictor_PHT_idx = PCs[i][`HISTORY_BITS-1:0] ^ bhr;  //is this correct?
+            bp_packets[i].predictor_PHT_idx = PCs[i][`HISTORY_BITS-1:0] ^ next_bhr;  //is this correct?
             bp_packets[i].meta_PHT_idx = PCs[i][`HISTORY_BITS-1:0];
             bp_packets[i].meta_predictor_state = meta_pht[PCs[i][`HISTORY_BITS-1:0]];
-            bp_packets[i].BHR_state = bhr;  
+            bp_packets[i].BHR_state = next_bhr;  
 
             //choose output based on meta predictor state
             //we will use the convention that MSB = 1 corresponds to GSHARE, and MSB = 0 corresponds to simple 
             
             //store predictor state
             bp_packets[i].predictor_state = meta_pht[PCs[i][`HISTORY_BITS-1:0][1]] ? 
-                gshare_pht[bhr ^ PCs[i][`HISTORY_BITS-1:0]] : 
+                gshare_pht[next_bhr ^ PCs[i][`HISTORY_BITS-1:0]] : 
                 simple_pht[PCs[i][`HISTORY_BITS-1:0]];
         
             //store predict taken
             bp_packets[i].predict_taken = meta_pht[PCs[i][`HISTORY_BITS-1:0][1]] ?
-                gshare_pht[bhr ^ PCs[i][`HISTORY_BITS-1:0]][1] :
+                gshare_pht[next_bhr ^ PCs[i][`HISTORY_BITS-1:0]][1] :
                 simple_pht[PCs[i][`HISTORY_BITS-1:0]][1]; 
 
             //store predictor taken values
-            bp_packets[i].gshare_predict_taken = gshare_pht[bhr ^ PCs[i][`HISTORY_BITS-1:0]][1];
+            bp_packets[i].gshare_predict_taken = gshare_pht[next_bhr ^ PCs[i][`HISTORY_BITS-1:0]][1];
             bp_packets[i].simple_predict_taken = simple_pht[PCs[i][`HISTORY_BITS-1:0]][1];
 
             //speculatively update bhr
+            //TODO: we should use next_bhr ? 
             next_bhr = meta_pht[PCs[i][`HISTORY_BITS-1:0][1]] ?
-                ((bhr << 1) | gshare_pht[bhr ^ PCs[i][`HISTORY_BITS-1:0]][1]) :
-                ((bhr << 1) | simple_pht[PCs[i][`HISTORY_BITS-1:0]][1]);
+                ((next_bhr << 1) | gshare_pht[bhr ^ PCs[i][`HISTORY_BITS-1:0]][1]) :
+                ((next_bhr << 1) | simple_pht[PCs[i][`HISTORY_BITS-1:0]][1]);
         
-            // TODO: figure out how to break at first taken branch (Kevin idea: do all in parallel, then use only oldest taken branch)
-
+            
         end
+        // TODO: figure out how to break at first taken branch (Kevin idea: do all in parallel, then use only oldest taken branch)
+        //process: give every branch an age marker
+        //do everything in parallel
+        //get the age of the oldest taken branch
+        //set that taken branch and every older NT branch to valid
+        //every younger branch is invalid
+        //would need to add additional logic in FETCH to only accept valid predicted branches
+
+        //questions:
+        //if the branch inputs are well ordered, can we just assign age based on index i?
+        //what happens if the branches are out of order?
 
     end
 
@@ -137,13 +141,14 @@ always_comb begin
                        
         end else if ( (bs_branches_popping[i] & (~bs_branches_resolving[i])) ) begin //all popping branches, excluding the resolving branch
             next_meta_pht[bs_bp_packets[i].meta_PHT_index] = bs_bp_packets[i].meta_predictor_state;
-            next_bhr = bs_bp_packets[i].BHR_state; 
+            next_bhr = bs_bp_packets[i].BHR_state;   
 
             if (bs_bp_packets[i].meta_predictor_state[1]) begin //meta predictor MSB 1 -> restore GSHARE 
                 next_gshare_pht[bs_bp_packets[i].predictor_PHT_idx] = bs_bp_packets[i].predictor_state;
             end else begin //meta predictor MSB 0 -> restore simple
                 next_simple_pht[bs_bp_packets[i].meta_PHT_idx] = bs_bp_packets[i].predictor_state;
             end
+            
 
         end
 

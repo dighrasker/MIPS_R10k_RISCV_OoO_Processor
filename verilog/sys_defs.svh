@@ -464,6 +464,7 @@ typedef struct packed {
     logic             predict_taken;
     logic             gshare_predict_taken;
     logic             simple_predict_taken; 
+    //logic pred_branch_valid //TODO: need this to break after the first taken 
     PHT_IDX           meta_PHT_idx;
     PHT_IDX           predictor_PHT_idx;
     BHR               BHR_state;
