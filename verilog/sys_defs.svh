@@ -462,6 +462,8 @@ typedef struct packed {
 
 typedef struct packed {
     logic             predict_taken;
+    logic             gshare_predict_taken;
+    logic             simple_predict_taken; 
     PHT_IDX           meta_PHT_idx;
     PHT_IDX           predictor_PHT_idx;
     BHR               BHR_state;
