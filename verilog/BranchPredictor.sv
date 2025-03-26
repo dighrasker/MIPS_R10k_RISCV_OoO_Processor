@@ -69,14 +69,12 @@ always_comb begin
     next_simple_pht = simple_pht;
     next_meta_pht = meta_pht;
     next_bhr = bhr;
-
-    //TODO: update intermediate BHRs on each cylce
         
     //update branch predictor outputs 
     for (int i = 0; i < `N; ++i) begin  
 
         //assign PHT index outputs
-        bp_packets[i].gshare_PHT_idx = PCs_out[i][`HISTORY_BITS-1:0] ^ assigned_bhrs[i];  //is this correct?
+        bp_packets[i].gshare_PHT_idx = PCs_out[i][`HISTORY_BITS-1:0] ^ assigned_bhrs[i];
         bp_packets[i].meta_PHT_idx = PCs_out[i][`HISTORY_BITS-1:0];
         bp_packets[i].meta_predictor_state = meta_pht[PCs_out[i][`HISTORY_BITS-1:0]];
         bp_packets[i].BHR_state = assigned_bhrs[i];  
@@ -92,7 +90,6 @@ always_comb begin
         predict_taken[i] = meta_pht[PCs_out[i][`HISTORY_BITS-1:0]][1] ? bp_packets[i].gshare_state[1] : bp_packets[i].simple_state[1];
     
        
-
     end   
 
     for (int i = 0; i < `BMASK_WIDTH; ++i) begin
@@ -104,29 +101,58 @@ always_comb begin
 
                 //gshare mispredicted 
                 if (bs_bp_packets[i].meta_predictor_state[1]) begin
-                    next_bhr[bs_bp_packets[i].gshare_PHT_idx] = bs_bp_packets[i].gshare_state[1] ? 
+                    next_bhr = bs_bp_packets[i].gshare_state[1] ? 
                         {bs_bp_packets[i].BHR_state[`HISTORY_BITS-1:1], 1'b0} : 
                         {bs_bp_packets[i].BHR_state[`HISTORY_BITS-1:1], 1'b1} ;
 
                     next_gshare_pht[bs_bp_packets[i].gshare_PHT_idx] = bs_bp_packets[i].gshare_state[1] ?
-                        bs_bp_packets[i].gshare_state - 1 : //TODO: is it stored state or current state? 
-                        bs_bp_packets[i].gshare_state + 1 ;  
+                        gshare_state[bs_bp_packets[i].gshare_PHT_idx] - 1 : //TODO: is it stored state or current state? 
+                        gshare_state[bs_bp_packets[i].gshare_PHT_idx] + 1 ;  
 
-                    //update meta predictor towards simple if simple's prediction is different than gshare's (which means it is correct)
-                    if ( (bs_bp_packets[i].gshare_state[1] != bs_bp_packets[i].simple_state[1]) && (meta_pht[bs_bp_packets[i].meta_PHT_idx] != 0) ) begin
-                        next_meta_pht[bs_bp_packets[i].meta_PHT_idx] = bs_bp_packets[i].meta_predictor_state - 1;
-                    end                     
+                    //simple prediction is different than gshare (it is correct)
+                    //updates meta predictor towards simple
+                    if (bs_bp_packets[i].gshare_state[1] != bs_bp_packets[i].simple_state[1]) begin
+                        if (meta_pht[bs_bp_packets[i].meta_PHT_idx] != 0) begin
+                            next_meta_pht[bs_bp_packets[i].meta_PHT_idx] = meta_pht[bs_bp_packets[i].meta_PHT_idx] - 1;
+                        end 
+                        //update simple pht
+                        if ( (simple_pht[bs_bp_packets[i].meta_PHT_idx] != 3) && bs_bp_packets[i].simple_state[1]) begin
+                            next_simple_pht[bs_bp_packets[i].meta_PHT_idx] = simple_pht[bs_bp_packets[i].meta_PHT_idx] + 1;
+                        end else if ( (simple_pht[bs_bp_packets[i].meta_PHT_idx] != 0) && ~bs_bp_packets[i].simple_state[1]) begin
+                            next_simple_pht[bs_bp_packets[i].meta_PHT_idx] = simple_pht[bs_bp_packets[i].meta_PHT_idx] - 1;               
+                        end                        
+                    end else begin
+                        if ( (simple_pht[bs_bp_packets[i].meta_PHT_idx] != 0) && bs_bp_packets[i].simple_state[1]) begin
+                            next_simple_pht[bs_bp_packets[i].meta_PHT_idx] = simple_pht[bs_bp_packets[i].meta_PHT_idx] - 1;
+                        end else if ( (gshare_pht[bs_bp_packets[i].meta_PHT_idx] != 3) && ~bs_bp_packets[i].simple_state[1]) begin
+                            next_simple_pht[bs_bp_packets[i].meta_PHT_idx] = gshare_pht[bs_bp_packets[i].meta_PHT_idx] + 1;
+                        end
+                    end          
+
                 end else begin //simple mispredicted 
-                    next_bhr[bs_bp_packets[i].meta_PHT_idx] = bs_bp_packets[i].simple_state[1] ? 
+                    next_bhr = bs_bp_packets[i].simple_state[1] ? 
                         {bs_bp_packets[i].BHR_state[`HISTORY_BITS-1:1], 1'b0} : 
                         {bs_bp_packets[i].BHR_state[`HISTORY_BITS-1:1], 1'b1} ;
 
                     next_simple_pht[bs_bp_packets[i].meta_PHT_idx] = bs_bp_packets[i].simple_state[1] ? 
-                        bs_bp_packets[i].simple_state + 1 :
-                        bs_bp_packets[i].simple_state - 1 ;
-
-                    if ( (bs_bp_packets[i].simple_state[1] != bs_bp_packets[i].gshare_state[1]) && (meta_pht[bs_bp_packets[i].meta_PHT_idx] != 3) ) begin
-                        next_meta_pht[bs_bp_packets[i].gshare_PHT_idx] = bs_bp_packets[i].meta_predictor_state + 1;
+                        simple_state[bs_bp_packets[i].meta_PHT_idx] + 1 :
+                        simple_state[bs_bp_packets[i].meta_PHT_idx] - 1 ;
+                    
+                    if (bs_bp_packets[i].simple_state[1] != bs_bp_packets[i].gshare_state[1]) begin
+                        if (meta_pht[bs_bp_packets[i].meta_PHT_idx] != 3) begin
+                            next_meta_pht[bs_bp_packets[i].meta_PHT_idx] = meta_pht[bs_bp_packets[i].meta_PHT_idx] - 1; 
+                        end
+                        if ( (gshare_pht[bs_bp_packets[i].gshare_PHT_idx] != 3) && bs_bp_packets[i].gshare_state[1]) begin
+                            next_gshare_pht[bs_bp_packets[i].gshare_PHT_idx] = gshare_pht[bs_bp_packets[i].gshare_PHT_idx] + 1;
+                        end else if ( (gshare_pht[bs_bp_packets[i].gshare_PHT_idx] != 0) && ~bs_bp_packets[i].gshare_state[1]) begin
+                            next_gshare_pht[bs_bp_packets[i].gshare_PHT_idx] = gshare_pht[bs_bp_packets[i].gshare_PHT_idx] - 1;
+                        end
+                    end else begin
+                        if ( (gshare_pht[bs_bp_packets[i].gshare_PHT_idx] != 0) && bs_bp_packets[i].gshare_state[1]) begin
+                            next_gshare_pht[bs_bp_packets[i].gshare_PHT_idx] = gshare_pht[bs_bp_packets[i].gshare_PHT_idx] - 1;
+                        end else if ( (gshare_pht[bs_bp_packets[i].gshare_PHT_idx] != 3) && ~bs_bp_packets[i].gshare_state[1]) begin
+                            next_gshare_pht[bs_bp_packets[i].gshare_PHT_idx] = gshare_pht[bs_bp_packets[i].gshare_PHT_idx] + 1;
+                        end
                     end
 
                 end         
@@ -135,27 +161,55 @@ always_comb begin
 
                 //don't update BHR -- it was speculated correctly
                 if (bs_bp_packets[i].meta_predictor_state[1]) begin //TODO: Think about this, it biases GSHARE because it is first
-                    if (gshare_pht[bs_bp_packets[i].gshare_PHT_idx] != (0 || 3)) begin //predicted T, was T
+                    if ( (gshare_pht[bs_bp_packets[i].gshare_PHT_idx] != 0) && (gshare_pht[bs_bp_packets[i].gshare_PHT_idx] != 3) ) begin //predicted T, was T
                         next_gshare_pht[bs_bp_packets[i].gshare_PHT_idx] = bs_bp_packets[i].gshare_state[1] ? 
                             gshare_pht[bs_bp_packets[i].gshare_PHT_idx] + 1 : 
                             gshare_pht[bs_bp_packets[i].gshare_PHT_idx] - 1 ;
-                    end else
-
-                    //only increment towards gshare if simple is wrong
-                    if (~bs_bp_packets[i].simple_state[1] && (meta_pht[bs_bp_packets[i].meta_PHT_idx] != 3)) begin 
-                        next_meta_pht[bs_bp_packets[i].meta_PHT_idx] = bs_bp_packets[i].meta_predictor_state + 1;
                     end 
 
-                end else begin //meta predictor MSB 0, update simple
-                    if (simple_pht[bs_bp_packets[i].meta_PHT_idx] != (0 || 3)) begin //predicted T, was T
+                    //only increment towards gshare if simple is wrong 
+                    if ( bs_bp_packets[i].simple_state[1] != bs_bp_packets[i].gshare_state[1] ) begin 
+                        if (meta_pht[bs_bp_packets[i].meta_PHT_idx] != 3) begin
+                            next_meta_pht[bs_bp_packets[i].meta_PHT_idx] = meta_pht[bs_bp_packets[i].meta_PHT_idx] + 1;
+                        end 
+
                         next_simple_pht[bs_bp_packets[i].meta_PHT_idx] = bs_bp_packets[i].simple_state[1] ?
-                        simple_pht[bs_bp_packets[i].meta_PHT_idx] + 1 : 
-                        simple_pht[bs_bp_packets[i].meta_PHT_idx] - 1 ;
-                    end else
-
-                    if (~bs_bp_packets[i].gshare_state[1] && (meta_pht[bs_bp_packets[i].meta_PHT_idx] != 0)) begin 
-                        next_meta_pht[bs_bp_packets[i].meta_PHT_idx] = bs_bp_packets[i].meta_predictor_state - 1;
+                            simple_pht[bs_bp_packets[i].meta_PHT_idx] - 1 :
+                            simple_pht[bs_bp_packets[i].meta_PHT_idx] + 1 ;  
+                    
+                    end else begin //simple is also right
+                        if (bs_bp_packets[i].simple_state[1] && (simple_state[bs_bp_packets[i].meta_PHT_idx] != 3)) begin
+                            next_simple_pht[bs_bp_packets[i].meta_PHT_idx] = simple_pht[bs_bp_packets[i].meta_PHT_idx] + 1;
+                        end else if (~bs_bp_packets[i].simple_state[1] && (simple_state[bs_bp_packets[i].meta_PHT_idx] != 0)) begin
+                            next_simple_pht[bs_bp_packets[i].meta_PHT_idx] = simple_pht[bs_bp_packets[i].meta_PHT_idx] - 1;               
+                        end    
+                    end
+                    
+                    
+                end else begin //meta predictor MSB 0, update simple
+                    if ( (simple_pht[bs_bp_packets[i].meta_PHT_idx] != 0) && (simple_pht[bs_bp_packets[i].meta_PHT_idx] != 3) ) begin //predicted T, was T
+                        next_simple_pht[bs_bp_packets[i].meta_PHT_idx] = bs_bp_packets[i].simple_state[1] ?
+                            simple_pht[bs_bp_packets[i].meta_PHT_idx] + 1 : 
+                            simple_pht[bs_bp_packets[i].meta_PHT_idx] - 1 ;
                     end 
+
+                    if ( bs_bp_packets[i].simple_state[1] != bs_bp_packets[i].gshare_state[1] ) begin 
+                        if (meta_pht [bs_bp_packets[i].gshare_PHT_idx] != 3) begin
+                            next_meta_pht[bs_bp_packets[i].gshare_PHT_idx] = meta_pht[bs_bp_packets[i].gshare_PHT_idx] - 1;
+                        end
+
+                        next_gshare_pht[bs_bp_packets[i].gshare_PHT_idx] = bs_bp_packets[i].gshare_state[1] ?
+                            gshare_pht[bs_bp_packets[i].gshare_PHT_idx] - 1;
+                            gshare_pht[bs_bp_packets[i].gshare_PHT_idx] + 1;
+                        
+                    end else begin //gshare also right
+                        if (bs_bp_packets[i].gshare_state[1] && (gshare_state[bs_bp_packets[i].meta_PHT_idx] != 3)) begin
+                            next_gshare_pht[bs_bp_packets[i].gshare_PHT_idx] = gshare_pht[bs_bp_packets[i].gshare_PHT_idx] + 1;
+                        end else if (~bs_bp_packets[i].gshare_state[1] && (gshare_state[bs_bp_packets[i].meta_PHT_idx] != 0)) begin
+                            next_gshare_pht[bs_bp_packets[i].gshare_PHT_idx] = gshare_pht[bs_bp_packets[i].gshare_PHT_idx] - 1;
+                        end
+                    end 
+
                 end
             end
         end
