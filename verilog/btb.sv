@@ -14,7 +14,8 @@ module btb #(
     // ------------- TO/FROM BRANCH STACK -------------- //
     input  logic                                 resolving_valid_branch,
     input  ADDR                                  resolving_target_PC,
-    input  BTB_SET_IDX                           btb_set_idx,
+    // input  BTB_SET_IDX                           btb_set_idx,       // might not need if we have branch_PC
+    input  ADDR                                  resolving_branch_PC,
     //NOTE: This is not necessarily PC restore, this is whatever the target address is for a valid resolving branch
 
 `ifdef DEBUG
@@ -23,43 +24,88 @@ module btb #(
 ); 
 
 
-BTB_CACHE_LINE []
-logic [`HISTORY_BITS-1:0][`CTR_SZ-1:0] pattern_hist_table, next_pattern_hist_table; //history bits index, saturating ctr output
+BTB_SET_PACKET [`BTB_NUM_SETS-1:0]  btb_set_entries, next_btb_set_entries;
 
-//should set CTR_SZ to 2
+
+// Write BTB logic
+
+BTB_SET_IDX wr_btb_set_idx;
+BTB_TAG wr_btb_tag;
+
+assign wr_btb_set_idx = resolving_branch_PC[`BTB_SET_IDX_BITS-1:0];
+assign wr_btb_tag = resolving_branch_PC[31:`BTB_SET_IDX_BITS];
+
+logic [`NUM_BTB_WAYS-1:0] found;
 
 always_comb begin
-    next_pattern_hist_table = pattern_hist_table;
-    next_branch_hist_table = branch_hist_table; 
-
-    if (branch_valid /*or whatever signal*/) begin
-
-        //send prediction to fetch
-        predict_taken = pattern_hist_table[branch_hist_table[branch_PC]][`CTR_SZ-1]; //bit 1 is T/NT on the saturating counter
-
-        //update BHT
-        next_branch_hist_table[branch_PC] = ((branch_hist_table[branch_pc] << 1) | actual_taken);
-        
-        //update PHT
-        if (actual_taken) begin
-            next_pattern_hist_table[branch_hist_table[branch_PC]] = pattern_hist_table[branch_hist_table[branch_PC]] + 1'b1;
-        end else if (~actual_taken) begin
-            next_pattern_hist_table[branch_hist_table[branch_PC]] = pattern_hist_table[branch_hist_table[branch_PC]] - 1'b1;
+    next_btb_set_entries = btb_set_entries;
+    found = '0;
+    if(resolving_valid_branch) begin
+        for(int i = 0; i < `NUM_BTB_WAYS; i++) begin
+            if(btb_set_entries[wr_btb_set_idx].btb_entries[i].btb_tag == wr_btb_tag) begin
+                found[i] = 1'b1;
+                next_btb_set_entries[wr_btb_set_idx].btb_entries[i].target_PC = resolving_target_PC;
+                next_btb_set_entries[wr_btb_set_idx].btb_entries[i].valid = 1'b1;
+                //update LRU
+                next_btb_set_entries[wr_btb_set_idx].btb_entries[i].LRU = `NUM_BTB_WAYS - 1'b1;
+                for(int j = 0; j < `NUM_BTB_WAYS; j++) begin
+                    if(j != i) begin
+                        next_btb_set_entries[wr_btb_set_idx].btb_entries[j].LRU--;
+                    end
+                end
+            end
         end
-
-    end 
-end
-
-
-always_ff @(posedge clock) begin
-    if (reset) begin
-        branch_hist_table <= '0;
-        pattern_hist_table <= '0;
-    end else begin
-        branch_hist_table <= next_branch_hist_table;
-        pattern_hist_table <= next_pattern_hist_table;
+        // btb miss write 
+        if(~(|found)) begin
+            //search for LRU
+            for(int i = 0; i < `NUM_BTB_WAYS; i++) begin
+                if(!btb_set_entries[wr_btb_set_idx].btb_entries[i].LRU) begin
+                    next_btb_set_entries[wr_btb_set_idx].btb_entries[i].btb_tag = wr_btb_tag;
+                    next_btb_set_entries[wr_btb_set_idx].btb_entries[i].target_PC = resolving_target_PC;
+                    next_btb_set_entries[wr_btb_set_idx].btb_entries[i].valid = 1'b1;
+                    //update LRU
+                    next_btb_set_entries[wr_btb_set_idx].btb_entries[i].LRU = `NUM_BTB_WAYS - 1'b1;
+                    for(int j = 0; j < `NUM_BTB_WAYS; j++) begin
+                        if(j != i) begin
+                            next_btb_set_entries[wr_btb_set_idx].btb_entries[j].LRU--;
+                        end
+                    end
+                end
+            end
+        end
     end
 end
+
+// Read BTB logic
+
+BTB_SET_IDX [`N-1:0] rd_btb_set_idx;
+BTB_TAG [`N-1:0] rd_btb_tag;
+
+always_comb begin
+    for(int i = 0; i < `N; i++) begin
+        rd_btb_set_idx = PCs[`BTB_SET_IDX_BITS-1:0];
+        rd_btb_tag = PCs[31:`BTB_SET_IDX_BITS];
+        for(int j = 0; j < `NUM_BTB_WAYS; j++) begin
+            if(btb_set_entries[rd_btb_set_idx].btb_entries[j].btb_tag == rd_btb_tag[i]) begin
+                target_PCs[i] = btb_set_entries[rd_btb_set_idx].btb_entries[j].target_PC;
+                btb_hit[i] = 1'b1;
+            end
+        end
+    end
+end
+
+always_comb begin
+
+end
+
+always_ff@(posedge clock) begin
+    if(reset) begin
+        btb_set_entries <= '0;
+    end else begin
+        btb_set_entries <= next_btb_set_entries;
+    end
+end
+
 
 
 endmodule

@@ -6,7 +6,7 @@ module instbuffer #() (
 
     // ------------ TO/FROM FETCH ------------- //
     input   FETCH_PACKET         [`N-1:0] inst_buffer_inputs,
-    input   logic  [`NUM_SCALAR_BITS-1:0] instructions_valid, //number of valid instructions fetch sends to instruction buffer     // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+    input   logic  [`NUM_SCALAR_BITS-1:0] inst_valid, //number of valid instructions fetch sends to instruction buffer     // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
     output  logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,
 
     // ------------ FROM BRANCH STACK ------------- //
@@ -26,8 +26,8 @@ module instbuffer #() (
     
     always_comb begin
         next_head = (head + num_dispatched) % `FB_SZ;
-        next_tail = (tail + instructions_valid) % `FB_SZ;
-        next_entries = entries + instructions_valid - num_dispatched;
+        next_tail = (tail + inst_valid) % `FB_SZ;
+        next_entries = entries + inst_valid - num_dispatched;
         inst_buffer_spots = (`FB_SZ - entries < `N) ? `FB_SZ - entries : `N;
         inst_buffer_outputs_valid = (entries < `N) ? entries : `N;
         inst_buffer_outputs = '0;
@@ -46,7 +46,7 @@ module instbuffer #() (
             entries <= '0;
         end else begin
             for (int i = 0; i < `N; ++i) begin
-                if (i < instructions_valid) begin
+                if (i < inst_valid) begin
                     inst_buffer[(tail + i) % `FB_SZ] <= inst_buffer_inputs[i]; 
                 end
             end  

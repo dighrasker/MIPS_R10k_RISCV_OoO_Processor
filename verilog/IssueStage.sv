@@ -1,17 +1,5 @@
 `include "verilog/sys_defs.svh"
 
-    // TODO: UPDATE THE DRAWING Ald done bro
-    // TODO: UPDATE THE DRAWING
-    // TODO: UPDATE THE DRAWING
-    // TODO: UPDATE THE DRAWING
-    // TODO: UPDATE THE DRAWING
-    // TODO: UPDATE THE DRAWING
-    // TODO: UPDATE THE DRAWING
-    // TODO: UPDATE THE DRAWING
-    // TODO: UPDATE THE DRAWING
-    // TODO: UPDATE THE DRAWING
-    // TODO: UPDATE THE DRAWING
-
 module Issue # (
 ) (
     input logic                                clock,

@@ -56,7 +56,8 @@
 `define BTB_SZ 64
 `define BTB_NUM_SETS `BTB_SZ / `BTB_NUM_WAYS
 `define BTB_SET_IDX_BITS $clog2(`BTB_NUM_SETS)
-`define BTB_TAG_BITS 32 - `BTB_SET_IDX_BITS
+`define BTB_TAG_BITS 32 - `BTB_SET_IDX_BITS     
+`define BTB_LRU_BITS $clog2(`NUM_BTB_WAYS);
 `define PHT_SZ 2 ** `HISTORY_BITS
 `define CTR_SZ 2 
 
@@ -78,6 +79,8 @@ typedef logic [`FU_ID_BITS-1:0]             FU_IDX;
 typedef logic [`HISTORY_BITS-1:0]           PHT_IDX;
 typedef logic [`HISTORY_BITS-1:0]           BHR;
 typedef logic [`BTB_SET_IDX_BITS-1:0]       BTB_SET_IDX;
+typedef logic [`BTB_TAG_BITS-1:0]           BTB_TAG;
+typedef logic [`BTB_LRU_BITS-1:0]           BTB_LRU;
 
 typedef enum logic [1:0] {
     ALU   = 2'h0,
@@ -92,6 +95,13 @@ typedef enum logic [1:0] {
     WEAKLY_TAKEN   = 2'h2,
     STRONGLY_TAKEN = 2'h3
 } TWO_BIT_PREDICTOR;
+
+typedef enum logic [1:0] {
+    STRONGLY_SIMPLE   = 2'h0,
+    WEAKLY_SIMPLE   = 2'h1,
+    WEAKLY_GSHARE   = 2'h2,
+    STRONGLY_GSHARE = 2'h3
+} CHOOSER;
 
 // EDITED END
 
@@ -461,15 +471,14 @@ typedef struct packed {
 } ROB_PACKET;
 
 typedef struct packed {
-    logic             predict_taken;
     logic             gshare_predict_taken;
     logic             simple_predict_taken; 
-    //logic pred_branch_valid //TODO: need this to break after the first taken 
     PHT_IDX           meta_PHT_idx;
-    PHT_IDX           predictor_PHT_idx;
+    PHT_IDX           gshare_PHT_idx;
     BHR               BHR_state;
     TWO_BIT_PREDICTOR meta_predictor_state;
-    TWO_BIT_PREDICTOR predictor_state;
+    TWO_BIT_PREDICTOR gshare_state;
+    TWO_BIT_PREDICTOR simple_state; //need this to update both if correct
 } BRANCH_PREDICTOR_PACKET;
 
 typedef struct packed{
@@ -524,6 +533,15 @@ typedef struct packed {
     ADDR                               predicted_PC; //only necessary for jumps
     logic                              is_jump;
 } BS_ENTRY_PACKET;
+
+typedef struct packed {
+    ADDR            NPC;
+    logic           illegal;
+    logic           halt;
+    PHYS_REG_IDX    T_new; // Use as unique rob id
+    PHYS_REG_IDX    T_old;
+    ARCH_REG_IDX    arch_reg;
+} SQ_PACKET;
 
 typedef struct packed {
     // ADDR            PC;
@@ -676,5 +694,16 @@ typedef struct packed {
     FU_TYPE                     [`N-1:0] fu_type;
 } DISPATCH_DEBUG;
 
+
+typedef struct packed {
+    BTB_ENTRY [`NUM_BTB_WAYS - 1:0] btb_entries;
+} BTB_SET_PACKET;
+
+typedef struct packed {
+    BTB_TAG         btb_tag;
+    BTB_LRU         btb_lru;
+    logic           valid;
+    ADDR            target_PC;
+} BTB_ENTRY;
 
 `endif // __SYS_DEFS_SVH__
