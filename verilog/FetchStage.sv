@@ -18,7 +18,7 @@ module Fetch #() (
     // ------------ TO/FROM INSTRUCTION BUFFER -------- //
     input  logic     [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,     //number of spots in instruction buffer
     output FETCH_PACKET            [`N-1:0] inst_buffer_inputs,   //instructions going to instruction buffer
-    output logic     [`NUM_SCALAR_BITS-1:0] inst_valid    //number of valid instructions fetch sends to instruction buffer 
+    output logic     [`NUM_SCALAR_BITS-1:0] inst_valid,    //number of valid instructions fetch sends to instruction buffer 
 
     // ------------ TO/FROM BRANCH PREDICTOR -------- //
     input  BRANCH_PREDICTOR_PACKET [`N-1:0] bp_packets,
@@ -28,8 +28,8 @@ module Fetch #() (
     output logic                            no_branches_fetched,
    
    // ------------ FROM BTB -------- //
-    input  ADDR                    [`N-1:0] target_PC,       //<-- just set this somewhere?
-    input  logic                   [`N-1:0] btb_hit
+    input  ADDR                    [`N-1:0] target_PCs,       //<-- just set this somewhere?
+    input  logic                   [`N-1:0] btb_hits
 );
 
     ADDR   [`N:0] PCs;
@@ -37,7 +37,6 @@ module Fetch #() (
     logic [`N-1:0] valid_jump;
 
     logic [`N-1:0] valid_branch, masked_valid_branch;
-    logic [`N-1:0] branches_taken;
 
     logic [`NUM_SCALAR_BITS-1:0] final_valid_inst_idx;
 
@@ -46,20 +45,20 @@ module Fetch #() (
         .REQS(`N)
     ) branch_inst_psel (
         .req(valid_branch),
-        .gnt_bus(branch_gnt_bus),
+        .gnt_bus(branch_gnt_bus)
     );
 
     psel_gen #(
         .WIDTH(`N),
-        .REQS(`1)
+        .REQS(1)
     ) right_most_inst_psel (
         .req(cache_miss | branches_taken << 1),
-        .gnt(right_most_inst),
+        .gnt(right_most_inst)
     );
 
     psel_gen #(
         .WIDTH(`N),
-        .REQS(`1)
+        .REQS(1)
     ) final_branch_inst_psel (
         .req(masked_valid_branch),
         .gnt(final_branch_gnt_line),
@@ -68,10 +67,9 @@ module Fetch #() (
 
     encoder #(`N, `NUM_SCALAR_BITS) final_inst_encoder (right_most_inst, right_most_inst_idx);
 
-    assign inst_valid_temp = (no_branches_fetched) ? right_most_inst_idx : `N;
+    assign inst_valid_temp = (no_branches_fetched) ? `N : right_most_inst_idx;
     assign inst_valid = (inst_valid_temp <= inst_buffer_spots) ? inst_valid_temp : inst_buffer_spots;
     assign PCs_out = PCs[`N-1:0];
-    assign PCs[0] = PC_reg;
 
     always_comb begin
         masked_valid_branch = '0;
@@ -83,7 +81,6 @@ module Fetch #() (
     end
 
     always_comb begin
-        inst_valid = '0;
         inst_buffer_inputs = '0;
         valid_branch = '0;
         valid_jump = '0;
@@ -103,14 +100,14 @@ module Fetch #() (
                             
             inst_buffer_inputs[i].inst = cache_data[i];
             inst_buffer_inputs[i].PC = PCs[i];
-            inst_buffer_inputs[i].taken = btb_hit[i] && ((valid_branch[i] && predict_taken[i]) || valid_jump[i]); //should put branch predictor prediction here
+            inst_buffer_inputs[i].taken = (valid_branch[i] && branches_taken[i]) || valid_jump[i]; //should put branch predictor prediction here
             inst_buffer_inputs[i].bp_packet = bp_packets[i];
-            inst_buffer_inputs[i].predicted_PC = btb_hit[i] ? target_PC[i] : PCs[i + 1];
+            inst_buffer_inputs[i].predicted_PC = btb_hits[i] ? target_PCs[i] : PCs[i + 1];
             inst_buffer_inputs[i].is_jump = valid_jump[i];
         end
 
         if(inst_valid && branches_taken[inst_valid - 1]) begin
-            Next_PC_reg = target_PC[inst_valid - 1];
+            Next_PC_reg = target_PCs[inst_valid - 1];
         end else begin
             Next_PC_reg = PCs[inst_valid];
         end

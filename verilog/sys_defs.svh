@@ -17,6 +17,7 @@
 // ---- Starting Parameters ---- //
 ///////////////////////////////////
 `define DEBUG //Comment out when synthesizing
+//`define SIM
 
 // some starting parameters that you should set
 // this is *your* processor, you decide these values (try analyzing which is best!)
@@ -28,7 +29,7 @@
 `define CDB_SZ `N // This MUST match your superscalar width
 `define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]
 `define HISTORY_BITS 5
-`define NUM_BTB_WAYS 4
+`define BTB_NUM_WAYS 4
 
 // functional units (you should decide if you want more or fewer types of FUs)
 `define NUM_FU_BRANCH 1
@@ -57,8 +58,8 @@
 `define BTB_NUM_SETS `BTB_SZ / `BTB_NUM_WAYS
 `define BTB_SET_IDX_BITS $clog2(`BTB_NUM_SETS)
 `define BTB_TAG_BITS 32 - `BTB_SET_IDX_BITS
-`define BTB_NUM_ENTRIES_BITS $clog2(`NUM_BTB_WAYS + 1);     
-`define BTB_LRU_BITS $clog2(`NUM_BTB_WAYS)
+`define BTB_NUM_ENTRIES_BITS $clog2(`BTB_NUM_WAYS + 1)    
+`define BTB_LRU_BITS $clog2(`BTB_NUM_WAYS)
 `define PHT_SZ 2 ** `HISTORY_BITS
 `define CTR_SZ 2 
 
@@ -86,24 +87,23 @@ typedef logic [`BTB_NUM_ENTRIES_BITS-1:0]   BTB_NUM_ENTRY;
 
 typedef enum logic [1:0] {
     ALU   = 2'h0,
-    MULT   = 2'h1,
+    MULT  = 2'h1,
     BU   = 2'h2,
     LDST = 2'h3
 } FU_TYPE;
 
-typedef enum logic [1:0] {
-    STRONGLY_NOT_TAKEN   = 2'h0,
-    WEAKLY_NOT_TAKEN   = 2'h1,
-    WEAKLY_TAKEN   = 2'h2,
-    STRONGLY_TAKEN = 2'h3
-} TWO_BIT_PREDICTOR;
+// STRONGLY_NOT_TAKEN   = 2'h0,
+// WEAKLY_NOT_TAKEN   = 2'h1,
+// WEAKLY_TAKEN   = 2'h2,
+// STRONGLY_TAKEN = 2'h3
+typedef logic [1:0] TWO_BIT_PREDICTOR; 
 
-typedef enum logic [1:0] {
-    STRONGLY_SIMPLE   = 2'h0,
-    WEAKLY_SIMPLE   = 2'h1,
-    WEAKLY_GSHARE   = 2'h2,
-    STRONGLY_GSHARE = 2'h3
-} CHOOSER;
+
+// STRONGLY_SIMPLE   = 2'h0,
+// WEAKLY_SIMPLE   = 2'h1,
+// WEAKLY_GSHARE   = 2'h2,
+// STRONGLY_GSHARE = 2'h3
+typedef logic [1:0] CHOOSER;
 
 // EDITED END
 
@@ -480,6 +480,10 @@ typedef struct packed {
     BHR               BHR_state;
 } BRANCH_PREDICTOR_PACKET;
 
+typedef struct packed {
+    logic place_holder;
+} BP_DEBUG;
+
 typedef struct packed{
     INST                    inst;
     logic                   valid; // when low, ignore inst. Output will look like a NOP
@@ -531,6 +535,7 @@ typedef struct packed {
     BRANCH_PREDICTOR_PACKET            bp_packet;
     ADDR                               predicted_PC; //only necessary for jumps
     logic                              is_jump;
+    ADDR                               original_PC;
 } BS_ENTRY_PACKET;
 
 typedef struct packed {
@@ -693,17 +698,20 @@ typedef struct packed {
     FU_TYPE                     [`N-1:0] fu_type;
 } DISPATCH_DEBUG;
 
-
-typedef struct packed {
-    BTB_ENTRY [`NUM_BTB_WAYS-1:0] btb_entries;
-    BTB_NUM_ENTRY num_entry;
-} BTB_SET_PACKET;
-
 typedef struct packed {
     BTB_TAG         btb_tag;
     BTB_LRU         btb_lru;
     logic           valid;
     ADDR            target_PC;
 } BTB_ENTRY;
+
+typedef struct packed {
+    BTB_ENTRY [`BTB_NUM_WAYS-1:0] btb_entries;
+    BTB_NUM_ENTRY num_entry;
+} BTB_SET_PACKET;
+
+typedef struct packed {
+    logic place_holder_btb;
+} BTB_DEBUG;
 
 `endif // __SYS_DEFS_SVH__

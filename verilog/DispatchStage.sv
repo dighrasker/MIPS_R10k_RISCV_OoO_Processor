@@ -93,7 +93,6 @@ module Dispatch (
         for (int i = 0; i < `N; ++i) begin
             // next_map_table[i+1] = next_map_table[i];             // Create rob/rs/branch-stack entries
             if(i < i_num_dispatched) begin
-                
                 rs_entries[i].decoded_signals = decoder_out[i];
                 rs_entries[i].T_new = regs_to_use[i];
                 rs_entries[i].Source1 = next_map_table[source1_arch_reg[i]];
@@ -154,6 +153,7 @@ module Dispatch (
                                 branch_stack_entries[j].b_m = next_b_mask;
                                 branch_stack_entries[j].bp_packet = decoder_out[i].bp_packet;
                                 branch_stack_entries[j].is_jump = decoder_out[i].is_jump;
+                                branch_stack_entries[j].original_PC = decoder_out[i].PC;
                                 next_b_mask[j] = 1'b1;
                                 rs_entries[i].b_mask_mask[j] = 1'b1;
                             end

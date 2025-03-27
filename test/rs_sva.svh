@@ -10,13 +10,12 @@ module RS_sva #(
     input  logic                        reset,
 
     // ------ TO/FROM: DISPATCH ------- //
-    input  logic   [`NUM_SCALAR_BITS:0] num_dispatched,      // Number of input RS packets actually coming from dispatch
+    input  logic [`NUM_SCALAR_BITS-1:0] num_dispatched,      // Number of input RS packets actually coming from dispatch
     input  RS_PACKET           [`N-1:0] rs_entries,          // Input RS packets data
     input  logic [`NUM_SCALAR_BITS-1:0] rs_spots,            // Number of spots <-- Coded       
 
     // --------- FROM: CDB ------------ //
-    input  PHYS_REG_IDX        [`N-1:0] CDB_tags,            // Tags that are broadcasted from the CDB
-    input  logic               [`N-1:0] CDB_valid,           // 1 is the broadcast is valid
+    input  CDB_ETB_PACKET      [`N-1:0] ETB_tags,
     
     // ------- TO/FROM: ISSUE --------- //
     input  logic           [`RS_SZ-1:0] rs_data_issuing,      // bit vector of rs_data that is being issued by issue stage
@@ -28,7 +27,17 @@ module RS_sva #(
     input logic                         b_mm_mispred,
     input RS_DEBUG                      rs_debug  
 );
+    genvar i;
 
+    PHYS_REG_IDX        [`N-1:0] CDB_tags;
+    logic               [`N-1:0] CDB_valid;
+    generate
+        for (i = 0; i < `N; ++i) begin
+            assign CDB_tags[i] = ETB_tags[i].completing_reg;
+            assign CDB_valid[i] = ETB_tags[i].valid;
+        end
+    endgenerate
+    
     B_MASK_MASK  b_mm_resolve_prev;       
     logic        b_mm_mispred_prev;
     logic [`B_MASK_WIDTH-1:0] b_mask_temp;
@@ -95,15 +104,14 @@ module RS_sva #(
     end
 
     generate
-        genvar i;
-            for(i = 0; i < `RS_SZ; ++i) begin
-                assert property (cb.squashing(i))
-                    else begin
-                        $error("RS entry #%0d did not properly squash when it should have - Current B_mask(%0d) - b_mm_resolve(%0d).", 
-                            i, rs_data[i].b_mask, b_mm_resolve_prev);
-                        $finish;
-                    end
-            end
+        for(i = 0; i < `RS_SZ; ++i) begin
+            assert property (cb.squashing(i))
+                else begin
+                    $error("RS entry #%0d did not properly squash when it should have - Current B_mask(%0d) - b_mm_resolve(%0d).", 
+                        i, rs_data[i].b_mask, b_mm_resolve_prev);
+                    $finish;
+                end
+        end
     endgenerate
     generate
         genvar k, j;

@@ -189,7 +189,7 @@ GREP = grep -E --color=auto
 # ---- Modules to Test ---- #
 
 # TODO: add more modules here
-MODULES = alu branch branchstack CountOnes cpu deocder mult rob rs freddylist branchstack instbuffer retire dispatch
+MODULES = alu branch branchstack CountOnes cpu decoder mult rob rs freddylist branchstack instbuffer retire dispatch
 
 # TODO: update this if you add more header files
 ALL_HEADERS = $(CPU_HEADERS)
@@ -249,6 +249,8 @@ CPU_TESTBENCH = test/pipeline_print.c \
 CPU_SOURCES = verilog/alu.sv \
 		      verilog/branch.sv \
 			  verilog/branchstack.sv \
+			  verilog/BranchPredictor.sv \
+			  verilog/btb.sv \
 			  verilog/CountOnes.sv \
 			  verilog/cpu.sv \
 		      verilog/decoder.sv \

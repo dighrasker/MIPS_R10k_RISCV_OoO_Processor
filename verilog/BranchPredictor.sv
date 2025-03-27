@@ -8,9 +8,9 @@ module branchpredictor #(
     // ------------- TO/FROM FETCH or BTB -------------- //
     input  ADDR                         [`N-1:0] PCs_out,
     input logic [`N-1:0]                [`N-1:0] branch_gnt_bus,
-    input logic                         [`N-1:0] final_gnt_bus_line,
+    input logic                         [`N-1:0] final_branch_gnt_line,
     input logic                                  no_branches_fetched,
-    input logic                         [`N-1:0] btb_hit,
+    input logic                         [`N-1:0] btb_hits,
     output BRANCH_PREDICTOR_PACKET      [`N-1:0] bp_packets,
     output logic                        [`N-1:0] branches_taken,
     //TODO: add new signals
@@ -21,7 +21,7 @@ module branchpredictor #(
     input BRANCH_PREDICTOR_PACKET                     bs_bp_packet,
     input logic                                       resolving_valid_branch,
     
-    // ------------- TO/FROM EXECUTE -------------- //
+    // ------------- TO/FROM EXECUTE (unpacked by CPU) -------------- //
     input logic                                       taken,
     input logic                                       mispred
 
@@ -93,7 +93,7 @@ module branchpredictor #(
             bp_packets[i].meta_PHT_idx = PCs_out[i][`HISTORY_BITS-1:0];
             bp_packets[i].gshare_PHT_idx = PCs_out[i][`HISTORY_BITS-1:0] ^ assigned_bhrs[i];
             bp_packets[i].BHR_state = assigned_bhrs[i];
-            branches_taken[i] = btb_hit[i] && next_meta_pht[PCs_out[i][`HISTORY_BITS-1:0]][1] ? bp_packets[i].gshare_predict_taken : bp_packets[i].simple_predict_taken;
+            branches_taken[i] = btb_hits[i] && next_meta_pht[PCs_out[i][`HISTORY_BITS-1:0]][1] ? bp_packets[i].gshare_predict_taken : bp_packets[i].simple_predict_taken;
         end
     end
 
@@ -105,11 +105,21 @@ module branchpredictor #(
             simple_pht <= '0;
         end else begin
             bhr <= (resolving_valid_branch && mispred) ? ((bs_bp_packet.BHR_state << 1) | taken) : next_bhr; 
+            if (resolving_valid_branch) begin
+                $display("BRANCH_RESOLVING!");
+            end
+            if (resolving_valid_branch && mispred) begin
+                $display("MISPREDICTED_BRANCH!");
+            end
             meta_pht <= next_meta_pht;
             gshare_pht <= next_gshare_pht;
             simple_pht <= next_simple_pht;
         end
     end
+
+`ifdef DEBUG
+    assign bp_debug.place_holder = 0;
+`endif
 
 
 endmodule

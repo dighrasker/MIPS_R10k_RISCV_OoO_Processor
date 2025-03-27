@@ -9,12 +9,19 @@ module Dispatch_sva #(
     input   logic                               clock,
     input   logic                               reset,
 
-    // ------------ FROM INSTRUCTION BUFFER ------------- //
-    input   FETCH_PACKET                        instruction_packets,
-    input   logic        [`NUM_SCALAR_BITS-1:0] instructions_valid,
+    // ------------ FROM INST BUFFER ------------- //
+    input   logic        [`NUM_SCALAR_BITS-1:0] inst_buffer_instructions_valid,
+
+    // ------------ FROM DECODER ------------- //
+    input   DECODE_PACKET              [`N-1:0] decoder_out,
+    input   logic                      [`N-1:0] is_rs1_used,
+    input   logic                      [`N-1:0] is_rs2_used,
+    input   ARCH_REG_IDX               [`N-1:0] source1_arch_reg,
+    input   ARCH_REG_IDX               [`N-1:0] source2_arch_reg,
+    input   ARCH_REG_IDX               [`N-1:0] dest_arch_reg,
 
     // ------------ TO/FROM BRANCH STACK ------------- //
-    input   PHYS_REG_IDX    [`ARCH_REG_SZ_R10K] map_table_restore,
+    input  PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore,
     input   logic                               restore_valid,
     input   B_MASK                              b_mask_combinational,
     input   BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack_entries,
@@ -23,31 +30,34 @@ module Dispatch_sva #(
     // ------------ TO/FROM ROB ------------- //
     input   logic            [`ROB_SZ_BITS-1:0] rob_tail,
     input   logic        [`NUM_SCALAR_BITS-1:0] rob_spots,
-    input   ROB_ENTRY_PACKET           [`N-1:0] rob_entries,
+    input   ROB_PACKET                 [`N-1:0] rob_entries,
 
-    // ------------ TO/FROM RS ------------- //
-    input   RS_PACKET                  [`N-1:0] rs_entries,
+    // ------------ TO/FROM RS ------------- // 
     input   logic        [`NUM_SCALAR_BITS-1:0] rs_spots,
+    input   RS_PACKET                  [`N-1:0] rs_entries,
 
     // ------------ TO/FROM FREDDY LIST ------------- //
-    input   logic        [`NUM_SCALAR_BITS-1:0] num_regs_available,
+    //input   logic        [`NUM_SCALAR_BITS-1:0] num_regs_available,
     input   logic       [`PHYS_REG_SZ_R10K-1:0] next_complete_list,
     input   PHYS_REG_IDX               [`N-1:0] regs_to_use,
     input   logic       [`PHYS_REG_SZ_R10K-1:0] free_list_copy,
     input   logic       [`PHYS_REG_SZ_R10K-1:0] updated_free_list,
     
     // ------------ FROM ISSUE? ------------- //
-    input   logic       [`NUM_SCALAR_BITS-1:0] num_issuing,
+    //input   logic        [`NUM_SCALAR_BITS-1:0] num_issuing,
+
+    // ------------ FROM EXECUTE ------------- //
+    input   CDB_ETB_PACKET             [`N-1:0] cdb_completing,
 
     // ------------ TO ALL DATA STRUCTURES ------------- //
-    input   logic       [`NUM_SCALAR_BITS-1:0] num_dispatched,
-
-    input DISPATCH_DEBUG                 dispatch_debug
+    input   logic        [`NUM_SCALAR_BITS-1:0] num_dispatched
+    `ifdef DEBUG
+        , input DISPATCH_DEBUG                 dispatch_debug
+    `endif
 );
 
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K] prev_map_table_restore;
 
-    logic       [`PHYS_REG_SZ_R10K-1:0] prev_updated_free_list;
     logic       [`PHYS_REG_SZ_R10K-1:0] prev_updated_free_list;
     logic       [`PHYS_REG_SZ_R10K-1:0] dispatching_list;
     logic       [`PHYS_REG_SZ_R10K-1:0] prev_dispatching_list;

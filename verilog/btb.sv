@@ -8,13 +8,13 @@ module btb #(
     // ------------- TO/FROM FETCH -------------- //
     input   ADDR                        [`N-1:0] PCs,
     output  ADDR                        [`N-1:0] target_PCs,
-    output  logic                       [`N-1:0] btb_hit,
+    output  logic                       [`N-1:0] btb_hits,
 
 
     // ------------- TO/FROM BRANCH STACK -------------- //
     input  logic                                 resolving_valid,
     input  ADDR                                  resolving_target_PC,
-    input  ADDR                                  resolving_branch_PC,
+    input  ADDR                                  resolving_branch_PC
     //NOTE: This is not necessarily PC restore, this is whatever the target address is for a valid resolving branch
 
 `ifdef DEBUG
@@ -25,7 +25,7 @@ module btb #(
     BTB_SET_PACKET [`BTB_NUM_SETS-1:0] btb_set_entries, next_btb_set_entries;
     BTB_SET_IDX wr_btb_set_idx;
     BTB_TAG wr_btb_tag;
-
+    
     assign wr_btb_set_idx = resolving_branch_PC[`BTB_SET_IDX_BITS-1:0];
     assign wr_btb_tag = resolving_branch_PC[31:`BTB_SET_IDX_BITS];
 
@@ -36,40 +36,41 @@ module btb #(
     genvar j;
 
     for (i = 0; i < `BTB_NUM_SETS; ++i) begin
+        logic [`BTB_NUM_WAYS-1:0] lru_gnt_line;
         logic [$clog2(`BTB_NUM_WAYS)-1:0] lru_idx;
         logic [$clog2(`BTB_NUM_WAYS)-1:0] victim_idx;
         logic [`BTB_NUM_WAYS-1:0] requests;
 
         for(j = 0; j < `BTB_NUM_WAYS; ++j) begin
-            assign requests[j] = btb_set_entries[i].btb_entries[j].lru == 0;
+            assign requests[j] = btb_set_entries[i].btb_entries[j].btb_lru == 0;
         end
         
         psel_gen #(
             .WIDTH(`BTB_NUM_WAYS),
-            .REQS(`1)
+            .REQS(1)
         ) lru_psel (
             .req(requests),
-            .gnt(lru_gnt_line),
+            .gnt(lru_gnt_line)
         );
 
-        encoder #(`BTB_NUM_WAYS, `$clog2(`BTB_NUM_WAYS)) lru_idx_encoder (lru_gnt_line, lru_idx);
+        encoder #(`BTB_NUM_WAYS, $clog2(`BTB_NUM_WAYS)) lru_idx_encoder (lru_gnt_line, lru_idx);
         
         always_comb begin
             next_btb_set_entries[i] = btb_set_entries[i];
             if (resolving_valid && (i == wr_btb_set_idx)) begin
                 victim_idx = lru_idx;
-                for(int k = 0; k < `NUM_BTB_WAYS; k++) begin
+                for(int k = 0; k < `BTB_NUM_WAYS; k++) begin
                     if (btb_set_entries[i].btb_entries[k].btb_tag == wr_btb_tag) begin
                         victim_idx = k;
                     end
                 end
                 next_btb_set_entries[i].btb_entries[victim_idx].btb_tag = wr_btb_tag;
                 next_btb_set_entries[i].btb_entries[victim_idx].target_PC = resolving_target_PC;
-                next_btb_set_entries[i].btb_entries[victim_idx].LRU = `NUM_BTB_WAYS - 1'b1;
+                next_btb_set_entries[i].btb_entries[victim_idx].btb_lru = `BTB_NUM_WAYS - 1'b1;
                 next_btb_set_entries[i].btb_entries[victim_idx].valid = 1'b1;
-                for (int l = 0; l < `NUM_BTB_WAYS; l++) begin
-                    if (btb_set_entries[i].btb_entries[l].valid && (btb_set_entries[i].btb_entries[l].LRU > btb_set_entries[i].btb_entries[victim_idx].LRU)) begin
-                        next_btb_set_entries[i].btb_entries[l].LRU--;
+                for (int l = 0; l < `BTB_NUM_WAYS; l++) begin
+                    if (btb_set_entries[i].btb_entries[l].valid && (btb_set_entries[i].btb_entries[l].btb_lru > btb_set_entries[i].btb_entries[victim_idx].btb_lru)) begin
+                        next_btb_set_entries[i].btb_entries[l].btb_lru--;
                     end
                 end
             end
@@ -144,14 +145,14 @@ module btb #(
     BTB_TAG [`N-1:0] rd_btb_tag;
 
     always_comb begin
-        btb_hit = '0;
+        btb_hits = '0;
         for(int i = 0; i < `N; i++) begin
-            rd_btb_set_idx[i] = PCs[`BTB_SET_IDX_BITS-1:0];
-            rd_btb_tag[i] = PCs[31:`BTB_SET_IDX_BITS];
-            for(int j = 0; j < `NUM_BTB_WAYS; j++) begin
+            rd_btb_set_idx[i] = PCs[i][`BTB_SET_IDX_BITS-1:0];
+            rd_btb_tag[i] = PCs[i][31:`BTB_SET_IDX_BITS];
+            for(int j = 0; j < `BTB_NUM_WAYS; j++) begin
                 if(next_btb_set_entries[rd_btb_set_idx[i]].btb_entries[j].btb_tag == rd_btb_tag[i]) begin
                     target_PCs[i] = next_btb_set_entries[rd_btb_set_idx[i]].btb_entries[j].target_PC;
-                    btb_hit[i] = 1'b1;
+                    btb_hits[i] = 1'b1;
                 end
             end
         end
@@ -169,6 +170,8 @@ module btb #(
         end
     end
 
-
+`ifdef DEBUG
+    assign btb_debug.place_holder_btb = 0;
+`endif
 
 endmodule

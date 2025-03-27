@@ -30,7 +30,7 @@ module cpu (
     // Note: these are assigned at the very bottom of the module
     input  INST          [`N-1:0] inst,
     output COMMIT_PACKET [`N-1:0] committed_insts,
-    output ADDR          [`N-1:0] PCs,
+    output ADDR          [`N-1:0] PCs_out,
 
     // Debug outputs: these signals are solely used for debugging in testbenches
     // Do not change for project 3
@@ -67,7 +67,7 @@ module cpu (
 
     /*------- RS WIRES ----------*/
 
-    logic  [`NUM_SCALAR_BITS-1:0] rs_spots;
+    logic [`NUM_SCALAR_BITS-1:0] rs_spots;
     RS_PACKET       [`RS_SZ-1:0] rs_data_next;              // The entire RS data 
     logic           [`RS_SZ-1:0] rs_valid_issue;        // 1 if RS data is valid <-- Coded
 
@@ -96,12 +96,33 @@ module cpu (
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore;     
     B_MASK                               b_mask_combinational;
     B_MASK                               b_mm_out;
+    BRANCH_PREDICTOR_PACKET              bs_bp_packet;
+    logic                                resolving_valid_branch;
+    logic                                resolving_valid;
+    ADDR                                 resolving_target_PC;
+    ADDR                                 resolving_branch_PC;
+    
     `ifdef DEBUG
     BS_DEBUG                             bs_debug;
     `endif
 
-    /*------- REGFILE WIRES ----------*/
+    /*------- BRANCH PREDICTOR WIRES ----------*/
+    BRANCH_PREDICTOR_PACKET  [`N-1:0]   bp_packets;
+    logic                    [`N-1:0]   branches_taken;
+    logic                               taken;
+    logic                               mispred;
+    `ifdef DEBUG
+    BP_DEBUG                            bp_debug;
+    `endif
+
+    /*------- BTB WIRES ----------*/
+    ADDR                     [`N-1:0] target_PCs;
+    logic                    [`N-1:0] btb_hits;
+    `ifdef DEBUG
+    BTB_DEBUG                         btb_debug;
+    `endif
     
+    /*------- REGFILE WIRES ----------*/
     DATA        [`N-1:0] retire_read_data;
     DATA        [`NUM_FU_ALU-1:0] issue_alu_read_data_1;
     DATA        [`NUM_FU_ALU-1:0] issue_alu_read_data_2;
@@ -112,7 +133,10 @@ module cpu (
 
     /*------- FETCH WIRES ----------*/  
     FETCH_PACKET         [`N-1:0] inst_buffer_inputs;   //instructions going to instruction buffer
-    logic  [`NUM_SCALAR_BITS-1:0] instructions_valid;
+    logic  [`NUM_SCALAR_BITS-1:0] inst_valid;
+    logic [`N-1:0]       [`N-1:0] branch_gnt_bus;
+    logic                [`N-1:0] final_branch_gnt_line;
+    logic                         no_branches_fetched;
 
     /*------- FETCH BUFFER WIRES ----------*/    
     logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots;
@@ -173,6 +197,11 @@ module cpu (
             phys_reg_completing[i] = cdb_reg[i].completing_reg; // decoding cdb_reg for freddylist
             completing_valid[i] = cdb_reg[i].valid; // decoding cdb_reg for freddylist
         end
+    end
+
+    always_comb begin
+        mispred = branch_reg.bm_mispred; //decoding mispred for branch predictor
+        taken = branch_reg.taken; //decoding taken for branch predictor
     end
 
     /*------- RETIRE WIRES ----------*/
@@ -257,18 +286,59 @@ module cpu (
         .branch_completing      (branch_reg),
         .rob_tail_restore       (rob_tail_restore),
         .free_list_in           (free_list),
-        .free_list_restore       (free_list_restore),
+        .free_list_restore      (free_list_restore),
         .branch_stack_entries   (branch_stack_entries),
         .next_b_mask            (next_b_mask),
         .map_table_restore      (map_table_restore),
         .b_mask_combinational   (b_mask_combinational),
-        .b_mm_out                (b_mm_out)
+        .b_mm_out               (b_mm_out), 
+        .bs_bp_packet           (bs_bp_packet),
+        .resolving_valid_branch (resolving_valid_branch),
+        .resolving_valid        (resolving_valid),
+        .resolving_target_PC    (resolving_target_PC),
+        .resolving_branch_PC    (resolving_branch_PC)
         `ifdef DEBUG
         , .bs_debug(bs_debug)
         `endif
     );
 
-    
+    /*-------------Branch Predictor--------------------*/
+
+    branchpredictor bp_instance (
+        .clock(clock), 
+        .reset(reset),
+        .PCs_out(PCs_out),
+        .branch_gnt_bus(branch_gnt_bus),
+        .final_branch_gnt_line(final_branch_gnt_line),
+        .no_branches_fetched(no_branches_fetched),
+        .btb_hits(btb_hits),
+        .bp_packets(bp_packets),
+        .branches_taken(branches_taken),
+        .bs_bp_packet(bs_bp_packet),
+        .resolving_valid_branch(resolving_valid_branch),
+        .taken(taken),                                       
+        .mispred(mispred)                        
+`ifdef DEBUG
+    , .bp_debug(bp_debug) //define BP_DEBUG later sys defs
+`endif
+    );
+
+
+    /*----------------- BTB ------------------*/
+    btb btb_instance (
+        .clock(clock),
+        .reset(reset),
+        .PCs(PCs_out),
+        .target_PCs(target_PCs),
+        .btb_hits(btb_hits),
+        .resolving_valid(resolving_valid), //need branch stack to add these
+        .resolving_target_PC(resolving_target_PC),
+        .resolving_branch_PC(resolving_branch_PC)
+        `ifdef DEBUG
+        , .btb_debug(btb_debug)
+        `endif
+    );
+
 
     /*------------------Reg File --------------------*/
 
@@ -302,7 +372,7 @@ module cpu (
 
         // ------------ TO/FROM FETCH ------------- //
         .inst_buffer_inputs         (inst_buffer_inputs),
-        .instructions_valid         (instructions_valid), //number of valid instructions fetch sends to instruction buffer     // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+        .inst_valid                 (inst_valid), //number of valid instructions fetch sends to instruction buffer     // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
         .inst_buffer_spots          (inst_buffer_spots),
 
         // ------------ FROM EXECUTE ------------- //
@@ -322,23 +392,23 @@ module cpu (
     //////////////////////////////////////////////////
 
     Fetch fetch_stage(
-
         .clock(clock), 
         .reset(reset),
-
-        // ------------ TO/FROM MEMORY ------------- //
-        // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
-        .inst(inst),  // To distinguish invalid instructions being passed in from Dispatch (A number, NOT one hot)
-        .PCs(PCs),
-        
-        // ------------- FROM BRANCH STACK -------------- //
+        .PCs_out(PCs_out),
+        .cache_data(inst),
+        .cache_miss('0),
         .PC_restore(PC_restore),  // Retire module tells the ROB how many entries can be cleared
         .restore_valid(restore_valid),
-
-        // ------------ TO/FROM FETCH BUFFER ------------- //
         .inst_buffer_spots(inst_buffer_spots),     //number of spots in instruction buffer
         .inst_buffer_inputs(inst_buffer_inputs),   //instructions going to instruction buffer
-        .instructions_valid(instructions_valid) //number of valid instructions fetch sends to instruction buffer   
+        .inst_valid(inst_valid), //number of valid instructions fetch sends to instruction buffer   
+        .bp_packets(bp_packets),
+        .branches_taken(branches_taken),
+        .branch_gnt_bus(branch_gnt_bus),
+        .final_branch_gnt_line(final_branch_gnt_line),
+        .no_branches_fetched(fetched),
+        .target_PCs(target_PCs),       //<-- just set this somewhere?
+        .btb_hits(btb_hits)
     );
 
 

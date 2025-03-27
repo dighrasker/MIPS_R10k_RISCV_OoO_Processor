@@ -35,9 +35,8 @@ module branchstack #(
 
     // ------------- TO BTB -------------- //
     output  logic                                      resolving_valid,
-    output  ADDR                                       resolving_target_PC
-
-
+    output  ADDR                                       resolving_target_PC,
+    output  ADDR                                       resolving_branch_PC
 
     // ------------- TO LSQ ------------------ //
     // output logic                                 lsq_tail_restore  //<--- STILL NEED TO UPDATE THIS
@@ -86,15 +85,17 @@ module branchstack #(
         free_list_restore = 0;
         map_table_restore = 0;
         b_mm_out = '0;   
-        resolving_valid = '0
-        resolving_valid_branch = '0
+        resolving_valid = '0;
+        resolving_valid_branch = '0;
         bs_bp_packet = '0;
+        resolving_branch_PC = '0;
         
         for (int i = 0; i < `B_MASK_WIDTH; i++) begin
             if (b_mm_resolve[i] && b_mask_reg[i]) begin
                 b_mm_out[i] = 1'b1;
                 bs_bp_packet = branch_stack[i].bp_packet;
                 resolving_valid = 1'b1;
+                resolving_branch_PC = branch_stack[i].original_PC;
                 resolving_valid_branch = !branch_stack[i].is_jump;
                 if (b_mm_mispred || (branch_stack[i].is_jump && (target_PC != branch_stack[i].recovery_PC))) begin
                     restore_valid = 1;

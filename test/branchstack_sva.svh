@@ -2,33 +2,47 @@
 
 module BranchStack_sva #(
 ) (
-    input   logic                                clock, 
-    input   logic                                reset,
+    input   logic                                      clock, 
+    input   logic                                      reset,
     // ------------- TO ALL -------------- //
-    input  logic                                restore_valid,
+    input   logic                                      restore_valid,
+
     // ------------- TO FETCH -------------- //
-    input  ADDR                                 PC_restore,
+    input   ADDR                                       PC_restore,
+
     // ------------- FROM COMPLETE -------------- //
-    input   BRANCH_REG_PACKET                    branch_completing,
-    
+    input   BRANCH_REG_PACKET                          branch_completing,
+
     // ------------- TO ROB ------------------- //
-    input  logic             [`ROB_SZ_BITS-1:0] rob_tail_restore,
+    input   logic                   [`ROB_SZ_BITS-1:0] rob_tail_restore,
+
     // ------------- TO FREDDY LIST ----------- //
-    input  logic        [`PHYS_REG_SZ_R10K-1:0] free_list_restore,
+    input   logic              [`PHYS_REG_SZ_R10K-1:0] free_list_in,
+    input   logic              [`PHYS_REG_SZ_R10K-1:0] free_list_restore,
+
     // ------------- TO/FROM DISPATCH -------------- //
-    input   BS_ENTRY_PACKET  [`B_MASK_WIDTH-1:0] branch_stack_entries,
-    input   B_MASK                               next_b_mask,
-    input  PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table_restore,     
-    input  B_MASK                               b_mask_combinational,
-    //output  logic         [`NUM_B_MASK_BITS-1:0] branch_stack_spots,
+    input   BS_ENTRY_PACKET        [`B_MASK_WIDTH-1:0] branch_stack_entries,
+    input   B_MASK                                     next_b_mask,
+    input  PHYS_REG_IDX        [`ARCH_REG_SZ_R10K-1:0] map_table_restore,     
+    input  B_MASK                                      b_mask_combinational,
 
     // ------------- TO RS/EXECUTE -------------- //
-    input  B_MASK                               b_mm_out,
+    input  B_MASK                                      b_mm_out,
+
+    // ------------- TO BRANCH PREDICTOR -------------- //
+    input BRANCH_PREDICTOR_PACKET                      bs_bp_packet,
+    input logic                                        resolving_valid_branch,
+
+    // ------------- TO BTB -------------- //
+    input   logic                                      resolving_valid,
+    input   ADDR                                       resolving_target_PC,
+    input   ADDR                                       resolving_branch_PC
 
     // ------------- TO LSQ ------------------ //
     // output logic                                 lsq_tail_restore  //<--- STILL NEED TO UPDATE THIS
     // branch prediction repair?
-    input BS_DEBUG                            bs_debug
+`ifdef DEBUG
+    , input BS_DEBUG                                   bs_debug
 
 ); 
 
