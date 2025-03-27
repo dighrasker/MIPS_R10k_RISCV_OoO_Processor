@@ -30,14 +30,12 @@ module branchstack #(
     output  B_MASK                                     b_mm_out,
 
     // ------------- TO BRANCH PREDICTOR -------------- //
-    output BRANCH_PREDICTOR_PACKET [`B_MASK_WIDTH-1:0] bs_bp_packets,
-    output B_MASK                                      branches_popping,
-    output B_MASK_MASK                                 branch_resolving,
+    output BRANCH_PREDICTOR_PACKET                     bs_bp_packet,
+    output logic                                       resolving_valid_branch,
 
     // ------------- TO BTB -------------- //
-    output  logic                                      resolving_valid_branch,
-    output  ADDR                                       resolving_target_PC,
-    output  BTB_SET_IDX                                btb_set_idx,
+    output  logic                                      resolving_valid,
+    output  ADDR                                       resolving_target_PC
 
 
 
@@ -71,47 +69,34 @@ module branchstack #(
     always_comb begin 
         next_branch_stack = branch_stack;
         b_mask_combinational = b_mask_reg;
-        bs_bp_packets = '0;
-        branches_popping = '0
         for (int i = 0; i < `B_MASK_WIDTH; i++) begin
             if ((b_mm_mispred && (branch_stack[i].b_m & b_mm_resolve)) || b_mm_resolve[i]) begin
                 b_mask_combinational[i] = 1'b0;
                 next_branch_stack[i] = '0;
-                bs_bp_packets[i] = branch_stack[i].bp_packet;
-                branches_popping[i] = !branch_stack[i].is_jump && b_mask_reg[i];
             end else begin
                 next_branch_stack[i].b_m = branch_stack[i].b_m & ~b_mm_resolve;
             end
         end
-
-        // for (int i = 0; i < `B_MASK_WIDTH; i++) begin
-        //     next_branch_stack[i].recovery_PC = next_branch_stack[i].recovery_PC | branch_stack_entries[i].recovery_PC;
-        //     branch_stack[i].rob_tail <= next_branch_stack[i].rob_tail | branch_stack_entries[i].rob_tail;
-        //     branch_stack[i].map_table <= next_branch_stack[i].map_table | branch_stack_entries[i].map_table;
-        //     branch_stack[i].b_m <= next_branch_stack[i].b_m | branch_stack_entries[i].b_m;
-        //     if (next_branch_stack[i]) begin
-        //         branch_stack[i].free_list <= free_list_in | next_branch_stack[i].free_list | branch_stack_entries[i].free_list;
-        //     end else begin
-        //         branch_stack[i].free_list <= next_branch_stack[i].free_list | branch_stack_entries[i].free_list;
-        //     end
-        // end
     end
 
     always_comb begin
-        
         restore_valid = 0;
         PC_restore = 0;
         rob_tail_restore = 0;
         free_list_restore = 0;
         map_table_restore = 0;
         b_mm_out = '0;   
-        branch_resolving = '0
+        resolving_valid = '0
+        resolving_valid_branch = '0
+        bs_bp_packet = '0;
         
         for (int i = 0; i < `B_MASK_WIDTH; i++) begin
             if (b_mm_resolve[i] && b_mask_reg[i]) begin
                 b_mm_out[i] = 1'b1;
+                bs_bp_packet = branch_stack[i].bp_packet;
+                resolving_valid = 1'b1;
+                resolving_valid_branch = !branch_stack[i].is_jump;
                 if (b_mm_mispred || (branch_stack[i].is_jump && (target_PC != branch_stack[i].recovery_PC))) begin
-                    branch_resolving[i] = !branch_stack[i].is_jump;
                     restore_valid = 1;
                     PC_restore = (taken && !branch_stack[i].is_jump) ? branch_stack[i].recovery_PC : target_PC;
                     rob_tail_restore = branch_stack[i].rob_tail;

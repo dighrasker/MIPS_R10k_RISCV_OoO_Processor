@@ -12,9 +12,8 @@ module btb #(
 
 
     // ------------- TO/FROM BRANCH STACK -------------- //
-    input  logic                                 resolving_valid_branch,
+    input  logic                                 resolving_valid,
     input  ADDR                                  resolving_target_PC,
-    // input  BTB_SET_IDX                           btb_set_idx,       // might not need if we have branch_PC
     input  ADDR                                  resolving_branch_PC,
     //NOTE: This is not necessarily PC restore, this is whatever the target address is for a valid resolving branch
 
@@ -23,88 +22,152 @@ module btb #(
 `endif
 ); 
 
+    BTB_SET_PACKET [`BTB_NUM_SETS-1:0] btb_set_entries, next_btb_set_entries;
+    BTB_SET_IDX wr_btb_set_idx;
+    BTB_TAG wr_btb_tag;
 
-BTB_SET_PACKET [`BTB_NUM_SETS-1:0]  btb_set_entries, next_btb_set_entries;
+    assign wr_btb_set_idx = resolving_branch_PC[`BTB_SET_IDX_BITS-1:0];
+    assign wr_btb_tag = resolving_branch_PC[31:`BTB_SET_IDX_BITS];
 
+    logic found;
 
-// Write BTB logic
+    generate
+    genvar i;
+    genvar j;
 
-BTB_SET_IDX wr_btb_set_idx;
-BTB_TAG wr_btb_tag;
+    for (i = 0; i < `BTB_NUM_SETS; ++i) begin
+        logic [$clog2(`BTB_NUM_WAYS)-1:0] lru_idx;
+        logic [$clog2(`BTB_NUM_WAYS)-1:0] victim_idx;
+        logic [`BTB_NUM_WAYS-1:0] requests;
 
-assign wr_btb_set_idx = resolving_branch_PC[`BTB_SET_IDX_BITS-1:0];
-assign wr_btb_tag = resolving_branch_PC[31:`BTB_SET_IDX_BITS];
+        for(j = 0; j < `BTB_NUM_WAYS; ++j) begin
+            assign requests[j] = btb_set_entries[i].btb_entries[j].lru == 0;
+        end
+        
+        psel_gen #(
+            .WIDTH(`BTB_NUM_WAYS),
+            .REQS(`1)
+        ) lru_psel (
+            .req(requests),
+            .gnt(lru_gnt_line),
+        );
 
-logic [`NUM_BTB_WAYS-1:0] found;
-
-always_comb begin
-    next_btb_set_entries = btb_set_entries;
-    found = '0;
-    if(resolving_valid_branch) begin
-        for(int i = 0; i < `NUM_BTB_WAYS; i++) begin
-            if(btb_set_entries[wr_btb_set_idx].btb_entries[i].btb_tag == wr_btb_tag) begin
-                found[i] = 1'b1;
-                next_btb_set_entries[wr_btb_set_idx].btb_entries[i].target_PC = resolving_target_PC;
-                next_btb_set_entries[wr_btb_set_idx].btb_entries[i].valid = 1'b1;
-                //update LRU
-                next_btb_set_entries[wr_btb_set_idx].btb_entries[i].LRU = `NUM_BTB_WAYS - 1'b1;
-                for(int j = 0; j < `NUM_BTB_WAYS; j++) begin
-                    if(j != i) begin
-                        next_btb_set_entries[wr_btb_set_idx].btb_entries[j].LRU--;
+        encoder #(`BTB_NUM_WAYS, `$clog2(`BTB_NUM_WAYS)) lru_idx_encoder (lru_gnt_line, lru_idx);
+        
+        always_comb begin
+            next_btb_set_entries[i] = btb_set_entries[i];
+            if (resolving_valid && (i == wr_btb_set_idx)) begin
+                victim_idx = lru_idx;
+                for(int k = 0; k < `NUM_BTB_WAYS; k++) begin
+                    if (btb_set_entries[i].btb_entries[k].btb_tag == wr_btb_tag) begin
+                        victim_idx = k;
+                    end
+                end
+                next_btb_set_entries[i].btb_entries[victim_idx].btb_tag = wr_btb_tag;
+                next_btb_set_entries[i].btb_entries[victim_idx].target_PC = resolving_target_PC;
+                next_btb_set_entries[i].btb_entries[victim_idx].LRU = `NUM_BTB_WAYS - 1'b1;
+                next_btb_set_entries[i].btb_entries[victim_idx].valid = 1'b1;
+                for (int l = 0; l < `NUM_BTB_WAYS; l++) begin
+                    if (btb_set_entries[i].btb_entries[l].valid && (btb_set_entries[i].btb_entries[l].LRU > btb_set_entries[i].btb_entries[victim_idx].LRU)) begin
+                        next_btb_set_entries[i].btb_entries[l].LRU--;
                     end
                 end
             end
-        end
-        // btb miss write 
-        if(~(|found)) begin
-            //search for LRU
-            for(int i = 0; i < `NUM_BTB_WAYS; i++) begin
-                if(!btb_set_entries[wr_btb_set_idx].btb_entries[i].LRU) begin
-                    next_btb_set_entries[wr_btb_set_idx].btb_entries[i].btb_tag = wr_btb_tag;
-                    next_btb_set_entries[wr_btb_set_idx].btb_entries[i].target_PC = resolving_target_PC;
-                    next_btb_set_entries[wr_btb_set_idx].btb_entries[i].valid = 1'b1;
-                    //update LRU
-                    next_btb_set_entries[wr_btb_set_idx].btb_entries[i].LRU = `NUM_BTB_WAYS - 1'b1;
-                    for(int j = 0; j < `NUM_BTB_WAYS; j++) begin
-                        if(j != i) begin
-                            next_btb_set_entries[wr_btb_set_idx].btb_entries[j].LRU--;
-                        end
-                    end
+
+        end   
+    end
+
+    endgenerate
+
+    // always_comb begin
+    //     next_btb_set_entries = btb_set_entries;
+    //     found = '0;
+    //     if(resolving_valid) begin
+    //         for(int i = 0; i < `NUM_BTB_WAYS; i++) begin
+    //             if(btb_set_entries[wr_btb_set_idx].btb_entries[i].btb_tag == wr_btb_tag) begin
+    //                 found = 1'b1;
+    //                 next_btb_set_entries[wr_btb_set_idx].btb_entries[i].target_PC = resolving_target_PC;
+    //                 next_btb_set_entries[wr_btb_set_idx].btb_entries[i].valid = 1'b1;
+    //                 //update LRU
+    //                 next_btb_set_entries[wr_btb_set_idx].btb_entries[i].LRU = next_btb_set_entries[wr_btb_set_idx].num_entry - 1'b1;
+    //                 for(int j = 0; j < `NUM_BTB_WAYS; j++) begin
+    //                     if((btb_set_entries[wr_btb_set_idx].btb_entries[j].LRU > btb_set_entries[wr_btb_set_idx].btb_entries[i].LRU) 
+    //                                                                         && btb_set_entries[wr_btb_set_idx].btb_entries[j].valid) begin
+    //                         next_btb_set_entries[wr_btb_set_idx].btb_entries[j].LRU--;
+    //                     end
+    //                 end
+    //             end
+    //         end
+    //         // btb miss write 
+    //         if(~found) begin
+            
+    //         next_btb_set_entries[wr_btb_set_idx].btb_entries[lru_idx[wr_btb_set_idx]]
+            
+            
+            
+            
+    //         //search for LRU
+    //             if (next_btb_set_entries[wr_btb_set_idx].num_entry == `NUM_BTB_WAYS) begin // if set is full
+    //                 for(int i = 0; i < `NUM_BTB_WAYS; i++) begin
+    //                     if((!btb_set_entries[wr_btb_set_idx].btb_entries[i].LRU)) begin
+    //                         next_btb_set_entries[wr_btb_set_idx].btb_entries[i].btb_tag = wr_btb_tag;
+    //                         next_btb_set_entries[wr_btb_set_idx].btb_entries[i].target_PC = resolving_target_PC;
+    //                         next_btb_set_entries[wr_btb_set_idx].btb_entries[i].valid = 1'b1;
+    //                         //update LRU
+    //                         next_btb_set_entries[wr_btb_set_idx].btb_entries[i].LRU = next_btb_set_entries[wr_btb_set_idx].num_entry - 1'b1;
+    //                         for(int j = 0; j < `NUM_BTB_WAYS; j++) begin
+    //                             if((j != i) && next_btb_set_entries[wr_btb_set_idx].btb_entries[j].valid) begin
+    //                                 next_btb_set_entries[wr_btb_set_idx].btb_entries[j].LRU--;
+    //                             end
+    //                         end
+    //                     end
+    //                 end
+    //             end else begin      // num_entry is not full
+    //                 for(int i = 0; i < `NUM_BTB_WAYS; i++) begin
+    //                     if(!btb_set_entries[wr_btb_set_idx].btb_entries[i].valid) begin
+    //                         next_btb_set_entries[wr_btb_set_idx].num_entry++;
+    //                         next_btb_set_entries[wr_btb_set_idx].btb_entries[i].btb_tag = wr_btb_tag;
+    //                         next_btb_set_entries[wr_btb_set_idx].btb_entries[i].target_PC = resolving_target_PC;
+    //                         next_btb_set_entries[wr_btb_set_idx].btb_entries[i].valid = 1'b1;
+    //                         //update LRU
+    //                         next_btb_set_entries[wr_btb_set_idx].btb_entries[i].LRU = next_btb_set_entries[wr_btb_set_idx].num_entry;
+    //                     end
+    //                 end
+    //             end    
+    //         end
+    //     end
+    // end
+
+    // Read BTB logic
+
+    BTB_SET_IDX [`N-1:0] rd_btb_set_idx;
+    BTB_TAG [`N-1:0] rd_btb_tag;
+
+    always_comb begin
+        btb_hit = '0;
+        for(int i = 0; i < `N; i++) begin
+            rd_btb_set_idx[i] = PCs[`BTB_SET_IDX_BITS-1:0];
+            rd_btb_tag[i] = PCs[31:`BTB_SET_IDX_BITS];
+            for(int j = 0; j < `NUM_BTB_WAYS; j++) begin
+                if(next_btb_set_entries[rd_btb_set_idx[i]].btb_entries[j].btb_tag == rd_btb_tag[i]) begin
+                    target_PCs[i] = next_btb_set_entries[rd_btb_set_idx[i]].btb_entries[j].target_PC;
+                    btb_hit[i] = 1'b1;
                 end
             end
         end
     end
-end
 
-// Read BTB logic
+    always_comb begin
 
-BTB_SET_IDX [`N-1:0] rd_btb_set_idx;
-BTB_TAG [`N-1:0] rd_btb_tag;
+    end
 
-always_comb begin
-    for(int i = 0; i < `N; i++) begin
-        rd_btb_set_idx = PCs[`BTB_SET_IDX_BITS-1:0];
-        rd_btb_tag = PCs[31:`BTB_SET_IDX_BITS];
-        for(int j = 0; j < `NUM_BTB_WAYS; j++) begin
-            if(btb_set_entries[rd_btb_set_idx].btb_entries[j].btb_tag == rd_btb_tag[i]) begin
-                target_PCs[i] = btb_set_entries[rd_btb_set_idx].btb_entries[j].target_PC;
-                btb_hit[i] = 1'b1;
-            end
+    always_ff@(posedge clock) begin
+        if(reset) begin
+            btb_set_entries <= '0;
+        end else begin
+            btb_set_entries <= next_btb_set_entries;
         end
     end
-end
-
-always_comb begin
-
-end
-
-always_ff@(posedge clock) begin
-    if(reset) begin
-        btb_set_entries <= '0;
-    end else begin
-        btb_set_entries <= next_btb_set_entries;
-    end
-end
 
 
 

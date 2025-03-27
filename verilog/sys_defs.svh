@@ -56,8 +56,9 @@
 `define BTB_SZ 64
 `define BTB_NUM_SETS `BTB_SZ / `BTB_NUM_WAYS
 `define BTB_SET_IDX_BITS $clog2(`BTB_NUM_SETS)
-`define BTB_TAG_BITS 32 - `BTB_SET_IDX_BITS     
-`define BTB_LRU_BITS $clog2(`NUM_BTB_WAYS);
+`define BTB_TAG_BITS 32 - `BTB_SET_IDX_BITS
+`define BTB_NUM_ENTRIES_BITS $clog2(`NUM_BTB_WAYS + 1);     
+`define BTB_LRU_BITS $clog2(`NUM_BTB_WAYS)
 `define PHT_SZ 2 ** `HISTORY_BITS
 `define CTR_SZ 2 
 
@@ -81,6 +82,7 @@ typedef logic [`HISTORY_BITS-1:0]           BHR;
 typedef logic [`BTB_SET_IDX_BITS-1:0]       BTB_SET_IDX;
 typedef logic [`BTB_TAG_BITS-1:0]           BTB_TAG;
 typedef logic [`BTB_LRU_BITS-1:0]           BTB_LRU;
+typedef logic [`BTB_NUM_ENTRIES_BITS-1:0]   BTB_NUM_ENTRY;
 
 typedef enum logic [1:0] {
     ALU   = 2'h0,
@@ -476,9 +478,6 @@ typedef struct packed {
     PHT_IDX           meta_PHT_idx;
     PHT_IDX           gshare_PHT_idx;
     BHR               BHR_state;
-    TWO_BIT_PREDICTOR meta_predictor_state;
-    TWO_BIT_PREDICTOR gshare_state;
-    TWO_BIT_PREDICTOR simple_state; //need this to update both if correct
 } BRANCH_PREDICTOR_PACKET;
 
 typedef struct packed{
@@ -696,7 +695,8 @@ typedef struct packed {
 
 
 typedef struct packed {
-    BTB_ENTRY [`NUM_BTB_WAYS - 1:0] btb_entries;
+    BTB_ENTRY [`NUM_BTB_WAYS-1:0] btb_entries;
+    BTB_NUM_ENTRY num_entry;
 } BTB_SET_PACKET;
 
 typedef struct packed {

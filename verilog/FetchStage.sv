@@ -22,10 +22,10 @@ module Fetch #() (
 
     // ------------ TO/FROM BRANCH PREDICTOR -------- //
     input  BRANCH_PREDICTOR_PACKET [`N-1:0] bp_packets,
-    input  logic                   [`N-1:0] predict_taken,
+    input  logic                   [`N-1:0] branches_taken,
     output logic [`N-1:0]          [`N-1:0] branch_gnt_bus,
     output logic                   [`N-1:0] final_branch_gnt_line,
-    output logic                            no_branches,
+    output logic                            no_branches_fetched,
    
    // ------------ FROM BTB -------- //
     input  ADDR                    [`N-1:0] target_PC,       //<-- just set this somewhere?
@@ -52,24 +52,24 @@ module Fetch #() (
     psel_gen #(
         .WIDTH(`N),
         .REQS(`1)
-    ) final_branch_inst_psel (
-        .req(masked_valid_branch),
-        .gnt(final_branch_gnt_line),
-    );
-
-    psel_gen #(
-        .WIDTH(`N),
-        .REQS(`1)
     ) right_most_inst_psel (
         .req(cache_miss | branches_taken << 1),
         .gnt(right_most_inst),
     );
 
+    psel_gen #(
+        .WIDTH(`N),
+        .REQS(`1)
+    ) final_branch_inst_psel (
+        .req(masked_valid_branch),
+        .gnt(final_branch_gnt_line),
+        .empty(no_branches_fetched)
+    );
+
     encoder #(`N, `NUM_SCALAR_BITS) final_inst_encoder (right_most_inst, right_most_inst_idx);
 
-    assign inst_valid_temp = (cache_miss | branches_taken << 1) ? right_most_inst_idx : `N;
+    assign inst_valid_temp = (no_branches_fetched) ? right_most_inst_idx : `N;
     assign inst_valid = (inst_valid_temp <= inst_buffer_spots) ? inst_valid_temp : inst_buffer_spots;
-    assign branches_taken = btb_hit & predict_taken;
     assign PCs_out = PCs[`N-1:0];
     assign PCs[0] = PC_reg;
 

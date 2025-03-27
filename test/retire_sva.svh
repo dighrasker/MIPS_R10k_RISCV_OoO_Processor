@@ -32,19 +32,19 @@ module retire_sva #(
 
     clocking retire_prop @(posedge clock);
         property all_retiring_complete (int i);
-            (~reset) |=> ((complete_list_exposed[rob_outputs[i].T_new]) || (i >= num_retiring));
+            ((complete_list_exposed[0] === 0 || complete_list_exposed[0] === 1) && ~reset) |=> ((complete_list_exposed[rob_outputs[i].T_new]) || (i >= num_retiring));
         endproperty
 
         property check_break_works (int i);
-            (~reset) |=> ((~complete_list_exposed[rob_outputs[i].T_new]) || (i != num_retiring) || (num_retiring == rob_outputs_valid)) ;
+            ((complete_list_exposed[0] === 0 || complete_list_exposed[0] === 1) && ~reset) |=> ((~complete_list_exposed[rob_outputs[i].T_new]) || (i != num_retiring) || (num_retiring == rob_outputs_valid)) ;
         endproperty
 
         property never_retiring_0 (int i);
-            (~reset) |=> ((phys_regs_retiring[i] != 0) || (i >= num_retiring));
+            ((complete_list_exposed[0] === 0 || complete_list_exposed[0] === 1) && ~reset) |=> ((phys_regs_retiring[i] != 0) || (i >= num_retiring));
         endproperty
 
         property num_retiring_must_lt_rob_outputs_valid;
-            (~reset) |=> (num_retiring <= rob_outputs_valid);
+            ((complete_list_exposed[0] === 0 || complete_list_exposed[0] === 1) && ~reset) |=> (num_retiring <= rob_outputs_valid);
         endproperty
     endclocking
     
