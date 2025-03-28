@@ -2,43 +2,44 @@
 
 module sq #(
 ) (
-    /*input   logic                        clock, 
-    input   logic                        reset,
-
     // ------------ TO/FROM DISPATCH ------------- //
-    input   SQ_PACKET           [`N-1:0] sq_inputs,        
-    input   logic  [`NUM_SCALAR_BITS-1:0] sq_inputs_valid,  
-    output  logic  [`NUM_SCALAR_BITS-1:0] sq_spots,        
-    output  logic      [`ROB_SZ_BITS-1:0] sq_tail, //how many spots will be in the store queue
-
-    // ------------- TO/FROM Load Unit -------------- //
-    input   logic  [`NUM_SCALAR_BITS-1:0] load_inst_addr,   //what the hell is an address?   
-    output  ROB_PACKET           [`N-1:0] sq_value,         //what the hell is a value?
-    output  logic                         sq_back_pressure,               //
-
-    // ------------- FROM ISSUE -------------- //
-    output logic */
-
-    // ------------ TO/FROM DISPATCH ------------- //
-    input   SQ_PACKET           [`N-1:0] sq_inputs,
+    input   SQ_PACKET            [`N-1:0] sq_inputs,
     input   logic  [`NUM_SCALAR_BITS-1:0] sq_inputs_valid,
     output  logic  [`NUM_SCALAR_BITS-1:0] sq_spots,
-    output  logic      [`ROB_SZ_BITS-1:0] sq_tail, //how big is the store queue
-
-    // ------------- FROM RS -------------- //
-
+    output  logic       [`SQ_SZ_BITS-1:0] sq_tail, //how big is the store queue
 
     // ------------- FROM Store Unit -------------- // 
+    input SQ_PACKET                       store_addr,
 
-    // ------------- TO/FROM Reg File -------------- //
-        //Question: How many ports does our reg file have
-    input DATA              strVal_from_regfile,
-    output PHYS_REG_IDX     strVal_reg,
-
+    
     // ------------- TO/FROM Load Unit -------------- //
-    input ADDR              ldAddr_from_lu,
-    output DATA             strVal_to_lu,
+    input ADDR                            ldAddr_from_lu,
+    output DATA                           strVal_to_lu,
+    output logic                          load_back_pressure,
+
+    // ------------- TO/FROM D Cache-------------- //
+    /*not sure how memory access is going to work yet*/
+
+    // ------------- TO/FROM Retire -------------- //
+    input logic    [`NUM_SCALAR_BITS-1:0] stores_retiring
+    
 ); 
+
+/*
+    Stores:
+    1. Allocate space for store instructions on dispatch. At this point we will know their phys_reg_idx and set valid bit to high
+    2. Store unit will send a sq_entry_packet to SQ, we will cam from head to tail and update addr and value for any matching phys_regs
+
+    Loads:
+    1. load unit will send a load_addr to SQ
+    2. We will use aging logic to find the youngest older store instruction that has a matching address
+    3. if there is a match? forward value to Load unit : send back pressure signal to retrieve value from cache
+
+
+
+
+
+*/
 
     // Main ROB Data Here
     ROB_PACKET    [`ROB_SZ-1:0] rob_entries;

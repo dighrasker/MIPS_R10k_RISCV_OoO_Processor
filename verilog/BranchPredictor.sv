@@ -13,9 +13,6 @@ module branchpredictor #(
     input logic                         [`N-1:0] btb_hits,
     output BRANCH_PREDICTOR_PACKET      [`N-1:0] bp_packets,
     output logic                        [`N-1:0] branches_taken,
-    //TODO: add new signals
-
-
 
     // ------------- TO/FROM BRANCH STACK -------------- //
     input BRANCH_PREDICTOR_PACKET                     bs_bp_packet,
