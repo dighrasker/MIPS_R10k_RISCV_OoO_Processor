@@ -433,7 +433,7 @@ module testbench;
 
     initial begin
         $dumpfile("../cpu.vcd");
-        $dumpvars(0, testbench.dut);
+        $dumpvars(0, testbench.verisimpleV);
         $display("\n---- Starting CPU Testbench ----\n");
 
         // set paramterized strings, see comment at start of module

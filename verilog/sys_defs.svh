@@ -47,6 +47,7 @@
 `define ROB_SZ_BITS $clog2(`ROB_SZ)
 `define ROB_NUM_ENTRIES_BITS $clog2(`ROB_SZ + 1)
 `define RS_SZ 32
+`define SQ_SZ 4
 `define RS_SZ_BITS $clog2(`RS_SZ)
 `define RS_NUM_ENTRIES_BITS $clog2(`RS_SZ + 1)
 `define ARCH_REG_SZ_R10K (32)
@@ -60,6 +61,8 @@
 `define BTB_TAG_BITS 32 - `BTB_SET_IDX_BITS
 `define BTB_NUM_ENTRIES_BITS $clog2(`BTB_NUM_WAYS + 1)    
 `define BTB_LRU_BITS $clog2(`BTB_NUM_WAYS)
+`define NUM_SQ_BITS $clog2(`N+1) > $clog2(`SQ_SZ+1) ? $clog2(`SQ_SZ+1) : $clog2(`N+1)
+`define SQ_IDX_BITS $clog2(`SQ_SZ)
 `define PHT_SZ 2 ** `HISTORY_BITS
 `define CTR_SZ 2 
 
@@ -77,6 +80,10 @@ typedef logic [6:0]                         OPCODE;
 typedef logic [`B_MASK_WIDTH-1:0]           B_MASK;
 typedef logic [`B_MASK_WIDTH-1:0]           B_MASK_MASK;
 typedef logic [2:0]                         BRANCH_FUNC;
+typedef logic [2:0]                         LOAD_FUNC;
+typedef logic [`SQ_SZ-1:0]                  SQ_MASK;
+typedef logic [2:0]                         STORE_FUNC;
+typedef logic [3:0]                         BYTE_MASK;
 typedef logic [`FU_ID_BITS-1:0]             FU_IDX;
 typedef logic [`HISTORY_BITS-1:0]           PHT_IDX;
 typedef logic [`HISTORY_BITS-1:0]           BHR;
@@ -108,8 +115,7 @@ typedef logic [1:0] CHOOSER;
 // EDITED END
 
 // worry about these later
-`define BRANCH_PRED_SZ xx
-`define LSQ_SZ xx
+
 
 // number of mult stages (2, 4) (you likely don't need 8)
 `define MULT_STAGES 8
@@ -497,6 +503,8 @@ typedef struct packed{
     logic                   mult; 
     MULT_FUNC               mult_func;
     BRANCH_FUNC             branch_func;
+    STORE_FUNC              store_func;
+    LOAD_FUNC               load_func;
     logic                   rd_mem; 
     logic                   wr_mem; 
     logic                   cond_branch; 
@@ -515,13 +523,14 @@ typedef struct packed {
     DECODE_PACKET  decoded_signals;
     
     //Added during dispatch
-    PHYS_REG_IDX   T_new; // Use as unique RS id ???
-    PHYS_REG_IDX   Source1;
-    logic          Source1_ready;
-    PHYS_REG_IDX   Source2;
-    logic          Source2_ready;
-    B_MASK         b_mask;
-    B_MASK_MASK    b_mask_mask;
+    PHYS_REG_IDX        T_new; // Use as unique RS id ???
+    PHYS_REG_IDX        Source1;
+    logic               Source1_ready;
+    PHYS_REG_IDX        Source2;
+    logic               Source2_ready;
+    logic  [`SQ_SZ-1:0] store_mask;
+    B_MASK              b_mask;
+    B_MASK_MASK         b_mask_mask;
 } RS_PACKET;
 
 typedef struct packed {
@@ -658,13 +667,6 @@ const BRANCH_PACKET NOP_BRANCH_PACKET = '{
 };
 
 typedef struct packed {
-    DATA            source_reg_1;
-    DATA            source_reg_2;
-    PHYS_REG_IDX    dest_reg_idx;
-    B_MASK          bm;
-} LDST_PACKET;
-
-typedef struct packed {
     INST                     inst;
     ADDR                     PC;
     logic                    taken;
@@ -714,4 +716,38 @@ typedef struct packed {
     logic place_holder_btb;
 } BTB_DEBUG;
 
-`endif // __SYS_DEFS_SVH__
+typedef struct packed {
+    logic           valid;
+    DATA            source_reg_1;
+    DATA            source_reg_2;
+    PHYS_REG_IDX    dest_reg_idx;
+    B_MASK          bm;
+    MULT_FUNC       mult_func;   
+} MULT_PACKET;
+
+typedef struct packed {
+    logic           valid;
+    DATA            source_reg_1;
+    DATA            source_reg_2;
+    PHYS_REG_IDX    dest_reg_idx;
+    B_MASK          bm;
+    LOAD_FUNC       load_func;
+} LOAD_PACKET;
+
+typedef struct packed {
+    logic           valid;
+    DATA            source_reg_1;
+    DATA            source_reg_2;
+    B_MASK          bm;
+    SQ_MASK         sq_mask;
+    STORE_FUNC      store_func;
+} STORE_PACKET;
+
+typedef struct packed {
+    // Do we need a valid bit? Why not just use the sq_mask as a valid bit
+    ADDR            store_address,
+    DATA            store_result,
+    B_MASK          bm;
+    SQ_MASK         sq_mask;
+    BYTE_MASK       byte_mask;
+} SQ_PACKET;

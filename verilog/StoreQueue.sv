@@ -2,15 +2,15 @@
 
 module sq #(
 ) (
-    // ------------ TO/FROM DISPATCH ------------- //
-    input   SQ_PACKET            [`N-1:0] sq_inputs,
-    input   logic  [`NUM_SCALAR_BITS-1:0] sq_inputs_valid,
-    output  logic  [`NUM_SCALAR_BITS-1:0] sq_spots,
-    output  logic       [`SQ_SZ_BITS-1:0] sq_tail, //how big is the store queue
+    // ------------ FROM Store Unit ------------- //
+    input   SQ_PACKET                     sq_inputs,
 
-    // ------------- FROM Store Unit -------------- // 
-    input SQ_PACKET                       store_addr,
-
+    // ------------- TO/FROM Dispatch -------------- // 
+    input   logic      [`NUM_SQ_BITS-1:0] next_sq_tail,                     
+    input   logic            [`SQ_SZ-1:0] next_sq_mask,                     
+    output  logic      [`NUM_SQ_BITS-1:0] sq_spots,
+    output  logic      [`SQ_IDX_BITS-1:0] sq_tail,
+    output  SQ_MASK                       sq_mask,
     
     // ------------- TO/FROM Load Unit -------------- //
     input ADDR                            ldAddr_from_lu,
