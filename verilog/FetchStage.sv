@@ -40,10 +40,11 @@ module Fetch #() (
 
     logic [`NUM_SCALAR_BITS-1:0] final_valid_inst_idx;
 
-    logic has_limit;
+    logic no_limiting_inst;
 
     logic [`N-1:0] right_most_inst;
     logic [`NUM_SCALAR_BITS-1:0] right_most_inst_idx;
+    logic [`NUM_SCALAR_BITS-1:0] inst_valid_temp;           //number of valid instructions fetch sends to instruction buffer 
     
 
     lsb_psel_gen #(
@@ -62,7 +63,7 @@ module Fetch #() (
     ) right_most_inst_psel (
         .req(cache_miss | shifted_branches),
         .gnt(right_most_inst),
-        .empty(has_limit)
+        .empty(no_limiting_inst)
     );
 
     msb_psel_gen #(
@@ -76,7 +77,7 @@ module Fetch #() (
 
     encoder #(`N, `NUM_SCALAR_BITS) final_inst_encoder (right_most_inst, right_most_inst_idx);
 
-    assign inst_valid_temp = has_limit ? `N : right_most_inst_idx;
+    assign inst_valid_temp = no_limiting_inst ? `N : right_most_inst_idx;
     assign inst_valid = (inst_valid_temp <= inst_buffer_spots) ? inst_valid_temp : inst_buffer_spots;
     assign PCs_out = PCs[`N-1:0];
 
@@ -131,17 +132,9 @@ module Fetch #() (
         end else begin
             PC_reg <= Next_PC_reg;
         end
+        $display("branches_taken: %b", branches_taken);
         for (int i = 0; i < `N; ++i) begin
             $display("PCs[%d]: %h", i, PCs[i]);
-            $display("right_most_inst_idx: %d", right_most_inst_idx);
-            $display("FETCH Inst valid temp: %d", inst_valid_temp);
-            $display("FETCH Inst valid: %d", inst_valid);
-            $display("no_branches_fetched: %b", no_branches_fetched);
-            $display("valid_branch: %b", valid_branch);
-            $display("shifted_branches: %b", shifted_branches);
-            $display("masked_valid_branch: %b", masked_valid_branch);
-            $display("Branches taken grnt line: %b", branches_taken);
-            $display("Final Branch grnt line: %b", final_branch_gnt_line);
         end
         // $display(
         //     "inst_buffer_inputs[%d].inst : %b\ninst_buffer_inputs[%d].PC : %b\ninst_buffer_inputs[%d].taken : %b\inst_valid: %b\n", 

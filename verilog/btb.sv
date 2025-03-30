@@ -1,5 +1,7 @@
 `include "verilog/sys_defs.svh"
 
+// TODO!!!!!!!!!!!!: make sure that the block offset is accounted for when indexing into a btb set. Right now, we are only indexing the btb set with index 0
+
 module btb #(
 ) (
     input   logic                                clock, 
@@ -168,6 +170,12 @@ module btb #(
             btb_set_entries <= '0;
         end else begin
             btb_set_entries <= next_btb_set_entries;
+            $display("resolving_valid: %b", resolving_valid);
+            $display("resolving_branch_pc: %h", resolving_branch_PC);
+            for (int i = 0; i < `N; ++i) begin
+                $display("target_pc[%d]: %h", i, target_PCs[i]);
+                $display("btb_hits[%d]: %h", i, btb_hits[i]);
+            end
         end
     end
 

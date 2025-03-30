@@ -118,19 +118,17 @@ module branchstack #(
             //branch_stack_spots <= next_branch_stack_spots;
             b_mask_reg <= next_b_mask;
 
-            $display("b_mask_reg: %b", b_mask_reg);
             for (int i = 0; i < `B_MASK_WIDTH; i++) begin
                 branch_stack[i].recovery_PC <= next_branch_stack[i].recovery_PC | branch_stack_entries[i].recovery_PC;
                 branch_stack[i].rob_tail <= next_branch_stack[i].rob_tail | branch_stack_entries[i].rob_tail;
                 branch_stack[i].map_table <= next_branch_stack[i].map_table | branch_stack_entries[i].map_table;
                 branch_stack[i].b_m <= next_branch_stack[i].b_m | branch_stack_entries[i].b_m;
+                branch_stack[i].original_PC <= next_branch_stack[i].original_PC | branch_stack_entries[i].original_PC;
                 if (next_branch_stack[i]) begin
                     branch_stack[i].free_list <= free_list_in | next_branch_stack[i].free_list | branch_stack_entries[i].free_list;
                 end else begin
                     branch_stack[i].free_list <= next_branch_stack[i].free_list | branch_stack_entries[i].free_list;
                 end
-                $display("branch_stack[%d].recovery_pc: %h", i, branch_stack[i].recovery_PC);
-
             end
             $display("PC_restore: %h", PC_restore);
         end

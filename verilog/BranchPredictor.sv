@@ -104,16 +104,13 @@ module branchpredictor #(
             simple_pht <= '0;
         end else begin
             bhr <= (resolving_valid_branch && mispred) ? ((bs_bp_packet.BHR_state << 1) | taken) : next_bhr; 
-            if (resolving_valid_branch) begin
-                $display("BRANCH_RESOLVING!");
-            end
-            if (resolving_valid_branch && mispred) begin
-                $display("MISPREDICTED_BRANCH!");
-            end
             meta_pht <= next_meta_pht;
             gshare_pht <= next_gshare_pht;
             simple_pht <= next_simple_pht;
         end
+
+        
+
     end
 
 `ifdef DEBUG
