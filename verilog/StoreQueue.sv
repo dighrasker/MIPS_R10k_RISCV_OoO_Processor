@@ -6,8 +6,9 @@ module sq #(
     input   SQ_PACKET                     sq_inputs,
 
     // ------------- TO/FROM Dispatch -------------- // 
-    input   logic      [`NUM_SQ_BITS-1:0] next_sq_tail,                     
-    input   logic            [`SQ_SZ-1:0] next_sq_mask,                     
+    // input   logic      [`NUM_SQ_BITS-1:0] next_sq_tail,                     
+    // input   logic            [`SQ_SZ-1:0] next_sq_mask,  
+    input   logic  [`NUM_SCALAR_BITS-1:0] stores_dispatching,
     output  logic      [`NUM_SQ_BITS-1:0] sq_spots,
     output  logic      [`SQ_IDX_BITS-1:0] sq_tail,
     output  SQ_MASK                       sq_mask,

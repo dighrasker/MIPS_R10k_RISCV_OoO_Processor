@@ -35,8 +35,8 @@ module Dispatch (
     input   logic            [`NUM_SQ_BITS-1:0] sq_spots,
     input   logic            [`SQ_IDX_BITS-1:0] sq_tail,
     input   SQ_MASK                             sq_mask,
-    output  logic            [`SQ_IDX_BITS-1:0] next_sq_tail,
-    output  logic                  [`SQ_SZ-1:0] next_sq_mask,
+    // output  logic            [`SQ_IDX_BITS-1:0] next_sq_tail,
+    // output  logic                  [`SQ_SZ-1:0] next_sq_mask,
 
     // ------------ TO/FROM FREDDY LIST ------------- //
     //input   logic        [`NUM_SCALAR_BITS-1:0] num_regs_available,
