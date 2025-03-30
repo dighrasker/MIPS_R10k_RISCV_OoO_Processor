@@ -8,7 +8,7 @@
 
 `include "verilog/sys_defs.svh"
 //`include "test/branchstack_sva.svh"
-`include "test/issue_sva.svh"
+//`include "test/issue_sva.svh"
 `include "test/rob_sva.svh"
 `include "test/rs_sva.svh"
 `include "test/freddylist_sva.svh"

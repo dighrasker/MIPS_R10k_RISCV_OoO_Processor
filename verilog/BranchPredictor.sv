@@ -55,6 +55,8 @@ module branchpredictor #(
     always_comb begin
         next_bhr = bhr;
         if (!no_branches_fetched) begin
+            // $display("no_branches_fetched: %b", no_branches_fetched);
+            // $display("final_branch_gnt_line: %b", final_branch_gnt_line);
             for(int j = 0; j < `N; ++j) begin
                 if ((branch_gnt_bus[j] == final_branch_gnt_line)) begin
                     next_bhr = (assigned_bhrs[j] << 1) | branches_taken[j];
@@ -90,7 +92,7 @@ module branchpredictor #(
             bp_packets[i].meta_PHT_idx = PCs_out[i][`HISTORY_BITS-1:0];
             bp_packets[i].gshare_PHT_idx = PCs_out[i][`HISTORY_BITS-1:0] ^ assigned_bhrs[i];
             bp_packets[i].BHR_state = assigned_bhrs[i];
-            branches_taken[i] = btb_hits[i] && next_meta_pht[PCs_out[i][`HISTORY_BITS-1:0]][1] ? bp_packets[i].gshare_predict_taken : bp_packets[i].simple_predict_taken;
+            branches_taken[i] = btb_hits[i] && (next_meta_pht[PCs_out[i][`HISTORY_BITS-1:0]][1] ? bp_packets[i].gshare_predict_taken : bp_packets[i].simple_predict_taken);
         end
     end
 

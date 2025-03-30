@@ -23,7 +23,7 @@
 // this is *your* processor, you decide these values (try analyzing which is best!)
 
 // superscalar width
-`define N 1
+`define N 2
 `define B_MASK_WIDTH 4
 `define NUM_B_MASK_BITS $clog2(`B_MASK_WIDTH + 1)
 `define CDB_SZ `N // This MUST match your superscalar width
@@ -118,7 +118,7 @@ typedef logic [1:0] CHOOSER;
 
 
 // number of mult stages (2, 4) (you likely don't need 8)
-`define MULT_STAGES 8
+`define MULT_STAGES 4
 
 ///////////////////////////////
 // ---- Basic Constants ---- //
@@ -547,14 +547,14 @@ typedef struct packed {
     ADDR                               original_PC;
 } BS_ENTRY_PACKET;
 
-typedef struct packed {
-    ADDR            NPC;
-    logic           illegal;
-    logic           halt;
-    PHYS_REG_IDX    T_new; // Use as unique rob id
-    PHYS_REG_IDX    T_old;
-    ARCH_REG_IDX    arch_reg;
-} SQ_PACKET;
+// typedef struct packed {
+//     ADDR            NPC;
+//     logic           illegal;
+//     logic           halt;
+//     PHYS_REG_IDX    T_new; // Use as unique rob id
+//     PHYS_REG_IDX    T_old;
+//     ARCH_REG_IDX    arch_reg;
+// } SQ_PACKET;
 
 typedef struct packed {
     // ADDR            PC;
@@ -722,15 +722,6 @@ typedef struct packed {
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;
     B_MASK          bm;
-    MULT_FUNC       mult_func;   
-} MULT_PACKET;
-
-typedef struct packed {
-    logic           valid;
-    DATA            source_reg_1;
-    DATA            source_reg_2;
-    PHYS_REG_IDX    dest_reg_idx;
-    B_MASK          bm;
     LOAD_FUNC       load_func;
 } LOAD_PACKET;
 
@@ -745,9 +736,14 @@ typedef struct packed {
 
 typedef struct packed {
     // Do we need a valid bit? Why not just use the sq_mask as a valid bit
-    ADDR            store_address,
-    DATA            store_result,
+    ADDR            store_address;
+    DATA            store_result;
     B_MASK          bm;
     SQ_MASK         sq_mask;
     BYTE_MASK       byte_mask;
 } SQ_PACKET;
+
+typedef struct packed {
+    logic nothong;
+} LDST_PACKET;
+`endif // __SYS_DEFS_SVH__

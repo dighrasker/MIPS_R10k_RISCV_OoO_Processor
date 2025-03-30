@@ -54,7 +54,7 @@ module branchstack #(
 
     assign b_mm_resolve = branch_completing.bmm;
     //assign b_mm_mispred = is_jump..
-    //assign b_mm_mispred = branch_completing.bm_mispred;
+    assign b_mm_mispred = branch_completing.bm_mispred;
     assign target_PC = branch_completing.target_PC;
     assign taken = branch_completing.taken;
     assign resolving_target_PC = target_PC;
@@ -80,7 +80,7 @@ module branchstack #(
 
     always_comb begin
         restore_valid = 0;
-        PC_restore = 0;
+        PC_restore = '0;
         rob_tail_restore = 0;
         free_list_restore = 0;
         map_table_restore = 0;

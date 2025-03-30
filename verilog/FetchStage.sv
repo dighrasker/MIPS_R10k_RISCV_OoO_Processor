@@ -5,7 +5,7 @@ module Fetch #() (
     input  logic                        reset,
 
     // ------------ TO I-CACHE + BP + BTB ------------- //
-    output ADDR                    [`N-1:0] PCs_out, // TODO THIS SHIT AINT THE CORRECT SIZE
+    output ADDR                    [`N-1:0] PCs_out, 
 
     // ------------ TO/FROM I-CACHE ------------- //
     input  INST                    [`N-1:0] cache_data,
@@ -16,9 +16,9 @@ module Fetch #() (
     input  logic                            restore_valid,
   
     // ------------ TO/FROM INSTRUCTION BUFFER -------- //
-    input  logic     [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,     //number of spots in instruction buffer
+    input  logic     [`NUM_SCALAR_BITS-1:0] inst_buffer_spots,    //number of spots in instruction buffer
     output FETCH_PACKET            [`N-1:0] inst_buffer_inputs,   //instructions going to instruction buffer
-    output logic     [`NUM_SCALAR_BITS-1:0] inst_valid,    //number of valid instructions fetch sends to instruction buffer 
+    output logic     [`NUM_SCALAR_BITS-1:0] inst_valid,           //number of valid instructions fetch sends to instruction buffer 
 
     // ------------ TO/FROM BRANCH PREDICTOR -------- //
     input  BRANCH_PREDICTOR_PACKET [`N-1:0] bp_packets,
@@ -36,11 +36,17 @@ module Fetch #() (
     ADDR Next_PC_reg, PC_reg;
     logic [`N-1:0] valid_jump;
 
-    logic [`N-1:0] valid_branch, masked_valid_branch;
+    logic [`N-1:0] valid_branch, masked_valid_branch, shifted_branches;
 
     logic [`NUM_SCALAR_BITS-1:0] final_valid_inst_idx;
 
-    psel_gen #(
+    logic has_limit;
+
+    logic [`N-1:0] right_most_inst;
+    logic [`NUM_SCALAR_BITS-1:0] right_most_inst_idx;
+    
+
+    lsb_psel_gen #(
         .WIDTH(`N),
         .REQS(`N)
     ) branch_inst_psel (
@@ -48,15 +54,18 @@ module Fetch #() (
         .gnt_bus(branch_gnt_bus)
     );
 
-    psel_gen #(
+    assign shifted_branches = branches_taken << 1;
+
+    lsb_psel_gen #(
         .WIDTH(`N),
         .REQS(1)
     ) right_most_inst_psel (
-        .req(cache_miss | branches_taken << 1),
-        .gnt(right_most_inst)
+        .req(cache_miss | shifted_branches),
+        .gnt(right_most_inst),
+        .empty(has_limit)
     );
 
-    psel_gen #(
+    msb_psel_gen #(
         .WIDTH(`N),
         .REQS(1)
     ) final_branch_inst_psel (
@@ -67,7 +76,7 @@ module Fetch #() (
 
     encoder #(`N, `NUM_SCALAR_BITS) final_inst_encoder (right_most_inst, right_most_inst_idx);
 
-    assign inst_valid_temp = (no_branches_fetched) ? `N : right_most_inst_idx;
+    assign inst_valid_temp = has_limit ? `N : right_most_inst_idx;
     assign inst_valid = (inst_valid_temp <= inst_buffer_spots) ? inst_valid_temp : inst_buffer_spots;
     assign PCs_out = PCs[`N-1:0];
 
@@ -124,6 +133,15 @@ module Fetch #() (
         end
         for (int i = 0; i < `N; ++i) begin
             $display("PCs[%d]: %h", i, PCs[i]);
+            $display("right_most_inst_idx: %d", right_most_inst_idx);
+            $display("FETCH Inst valid temp: %d", inst_valid_temp);
+            $display("FETCH Inst valid: %d", inst_valid);
+            $display("no_branches_fetched: %b", no_branches_fetched);
+            $display("valid_branch: %b", valid_branch);
+            $display("shifted_branches: %b", shifted_branches);
+            $display("masked_valid_branch: %b", masked_valid_branch);
+            $display("Branches taken grnt line: %b", branches_taken);
+            $display("Final Branch grnt line: %b", final_branch_gnt_line);
         end
         // $display(
         //     "inst_buffer_inputs[%d].inst : %b\ninst_buffer_inputs[%d].PC : %b\ninst_buffer_inputs[%d].taken : %b\inst_valid: %b\n", 

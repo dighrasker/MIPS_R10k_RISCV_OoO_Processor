@@ -189,7 +189,7 @@ GREP = grep -E --color=auto
 # ---- Modules to Test ---- #
 
 # TODO: add more modules here
-MODULES = alu branch branchstack CountOnes cpu decoder mult rob rs freddylist branchstack instbuffer retire dispatch
+MODULES = alu branch branchstack CountOnes cpu decoder mult rob rs freddylist branchstack instbuffer retire dispatch msb_psel_gen lsb_psel_gen
 
 # TODO: update this if you add more header files
 ALL_HEADERS = $(CPU_HEADERS)
@@ -267,6 +267,8 @@ CPU_SOURCES = verilog/alu.sv \
 		      verilog/mult.sv \
 			  verilog/mult_stage.sv \
 			  verilog/psel_gen.sv \
+			  verilog/msb_psel_gen.sv \
+			  verilog/lsb_psel_gen.sv \
 			  verilog/regfile.sv \
 			  verilog/retire.sv \
 			  verilog/rob.sv \

@@ -1,4 +1,4 @@
-module msb_psel_gen #(parameter WIDTH, REQS) (
+module lsb_psel_gen #(parameter WIDTH, REQS) (
     input wire [WIDTH-1:0]       req,
     output wor [WIDTH-1:0]       gnt,
     output wand [WIDTH*REQS-1:0] gnt_bus,
@@ -35,7 +35,7 @@ module msb_psel_gen #(parameter WIDTH, REQS) (
         end
 
         // instantiate priority selectors
-        msb_wand_sel #(WIDTH) psel (.req(tmp_reqs[(j+1)*WIDTH-1 -: WIDTH]), .gnt(tmp_gnts[(j+1)*WIDTH-1 -: WIDTH]));
+        lsb_wand_sel #(WIDTH) psel (.req(tmp_reqs[(j+1)*WIDTH-1 -: WIDTH]), .gnt(tmp_gnts[(j+1)*WIDTH-1 -: WIDTH]));
 
 
     end
@@ -51,30 +51,30 @@ module msb_psel_gen #(parameter WIDTH, REQS) (
         end
     end
 
-endmodule // msb_psel_gen
+endmodule // lsb_psel_gen
 
-module msb_wand_sel (req, gnt);
+module lsb_wand_sel (req, gnt);
     //synopsys template
     parameter WIDTH=64;
     input wire  [WIDTH-1:0] req;
     output wand [WIDTH-1:0] gnt;
 
-    wire  [WIDTH-1:0] req_r;
-    wand  [WIDTH-1:0] gnt_r;
+    // wire  [WIDTH-1:0] req_r;
+    // wand  [WIDTH-1:0] gnt_r;
 
     //priority selector
-    genvar i;
+    // genvar i;
     // reverse inputs and outputs
-    for (i = 0; i < WIDTH; i = i + 1)
-    begin : reverse
-        assign req_r[WIDTH-1-i] = req[i];
-        assign gnt[WIDTH-1-i]   = gnt_r[i];
-    end
-
+    // for (i = 0; i < WIDTH; i = i + 1)
+    // begin : reverse
+    //     assign req_r[WIDTH-1-i] = req[i];
+    //     assign gnt[WIDTH-1-i]   = gnt_r[i];
+    // end
+    genvar i;
     for (i = 0; i < WIDTH-1 ; i = i + 1)
     begin : foo
-        assign gnt_r [WIDTH-1:i] = {{(WIDTH-1-i){~req_r[i]}},req_r[i]};
+        assign gnt [WIDTH-1:i] = {{(WIDTH-1-i){~req[i]}},req[i]};
     end
-    assign gnt_r[WIDTH-1] = req_r[WIDTH-1];
+    assign gnt[WIDTH-1] = req[WIDTH-1];
 
-endmodule // msb_wand_sel
+endmodule // lsb_wand_sel

@@ -146,11 +146,12 @@ module btb #(
 
     always_comb begin
         btb_hits = '0;
+        target_PCs = '0;
         for(int i = 0; i < `N; i++) begin
             rd_btb_set_idx[i] = PCs[i][`BTB_SET_IDX_BITS-1:0];
             rd_btb_tag[i] = PCs[i][31:`BTB_SET_IDX_BITS];
             for(int j = 0; j < `BTB_NUM_WAYS; j++) begin
-                if(next_btb_set_entries[rd_btb_set_idx[i]].btb_entries[j].btb_tag == rd_btb_tag[i]) begin
+                if(next_btb_set_entries[rd_btb_set_idx[i]].btb_entries[j].btb_tag === rd_btb_tag[i]) begin
                     target_PCs[i] = next_btb_set_entries[rd_btb_set_idx[i]].btb_entries[j].target_PC;
                     btb_hits[i] = 1'b1;
                 end
