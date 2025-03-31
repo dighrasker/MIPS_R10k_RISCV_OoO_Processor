@@ -110,7 +110,7 @@ module Fetch #() (
                             
             inst_buffer_inputs[i].inst = cache_data[i];
             inst_buffer_inputs[i].PC = PCs[i];
-            inst_buffer_inputs[i].taken = (valid_branch[i] && branches_taken[i]) || valid_jump[i]; //should put branch predictor prediction here
+            inst_buffer_inputs[i].predict_taken = (valid_branch[i] && branches_taken[i]) || valid_jump[i]; //should put branch predictor prediction here
             inst_buffer_inputs[i].bp_packet = bp_packets[i];
             inst_buffer_inputs[i].predicted_PC = btb_hits[i] ? target_PCs[i] : PCs[i + 1];
             inst_buffer_inputs[i].is_jump = valid_jump[i];

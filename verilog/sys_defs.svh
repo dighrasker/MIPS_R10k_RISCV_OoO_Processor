@@ -23,13 +23,14 @@
 // this is *your* processor, you decide these values (try analyzing which is best!)
 
 // superscalar width
-`define N 2
+`define N 3
 `define B_MASK_WIDTH 4
 `define NUM_B_MASK_BITS $clog2(`B_MASK_WIDTH + 1)
 `define CDB_SZ `N // This MUST match your superscalar width
 `define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]
 `define HISTORY_BITS 5
 `define BTB_NUM_WAYS 4
+`define CACHE_NUM_WAYS 4
 
 // functional units (you should decide if you want more or fewer types of FUs)
 `define NUM_FU_BRANCH 1
@@ -57,9 +58,13 @@
 `define PHYS_REG_NUM_ENTRIES_BITS $clog2(`PHYS_REG_SZ_R10K + 1)
 `define CDB_ARBITER_SZ `RS_SZ + `NUM_FU_MULT + `NUM_FU_LDST
 `define BTB_SZ 64
+`define CACHE_SZ 256
 `define BTB_NUM_SETS `BTB_SZ / `BTB_NUM_WAYS
+`define CACHE_NUM_SETS `CACHE_SZ / `CACHE_NUM_WAYS
 `define BTB_SET_IDX_BITS $clog2(`BTB_NUM_SETS)
-`define BTB_TAG_BITS 32 - `BTB_SET_IDX_BITS
+`define CACHE_SET_IDX_BITS $clog2(`CACHE_NUM_SETS)
+`define BTB_TAG_BITS 32 - `BTB_SET_IDX_BITS - 2
+`define CACHE_TAG_BITS 32 - `CACHE_SET_IDX_BITS - 2
 `define BTB_NUM_ENTRIES_BITS $clog2(`BTB_NUM_WAYS + 1)    
 `define BTB_LRU_BITS $clog2(`BTB_NUM_WAYS)
 `define NUM_SQ_BITS $clog2(`N+1) > $clog2(`SQ_SZ+1) ? $clog2(`SQ_SZ+1) : $clog2(`N+1)
@@ -122,7 +127,7 @@ typedef logic [1:0] CHOOSER;
 
 
 // number of mult stages (2, 4) (you likely don't need 8)
-`define MULT_STAGES 4
+`define MULT_STAGES 2
 
 ///////////////////////////////
 // ---- Basic Constants ---- //
@@ -135,10 +140,22 @@ typedef logic [1:0] CHOOSER;
 `define TRUE  1'h1
 
 // word and register sizes
-typedef logic [31:0] ADDR;
 typedef logic [31:0] DATA;
 typedef logic [19:0] IMM;
 typedef logic [4:0] REG_IDX;
+
+typedef union packed {
+    logic [31:0] addr;
+    struct packed {
+        logic [31:`BTB_SET_IDX_BITS+2] tag;
+        logic  [`BTB_SET_IDX_BITS+1:2] set_idx;
+        logic                    [1:0] byte_offset;
+    } btb;
+    // struct packed {
+    //     logic [31:] tag;
+    //     logic  [`BTB_SET_IDX_BITS+1:2] set_idx;
+    // } cache;
+} ADDR; // ADDER UNION
 
 // the zero register
 // In RISC-V, any read of this register returns zero and any writes are thrown away
@@ -295,6 +312,8 @@ typedef union packed {
         logic [6:0] opcode;
     } j;  // jump instructions
 
+    
+
 // extensions for other instruction types
 `ifdef ATOMIC_EXT
     struct packed {
@@ -319,6 +338,8 @@ typedef union packed {
 `endif
 
 } INST; // instruction typedef, this should cover all types of instructions
+
+
 
 ////////////////////////////////////////
 // ---- Datapath Control Signals ---- //
@@ -497,7 +518,7 @@ typedef struct packed {
 typedef struct packed{
     INST                    inst;
     logic                   valid; // when low, ignore inst. Output will look like a NOP
-    logic                   taken;
+    logic                   predict_taken;
     ADDR                    PC;
     ADDR                    NPC;
     ALU_OPA_SELECT          opa_select;
@@ -648,31 +669,31 @@ typedef struct packed {
     DATA            source_reg_1;
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;       // not used but might be good for identification purposes
-    logic           taken;
+    logic           predict_taken;
     BRANCH_FUNC     branch_func;    // comparator used for branch
     B_MASK_MASK     bmm;            // this branch's corresponding mask
 } BRANCH_PACKET;
 
 const BRANCH_PACKET NOP_BRANCH_PACKET = '{
-    inst:         `NOP,
-    valid:        '0,
-    PC:           '0,
-    NPC:          '0, // PC + 4
-    conditional:   0,
-    opa_select:    OPA_IS_RS1, // ALU opa mux select (ALU_OPA_xxx *)
-    opb_select:    OPB_IS_RS2, // ALU opb mux select (ALU_OPB_xxx *)
-    source_reg_1: '0,
-    source_reg_2: '0,
-    dest_reg_idx: '0,       // not used but might be good for identification purposes
-    taken:        '0,
-    branch_func:  '0,    // comparator used for branch
-    bmm:          '0            // this branch's corresponding mask
+    inst:               `NOP,
+    valid:              '0,
+    PC:                 '0,
+    NPC:                '0, // PC + 4
+    conditional:        '0,
+    opa_select:         OPA_IS_RS1, // ALU opa mux select (ALU_OPA_xxx *)
+    opb_select:         OPB_IS_RS2, // ALU opb mux select (ALU_OPB_xxx *)
+    source_reg_1:       '0,
+    source_reg_2:       '0,
+    dest_reg_idx:       '0,       // not used but might be good for identification purposes
+    predict_taken:      '0,
+    branch_func:        '0,    // comparator used for branch
+    bmm:                '0            // this branch's corresponding mask
 };
 
 typedef struct packed {
     INST                     inst;
     ADDR                     PC;
-    logic                    taken;
+    logic                    predict_taken;
     BRANCH_PREDICTOR_PACKET  bp_packet;
     ADDR                     predicted_PC; //only necessary for jumps
     logic                    is_jump;
@@ -693,7 +714,8 @@ typedef struct packed {
     ADDR          target_PC;
     B_MASK        bmm;
     logic         bm_mispred;
-    logic         taken;
+    logic         predict_taken;
+    logic         actual_taken;
     logic         valid;
 } BRANCH_REG_PACKET;
 
