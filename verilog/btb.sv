@@ -28,8 +28,8 @@ module btb #(
     BTB_SET_IDX wr_btb_set_idx;
     BTB_TAG wr_btb_tag;
     
-    assign wr_btb_set_idx = resolving_branch_PC[`BTB_SET_IDX_BITS-1:0];
-    assign wr_btb_tag = resolving_branch_PC[31:`BTB_SET_IDX_BITS];
+    assign wr_btb_set_idx = resolving_branch_PC.btb.set_idx;
+    assign wr_btb_tag = resolving_branch_PC.btb.tag;
 
     logic found;
 
@@ -150,8 +150,8 @@ module btb #(
         btb_hits = '0;
         target_PCs = '0;
         for(int i = 0; i < `N; i++) begin
-            rd_btb_set_idx[i] = PCs[i][`BTB_SET_IDX_BITS-1:0];
-            rd_btb_tag[i] = PCs[i][31:`BTB_SET_IDX_BITS];
+            rd_btb_set_idx[i] = PCs[i].btb.set_idx;
+            rd_btb_tag[i] = PCs[i].btb.tag;
             for(int j = 0; j < `BTB_NUM_WAYS; j++) begin
                 if(next_btb_set_entries[rd_btb_set_idx[i]].btb_entries[j].btb_tag === rd_btb_tag[i]) begin
                     target_PCs[i] = next_btb_set_entries[rd_btb_set_idx[i]].btb_entries[j].target_PC;

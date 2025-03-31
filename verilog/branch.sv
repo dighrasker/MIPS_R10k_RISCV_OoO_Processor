@@ -55,8 +55,9 @@ module branch (
 
         branch_reg_result.target_PC = opa + opb;
         branch_reg_result.bmm = branch_packet.bmm;
-        branch_reg_result.bm_mispred = branch_packet.taken != take;
-        branch_reg_result.taken = branch_packet.taken;
+        branch_reg_result.bm_mispred = branch_packet.predict_taken != take;
+        branch_reg_result.predict_taken = branch_packet.predict_taken;
+        branch_reg_result.actual_taken = take;
         branch_reg_result.valid = branch_packet.valid;
     end
 

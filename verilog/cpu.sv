@@ -109,7 +109,7 @@ module cpu (
     /*------- BRANCH PREDICTOR WIRES ----------*/
     BRANCH_PREDICTOR_PACKET  [`N-1:0]   bp_packets;
     logic                    [`N-1:0]   branches_taken;
-    logic                               taken;
+    logic                               actual_taken;
     logic                               mispred;
     `ifdef DEBUG
     BP_DEBUG                            bp_debug;
@@ -201,7 +201,7 @@ module cpu (
 
     always_comb begin
         mispred = branch_reg.bm_mispred; //decoding mispred for branch predictor
-        taken = branch_reg.taken; //decoding taken for branch predictor
+        actual_taken = branch_reg.actual_taken; //decoding taken for branch predictor
     end
 
     /*------- RETIRE WIRES ----------*/
@@ -316,7 +316,7 @@ module cpu (
         .branches_taken(branches_taken),
         .bs_bp_packet(bs_bp_packet),
         .resolving_valid_branch(resolving_valid_branch),
-        .taken(taken),                                       
+        .actual_taken(actual_taken),                                       
         .mispred(mispred)                        
 `ifdef DEBUG
     , .bp_debug(bp_debug) //define BP_DEBUG later sys defs

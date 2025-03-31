@@ -22,7 +22,7 @@ module decoder (
     //New outputs passed through into decode packet
     assign decoder_out.inst = inst_buffer_input.inst;
     assign decoder_out.valid = 1'b1;
-    assign decoder_out.taken = inst_buffer_input.taken;
+    assign decoder_out.predict_taken = inst_buffer_input.predict_taken;
     assign decoder_out.PC = inst_buffer_input.PC;
     assign decoder_out.NPC = inst_buffer_input.PC + 4;
     assign decoder_out.mult_func = inst_buffer_input.inst.r.funct3;

@@ -19,7 +19,7 @@ module branchpredictor #(
     input logic                                       resolving_valid_branch,
     
     // ------------- TO/FROM EXECUTE (unpacked by CPU) -------------- //
-    input logic                                       taken,
+    input logic                                       actual_taken,
     input logic                                       mispred
 
 `ifdef DEBUG
@@ -72,18 +72,18 @@ module branchpredictor #(
         next_meta_pht = meta_pht;
 
         if (resolving_valid_branch) begin
-            if ((^gshare_pht[bs_bp_packet.gshare_PHT_idx]) || ((taken ^ mispred) != gshare_pht[bs_bp_packet.gshare_PHT_idx][0])) begin
-                next_gshare_pht[bs_bp_packet.gshare_PHT_idx] += (taken ^ mispred) ? 1 : -1;
+            if ((^gshare_pht[bs_bp_packet.gshare_PHT_idx]) || (actual_taken != gshare_pht[bs_bp_packet.gshare_PHT_idx][0])) begin
+                next_gshare_pht[bs_bp_packet.gshare_PHT_idx] += actual_taken ? 1 : -1;
             end
 
-            if ((^simple_pht[bs_bp_packet.meta_PHT_idx]) || ((taken ^ mispred) != simple_pht[bs_bp_packet.meta_PHT_idx][0])) begin
-                next_simple_pht[bs_bp_packet.meta_PHT_idx] += ((taken ^ mispred)) ? 1 : -1;
+            if ((^simple_pht[bs_bp_packet.meta_PHT_idx]) || (actual_taken != simple_pht[bs_bp_packet.meta_PHT_idx][0])) begin
+                next_simple_pht[bs_bp_packet.meta_PHT_idx] += actual_taken ? 1 : -1;
             end
 
             if ((^meta_pht[bs_bp_packet.meta_PHT_idx]) || 
-                ((((taken ^ mispred) == bs_bp_packet.gshare_predict_taken) - ((taken ^ mispred) == bs_bp_packet.simple_predict_taken)) == 3) && meta_pht[bs_bp_packet.meta_PHT_idx] != 0 ||
-                ((((taken ^ mispred) == bs_bp_packet.gshare_predict_taken) - ((taken ^ mispred) == bs_bp_packet.simple_predict_taken)) == 1) && meta_pht[bs_bp_packet.meta_PHT_idx] != 3) begin
-                next_meta_pht[bs_bp_packet.meta_PHT_idx] += ((taken ^ mispred) == bs_bp_packet.gshare_predict_taken) - ((taken ^ mispred) == bs_bp_packet.simple_predict_taken);
+                (((actual_taken == bs_bp_packet.gshare_predict_taken) - (actual_taken == bs_bp_packet.simple_predict_taken)) == 3) && meta_pht[bs_bp_packet.meta_PHT_idx] != 0 ||
+                (((actual_taken == bs_bp_packet.gshare_predict_taken) - (actual_taken == bs_bp_packet.simple_predict_taken)) == 1) && meta_pht[bs_bp_packet.meta_PHT_idx] != 3) begin
+                next_meta_pht[bs_bp_packet.meta_PHT_idx] += (actual_taken == bs_bp_packet.gshare_predict_taken) - (actual_taken == bs_bp_packet.simple_predict_taken);
             end 
         end 
 
@@ -106,7 +106,7 @@ module branchpredictor #(
             gshare_pht <= '0;
             simple_pht <= '0;
         end else begin
-            bhr <= (resolving_valid_branch && mispred) ? ((bs_bp_packet.BHR_state << 1) | (taken ^ mispred)) : next_bhr; 
+            bhr <= (resolving_valid_branch && mispred) ? ((bs_bp_packet.BHR_state << 1) | actual_taken) : next_bhr; 
             meta_pht <= next_meta_pht;
             gshare_pht <= next_gshare_pht;
             simple_pht <= next_simple_pht;
@@ -131,7 +131,7 @@ module branchpredictor #(
             $display("assigned bhrs[%d]: %b", i, assigned_bhrs[i]);
         end
         $display("branches taken: %b", branches_taken);
-        $display("taken in branchPred: %b", taken);
+        $display("taken in branchPred: %b", actual_taken);
         $display("mispred in branchPred: %b", mispred);
         $display("bs_bp_packet.BHR_state: %b", bs_bp_packet.BHR_state);
         if (resolving_valid_branch) begin

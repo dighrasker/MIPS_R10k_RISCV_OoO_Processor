@@ -200,7 +200,7 @@ generate
                 branch_packets[i].opa_select = rs_data_next[branch_index].decoded_signals.opa_select;
                 branch_packets[i].opb_select = rs_data_next[branch_index].decoded_signals.opb_select;            
                 branch_packets[i].dest_reg_idx = rs_data_next[branch_index].T_new;
-                branch_packets[i].taken = rs_data_next[branch_index].decoded_signals.taken;
+                branch_packets[i].predict_taken = rs_data_next[branch_index].decoded_signals.predict_taken;
                 branch_packets[i].branch_func = rs_data_next[branch_index].decoded_signals.branch_func;
                 branch_packets[i].bmm = rs_data_next[branch_index].b_mask_mask;
 

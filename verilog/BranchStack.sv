@@ -49,14 +49,14 @@ module branchstack #(
     B_MASK_MASK   b_mm_resolve;
     logic         b_mm_mispred;
     ADDR          target_PC;
-    logic         pred_taken;
+    logic         predict_taken;
 
 
     assign b_mm_resolve = branch_completing.bmm;
     //assign b_mm_mispred = is_jump..
     assign b_mm_mispred = branch_completing.bm_mispred;
     assign target_PC = branch_completing.target_PC;
-    assign pred_taken = branch_completing.taken;
+    assign predict_taken = branch_completing.predict_taken;
     assign resolving_target_PC = target_PC;
 
 
@@ -102,7 +102,7 @@ module branchstack #(
                 resolving_valid_branch = !branch_stack[i].is_jump;
                 if (b_mm_mispred || (branch_stack[i].is_jump && (target_PC != branch_stack[i].recovery_PC))) begin
                     restore_valid = 1;
-                    PC_restore = (pred_taken && !branch_stack[i].is_jump) ? branch_stack[i].recovery_PC : target_PC;
+                    PC_restore = (predict_taken && !branch_stack[i].is_jump) ? branch_stack[i].recovery_PC : target_PC;
                     rob_tail_restore = branch_stack[i].rob_tail;
                     free_list_restore = branch_stack[i].free_list;
                     map_table_restore = branch_stack[i].map_table;
