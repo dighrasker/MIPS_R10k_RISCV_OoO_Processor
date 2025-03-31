@@ -123,13 +123,28 @@ module ExecuteStage (
     );
 
     // Instantiate the conditional branch module
-    branch branch_fus [`NUM_FU_BRANCH-1:0](
+    branch branch_fus [`NUM_FU_BRANCH-1:0] (
         // Inputs
         .branch_packet(branch_packets_issuing),
 
         // Output
         .branch_reg_result(next_branch_reg),
         .branch_result(branch_result)
+    );
+
+    load load_fu [`NUM_FU_LOAD-1:0] (
+        // Inputs
+        .clock(clock),
+        .reset(reset),
+        .mult_packet_in(mult_packets_issuing_in),
+        .cdb_en(mult_cdb_en),
+        .b_mm_resolve(b_mm_resolve),
+        .b_mm_mispred(b_mm_mispred),
+
+        // Output
+        .fu_free(mult_free),
+        .cdb_valid(mult_cdb_valid),
+        .mult_result(mult_result)
     );
 
     always_ff @(posedge clock) begin

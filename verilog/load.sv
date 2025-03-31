@@ -1,55 +1,80 @@
-
 `include "verilog/sys_defs.svh"
 
-module load (
-    input ALU_PACKET alu_packet,
-    output CDB_REG_PACKET alu_result
+// This is a pipelined multiplier that multiplies two 64-bit integers and
+// returns the low 64 bits of the result.
+// This is not an ideal multiplier but is sufficient to allow a faster clock
+// period than straight multiplication.
+
+module load # (
+) (
+    input logic             clock,
+    input logic             reset, 
+    
+    // ------------ TO/FROM EXECUTE ------------- //
+    input LOAD_ADDR_PACKET            load_addr_packet,
+
+    // ------------ TO/FROM ISSUE ------------- //
+    input logic                     [`LOAD_BUFFER_SZ-1:0] load_cdb_en,
+    output logic                    [`LOAD_BUFFER_SZ-1:0] load_cdb_req,
+
+    // ------------ TO CDB ------------- //
+    output CDB_REG_PACKET           [`LOAD_BUFFER_SZ-1:0] load_result,
+
+    // ------------ FROM BRANCH STACK --------------//
+    input B_MASK                    b_mm_resolve,
+    input logic                     b_mm_mispred,
 );
 
-    assign alu_result.completing_reg = alu_packet.dest_reg_idx;
-    assign alu_result.valid = alu_packet.valid;
+    
+    INTERNAL_MULT_PACKET [`MULT_STAGES-2:0] internal_mult_packets;
+    INTERNAL_MULT_PACKET internal_mult_packet_in, internal_mult_packet_out;
 
-    DATA opa, opb;
+    logic [`MULT_STAGES-2:0] internal_free;
 
-    // ALU opA mux
+    // always_ff @(posedge clock) begin //TODO: Decide between letting issue know vs not letting issue know
+    //     if (reset) begin
+    //         cdb_valid <= 0;
+    //     end else begin
+    //         cdb_valid <= internal_mult_packets[`MULT_STAGES-3].valid;
+    //     end
+    // end
+
+    assign cdb_valid = internal_mult_packets[`MULT_STAGES-2].valid;
+
+    assign internal_mult_packet_in.valid        = mult_packet_in.valid;
+    assign internal_mult_packet_in.prev_sum     = 64'h0;
+    assign internal_mult_packet_in.dest_reg_idx = mult_packet_in.dest_reg_idx;
+    assign internal_mult_packet_in.bm           = mult_packet_in.bm;
+    assign internal_mult_packet_in.func         = mult_packet_in.mult_func;
+
     always_comb begin
-        case (alu_packet.opa_select)
-            OPA_IS_RS1:  opa = alu_packet.source_reg_1;
-            OPA_IS_NPC:  opa = alu_packet.NPC;
-            OPA_IS_PC:   opa = alu_packet.PC;
-            OPA_IS_ZERO: opa = 0;
-            default:     opa = 32'hdeadface; // dead face
+        case (mult_packet_in.mult_func)
+            M_MUL, M_MULH, M_MULHSU: internal_mult_packet_in.mcand = {{(32){mult_packet_in.source_reg_1[31]}}, mult_packet_in.source_reg_1};
+            default:                 internal_mult_packet_in.mcand = {32'b0, mult_packet_in.source_reg_1};
+        endcase
+
+        case (mult_packet_in.mult_func)
+            M_MUL, M_MULH: internal_mult_packet_in.mplier = {{(32){mult_packet_in.source_reg_2[31]}}, mult_packet_in.source_reg_2};
+            default:       internal_mult_packet_in.mplier = {32'b0, mult_packet_in.source_reg_2};
         endcase
     end
 
-    // ALU opB mux
-    always_comb begin
-        case (alu_packet.opb_select)
-            OPB_IS_RS2:   opb = alu_packet.source_reg_2;
-            OPB_IS_I_IMM: opb = `RV32_signext_Iimm(alu_packet.inst);
-            OPB_IS_S_IMM: opb = `RV32_signext_Simm(alu_packet.inst);
-            OPB_IS_B_IMM: opb = `RV32_signext_Bimm(alu_packet.inst);
-            OPB_IS_U_IMM: opb = `RV32_signext_Uimm(alu_packet.inst);
-            OPB_IS_J_IMM: opb = `RV32_signext_Jimm(alu_packet.inst);
-            default:      opb = 32'hfacefeed; // face feed
-        endcase
-    end
+    // instantiate an array of mult_stage modules
+    // this uses concatenation syntax for internal wiring, see lab 2 slides
+    load_addr_stage  [`MULT_STAGES-1:0] (
+        .clock (clock),
+        .reset (reset),
+        .is_last_stage ({1'b1, {(`MULT_STAGES-1){1'b0}}}),
+        .next_stage_free ({cdb_en, internal_free}),
+        .internal_mult_packet_in ({internal_mult_packets, internal_mult_packet_in}),
+        .b_mm_mispred (b_mm_mispred),
+        .b_mm_resolve (b_mm_resolve),
+        .current_stage_free ({internal_free, fu_free}),
+        .internal_mult_packet_out ({internal_mult_packet_out, internal_mult_packets})
+    );
 
-    always_comb begin
-        case (alu_packet.alu_func)
-            ALU_ADD:  alu_result.result = opa + opb;
-            ALU_SUB:  alu_result.result = opa - opb;
-            ALU_AND:  alu_result.result = opa & opb;
-            ALU_SLT:  alu_result.result = signed'(opa) < signed'(opb);
-            ALU_SLTU: alu_result.result = opa < opb;
-            ALU_OR:   alu_result.result = opa | opb;
-            ALU_XOR:  alu_result.result = opa ^ opb;
-            ALU_SRL:  alu_result.result = opa >> opb[4:0];
-            ALU_SLL:  alu_result.result = opa << opb[4:0];
-            ALU_SRA:  alu_result.result = signed'(opa) >>> opb[4:0]; // arithmetic from logical shift
-            // here to prevent latches:
-            default:  alu_result.result = 32'hfacebeec;
-        endcase
-    end
-
-endmodule // alu
+    // assign mult_result.result = (internal_mult_packet_out.func == M_MUL) ? internal_mult_packet_out.prev_sum[31:0]
+    assign mult_result.result = internal_mult_packet_out.prev_sum[31:0];
+    assign mult_result.completing_reg = internal_mult_packet_out.dest_reg_idx;
+    assign mult_result.valid = internal_mult_packet_out.valid;
+endmodule // mult

@@ -47,6 +47,7 @@
 `define ROB_SZ_BITS $clog2(`ROB_SZ)
 `define ROB_NUM_ENTRIES_BITS $clog2(`ROB_SZ + 1)
 `define RS_SZ 32
+`define MSHR_SZ 16
 `define SQ_SZ 4
 `define RS_SZ_BITS $clog2(`RS_SZ)
 `define RS_NUM_ENTRIES_BITS $clog2(`RS_SZ + 1)
@@ -62,6 +63,8 @@
 `define BTB_NUM_ENTRIES_BITS $clog2(`BTB_NUM_WAYS + 1)    
 `define BTB_LRU_BITS $clog2(`BTB_NUM_WAYS)
 `define NUM_SQ_BITS $clog2(`N+1) > $clog2(`SQ_SZ+1) ? $clog2(`SQ_SZ+1) : $clog2(`N+1)
+`define MSHR_IDX_BITS $clog2(`MSHR_SZ)
+`define LOAD_BUFFER_SZ 4
 `define SQ_IDX_BITS $clog2(`SQ_SZ)
 `define PHT_SZ 2 ** `HISTORY_BITS
 `define CTR_SZ 2 
@@ -76,6 +79,7 @@
 typedef logic [`ROB_ENTRY_ID_BITS-1:0]      ROB_ENTRY_ID;
 typedef logic [`PHYS_REG_ID_BITS-1:0]       PHYS_REG_IDX;
 typedef logic [`ARCH_REG_ID_BITS-1:0]       ARCH_REG_IDX;
+typedef logic [`MSHR_IDX_BITS-1:0]          MSHR_IDX;
 typedef logic [6:0]                         OPCODE;
 typedef logic [`B_MASK_WIDTH-1:0]           B_MASK;
 typedef logic [`B_MASK_WIDTH-1:0]           B_MASK_MASK;
@@ -722,7 +726,22 @@ typedef struct packed {
     PHYS_REG_IDX    dest_reg_idx;
     B_MASK          bm;
     LOAD_FUNC       load_func;
-} LOAD_PACKET;
+} LOAD_ADDR_PACKET;
+
+typedef struct packed {
+    logic           valid;
+    PHYS_REG_IDX    dest_reg_idx;
+    B_MASK          bm;
+    BYTE_MASK       byte_mask;
+    ADDR            load_addr;
+} LOAD_DATA_PACKET;
+
+typedef struct packed {
+    B_MASK          bm;
+    BYTE_MASK       byte_mask;
+    MSHR_IDX        mshr_idx;
+    CDB_REG_PACKET  cdb_reg_packet;
+} LOAD_BUFFER_PACKET; 
 
 typedef struct packed {
     logic           valid;
