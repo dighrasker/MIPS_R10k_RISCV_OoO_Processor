@@ -58,7 +58,7 @@ module branchpredictor #(
             // $display("no_branches_fetched: %b", no_branches_fetched);
             // $display("final_branch_gnt_line: %b", final_branch_gnt_line);
             for(int j = 0; j < `N; ++j) begin
-                if ((branch_gnt_bus[j] == final_branch_gnt_line)) begin
+                if (branch_gnt_bus[j] == final_branch_gnt_line) begin
                     next_bhr = (assigned_bhrs[j] << 1) | branches_taken[j];
                 end 
             end 
@@ -110,12 +110,13 @@ module branchpredictor #(
         end
         $display("bhr: %b", bhr);
         for (int i = 0; i < `N; ++i) begin
+            $display("next bhrs: %b", next_bhr);
             $display("intermediate bhrs[%d]: %b", i, intermediate_bhrs[i]);
             $display("assigned bhrs[%d]: %b", i, assigned_bhrs[i]);
-
         end
         $display("branches taken: %b", branches_taken);
         $display("taken in branchPred: %b", taken);
+        $display("mispred in branchPred: %b", mispred);
         $display("bs_bp_packet.BHR_state: %b", bs_bp_packet.BHR_state);
         if (resolving_valid_branch) begin
             $display("new next_gshare_pht[%d]: %b", bs_bp_packet.gshare_PHT_idx, next_gshare_pht[bs_bp_packet.gshare_PHT_idx]);
