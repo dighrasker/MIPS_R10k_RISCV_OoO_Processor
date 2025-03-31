@@ -161,10 +161,6 @@ module btb #(
         end
     end
 
-    always_comb begin
-
-    end
-
     always_ff@(posedge clock) begin
         if(reset) begin
             btb_set_entries <= '0;

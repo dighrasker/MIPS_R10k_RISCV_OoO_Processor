@@ -75,7 +75,6 @@ module ExecuteStage (
         for (int i = 0; i < `N; ++i) begin
             for (int j = 0; j < `NUM_FU_TOTAL; ++j) begin
                 if (complete_gnt_bus[i][j]) begin
-                    $display("HIIIIIIIIIIIII");
                     $display("completing!!!!!: %d", fu_result[j].completing_reg);
                     next_cdb_reg[i] = fu_result[j];
                     cdb_completing[i].completing_reg = next_cdb_reg[i].completing_reg;
@@ -144,6 +143,7 @@ module ExecuteStage (
                     i, fu_result[i].completing_reg, i, fu_result[i].result
                 );
             end
+            $display("branch_reg.bm_mispred: %b", branch_reg.bm_mispred);
         end
     end
     //add logic to set the mispredict signal

@@ -125,6 +125,7 @@ module branchstack #(
                 branch_stack[i] <= next_branch_stack[i] | branch_stack_entries[i];
             end
             $display("PC_restore: %h", PC_restore);
+            $display("restore_valid: %b", restore_valid);
         end
     end
 
