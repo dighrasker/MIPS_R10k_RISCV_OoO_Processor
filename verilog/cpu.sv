@@ -406,7 +406,7 @@ module cpu (
         .branches_taken(branches_taken),
         .branch_gnt_bus(branch_gnt_bus),
         .final_branch_gnt_line(final_branch_gnt_line),
-        .no_branches_fetched(fetched),
+        .no_branches_fetched(no_branches_fetched),
         .target_PCs(target_PCs),       //<-- just set this somewhere?
         .btb_hits(btb_hits)
     );

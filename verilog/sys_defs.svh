@@ -542,7 +542,6 @@ typedef struct packed {
     // lsq_tail
     // branch prediction repair
     BRANCH_PREDICTOR_PACKET            bp_packet;
-    ADDR                               predicted_PC; //only necessary for jumps
     logic                              is_jump;
     ADDR                               original_PC;
 } BS_ENTRY_PACKET;
