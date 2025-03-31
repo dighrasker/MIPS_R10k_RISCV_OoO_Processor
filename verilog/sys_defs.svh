@@ -742,6 +742,9 @@ typedef struct packed {
 } BTB_DEBUG;
 
 typedef struct packed {
+    INST            inst;
+    ALU_OPA_SELECT  opa_select; // ALU opa mux select (ALU_OPA_xxx *)
+    ALU_OPB_SELECT  opb_select; // ALU opb mux select (ALU_OPB_xxx *)
     logic           valid;
     DATA            source_reg_1;
     DATA            source_reg_2;

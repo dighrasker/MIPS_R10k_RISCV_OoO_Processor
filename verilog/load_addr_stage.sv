@@ -16,17 +16,21 @@ module load_addr_stage (
 
     LOAD_ADDR_PACKET load_addr_packet;
 
-    assign load_addr_backpressure = (load_buffer_backpressure | load_data_backpressure) & load_addr_packet.valid;
-    assign load_data_packet.example = load_addr_packet.example;
-
     DATA opa, opb;
+
+    assign load_addr_backpressure = (load_buffer_backpressure | load_data_backpressure) & load_addr_packet.valid;
+    assign load_data_packet.valid = load_addr_packet.valid;
+    assign load_data_packet.dest_reg_idx = load_addr_packet.dest_reg_idx;
+    assign load_data_packet.bm = load_addr_packet.bm;
+    assign load_data_packet.byte_mask = load_addr_packet.valid; // TODO: Fix this
+    assign load_data_packet.load_addr = opa + opb;
 
     // ALU opA mux
     always_comb begin
-        case (alu_packet.opa_select)
-            OPA_IS_RS1:  opa = alu_packet.source_reg_1;
-            OPA_IS_NPC:  opa = alu_packet.NPC;
-            OPA_IS_PC:   opa = alu_packet.PC;
+        case (load_addr_packet.opa_select)
+            OPA_IS_RS1:  opa = load_addr_packet.source_reg_1;
+            OPA_IS_NPC:  opa = load_addr_packet.NPC;
+            OPA_IS_PC:   opa = load_addr_packet.PC;
             OPA_IS_ZERO: opa = 0;
             default:     opa = 32'hdeadface; // dead face
         endcase
@@ -34,34 +38,17 @@ module load_addr_stage (
 
     // ALU opB mux
     always_comb begin
-        case (alu_packet.opb_select)
-            OPB_IS_RS2:   opb = alu_packet.source_reg_2;
-            OPB_IS_I_IMM: opb = `RV32_signext_Iimm(alu_packet.inst);
-            OPB_IS_S_IMM: opb = `RV32_signext_Simm(alu_packet.inst);
-            OPB_IS_B_IMM: opb = `RV32_signext_Bimm(alu_packet.inst);
-            OPB_IS_U_IMM: opb = `RV32_signext_Uimm(alu_packet.inst);
-            OPB_IS_J_IMM: opb = `RV32_signext_Jimm(alu_packet.inst);
+        case (load_addr_packet.opb_select)
+            OPB_IS_RS2:   opb = load_addr_packet.source_reg_2;
+            OPB_IS_I_IMM: opb = `RV32_signext_Iimm(load_addr_packet.inst);
+            OPB_IS_S_IMM: opb = `RV32_signext_Simm(load_addr_packet.inst);
+            OPB_IS_B_IMM: opb = `RV32_signext_Bimm(load_addr_packet.inst);
+            OPB_IS_U_IMM: opb = `RV32_signext_Uimm(load_addr_packet.inst);
+            OPB_IS_J_IMM: opb = `RV32_signext_Jimm(load_addr_packet.inst);
             default:      opb = 32'hfacefeed; // face feed
         endcase
     end
 
-    always_comb begin
-        case (alu_packet.alu_func)
-            ALU_ADD:  alu_result.result = opa + opb;
-            ALU_SUB:  alu_result.result = opa - opb;
-            ALU_AND:  alu_result.result = opa & opb;
-            ALU_SLT:  alu_result.result = signed'(opa) < signed'(opb);
-            ALU_SLTU: alu_result.result = opa < opb;
-            ALU_OR:   alu_result.result = opa | opb;
-            ALU_XOR:  alu_result.result = opa ^ opb;
-            ALU_SRL:  alu_result.result = opa >> opb[4:0];
-            ALU_SLL:  alu_result.result = opa << opb[4:0];
-            ALU_SRA:  alu_result.result = signed'(opa) >>> opb[4:0]; // arithmetic from logical shift
-            // here to prevent latches:
-            default:  alu_result.result = 32'hfacebeec;
-        endcase
-    end
-    
     always_ff @(posedge clock) begin
         if(reset) begin
             load_addr_packet <= NOP_LOAD_ADDR_PACKET;
