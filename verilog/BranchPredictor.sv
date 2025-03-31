@@ -37,7 +37,7 @@ module branchpredictor #(
     // Assign each branch inst a bhr based on their relative positions to each other
     always_comb begin
         for (int i = 0; i < `N; ++i) begin
-            intermediate_bhrs[i] = (bhr << i) | 1'b0;
+            intermediate_bhrs[i] = bhr << i;
         end
 
         assigned_bhrs = '0;
@@ -72,16 +72,16 @@ module branchpredictor #(
         next_meta_pht = meta_pht;
 
         if (resolving_valid_branch) begin
-            if ((^gshare_pht[bs_bp_packet.gshare_PHT_idx]) || (taken != gshare_pht[bs_bp_packet.gshare_PHT_idx][0])) begin
-                next_gshare_pht[bs_bp_packet.gshare_PHT_idx] += (taken) ? 1 : -1;
+            if ((^gshare_pht[bs_bp_packet.gshare_PHT_idx]) || ((taken ^ mispred) != gshare_pht[bs_bp_packet.gshare_PHT_idx][0])) begin
+                next_gshare_pht[bs_bp_packet.gshare_PHT_idx] += (taken ^ mispred) ? 1 : -1;
             end
 
-            if ((^simple_pht[bs_bp_packet.meta_PHT_idx]) || (taken != simple_pht[bs_bp_packet.meta_PHT_idx][0])) begin
-                next_simple_pht[bs_bp_packet.meta_PHT_idx] += (taken) ? 1 : -1;
+            if ((^simple_pht[bs_bp_packet.meta_PHT_idx]) || ((taken ^ mispred) != simple_pht[bs_bp_packet.meta_PHT_idx][0])) begin
+                next_simple_pht[bs_bp_packet.meta_PHT_idx] += ((taken ^ mispred)) ? 1 : -1;
             end
 
-            if ((^meta_pht[bs_bp_packet.meta_PHT_idx]) || (taken != meta_pht[bs_bp_packet.meta_PHT_idx][0])) begin
-                next_meta_pht[bs_bp_packet.meta_PHT_idx] += (taken == bs_bp_packet.gshare_predict_taken) - (taken == bs_bp_packet.simple_predict_taken);
+            if ((^meta_pht[bs_bp_packet.meta_PHT_idx]) || (((taken ^ mispred) ^ mispred) != meta_pht[bs_bp_packet.meta_PHT_idx][0])) begin
+                next_meta_pht[bs_bp_packet.meta_PHT_idx] += ((taken ^ mispred) == bs_bp_packet.gshare_predict_taken) - ((taken ^ mispred) == bs_bp_packet.simple_predict_taken);
             end 
         end 
 
@@ -103,13 +103,25 @@ module branchpredictor #(
             gshare_pht <= '0;
             simple_pht <= '0;
         end else begin
-            bhr <= (resolving_valid_branch && mispred) ? ((bs_bp_packet.BHR_state << 1) | taken) : next_bhr; 
+            bhr <= (resolving_valid_branch && mispred) ? ((bs_bp_packet.BHR_state << 1) | (taken ^ mispred)) : next_bhr; 
             meta_pht <= next_meta_pht;
             gshare_pht <= next_gshare_pht;
             simple_pht <= next_simple_pht;
         end
+        $display("bhr: %b", bhr);
+        for (int i = 0; i < `N; ++i) begin
+            $display("intermediate bhrs[%d]: %b", i, intermediate_bhrs[i]);
+            $display("assigned bhrs[%d]: %b", i, assigned_bhrs[i]);
 
-        
+        end
+        $display("branches taken: %b", branches_taken);
+        $display("taken in branchPred: %b", taken);
+        $display("bs_bp_packet.BHR_state: %b", bs_bp_packet.BHR_state);
+        if (resolving_valid_branch) begin
+            $display("new next_gshare_pht[%d]: %b", bs_bp_packet.gshare_PHT_idx, next_gshare_pht[bs_bp_packet.gshare_PHT_idx]);
+            $display("new next_simple_pht[%d]: %b", bs_bp_packet.meta_PHT_idx, next_simple_pht[bs_bp_packet.meta_PHT_idx]);
+            $display("new next_meta_pht[%d]: %b", bs_bp_packet.meta_PHT_idx, next_meta_pht[bs_bp_packet.meta_PHT_idx]);
+        end
 
     end
 
