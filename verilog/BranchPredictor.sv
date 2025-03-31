@@ -80,7 +80,9 @@ module branchpredictor #(
                 next_simple_pht[bs_bp_packet.meta_PHT_idx] += ((taken ^ mispred)) ? 1 : -1;
             end
 
-            if ((^meta_pht[bs_bp_packet.meta_PHT_idx]) || ((taken ^ mispred) != meta_pht[bs_bp_packet.meta_PHT_idx][0])) begin
+            if ((^meta_pht[bs_bp_packet.meta_PHT_idx]) || 
+                ((((taken ^ mispred) == bs_bp_packet.gshare_predict_taken) - ((taken ^ mispred) == bs_bp_packet.simple_predict_taken)) == 3) && meta_pht[bs_bp_packet.meta_PHT_idx] != 0 ||
+                ((((taken ^ mispred) == bs_bp_packet.gshare_predict_taken) - ((taken ^ mispred) == bs_bp_packet.simple_predict_taken)) == 1) && meta_pht[bs_bp_packet.meta_PHT_idx] != 3) begin
                 next_meta_pht[bs_bp_packet.meta_PHT_idx] += ((taken ^ mispred) == bs_bp_packet.gshare_predict_taken) - ((taken ^ mispred) == bs_bp_packet.simple_predict_taken);
             end 
         end 
