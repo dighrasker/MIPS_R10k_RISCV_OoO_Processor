@@ -91,6 +91,7 @@ typedef logic [`B_MASK_WIDTH-1:0]           B_MASK_MASK;
 typedef logic [2:0]                         BRANCH_FUNC;
 typedef logic [2:0]                         LOAD_FUNC;
 typedef logic [`SQ_SZ-1:0]                  SQ_MASK;
+typedef logic [`SQ_IDX_BITS-1:0]            SQ_IDX;
 typedef logic [2:0]                         STORE_FUNC;
 typedef logic [3:0]                         BYTE_MASK;
 typedef logic [`FU_ID_BITS-1:0]             FU_IDX;
@@ -138,19 +139,31 @@ typedef logic [1:0] CHOOSER;
 // useful boolean single-bit definitions
 `define FALSE 1'h0
 `define TRUE  1'h1
-
 // word and register sizes
-typedef logic [31:0] DATA;
+
 typedef logic [19:0] IMM;
 typedef logic [4:0] REG_IDX;
 
 typedef union packed {
+    logic [31:0]        data;
+    logic [3:0][7:0]    bytes;
+    logic [1:0][15:0]   halfs;
+} DATA;
+
+typedef union packed {
     logic [31:0] addr;
+
     struct packed {
         logic [31:`BTB_SET_IDX_BITS+2] tag;
         logic  [`BTB_SET_IDX_BITS+1:2] set_idx;
         logic                    [1:0] byte_offset;
     } btb;
+
+    struct packed {
+        logic                    [31:2]  addr;
+        logic                     [1:0]  offset;
+    } word;
+
     // struct packed {
     //     logic [31:] tag;
     //     logic  [`BTB_SET_IDX_BITS+1:2] set_idx;
@@ -750,22 +763,27 @@ typedef struct packed {
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;
     B_MASK          bm;
+    SQ_IDX          sq_tail;
     LOAD_FUNC       load_func;
 } LOAD_ADDR_PACKET;
 
 typedef struct packed {
     logic           valid;
     PHYS_REG_IDX    dest_reg_idx;
-    B_MASK          bm;
     BYTE_MASK       byte_mask;
     ADDR            load_addr;
+    B_MASK          bm;
+    SQ_IDX          sq_tail;
 } LOAD_DATA_PACKET;
 
 typedef struct packed {
     B_MASK          bm;
     BYTE_MASK       byte_mask;
     MSHR_IDX        mshr_idx;
-    CDB_REG_PACKET  cdb_reg_packet;
+    logic           valid;
+    ADDR            load_addr;
+    DATA            result;
+    PHYS_REG_IDX    dest_reg_idx;
 } LOAD_BUFFER_PACKET; 
 
 typedef struct packed {

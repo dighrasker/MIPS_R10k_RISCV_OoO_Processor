@@ -5,8 +5,8 @@ module load_buffer(
     input   logic                                 reset,
 
     // ------------ TO/FROM LOAD_FU ------------- //
-    input   LOAD_BUFFER_PACKET                    load_buffer_packet,        // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
-    output  logic                                 load_buffer_backpressure,
+    input   LOAD_BUFFER_PACKET                    load_buffer_packet_in, // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+    output  logic                                 load_buffer_free,
 
     // ------------- TO/FROM CACHE -------------- //
     input   logic                                 mshr_valid,
@@ -21,46 +21,59 @@ module load_buffer(
     output CDB_REG_PACKET   [`LOAD_BUFFER_SZ-1:0] load_result
 ); 
 
+    logic [`LOAD_BUFFER_SZ-1:0] load_buffer_status, next_load_buffer_status, chosen_spot, new_load;
+    LOAD_BUFFER_PACKET [`LOAD_BUFFER_SZ-1:0] load_buffer, next_load_buffer;
 
-    assign load_buffer_backpressure = &final_;
-    // Main ROB Data Here
+    psel_gen #(
+         .WIDTH(`LOAD_BUFFER_SZ),  // The width of the request bus
+         .REQS(1) // The number of requests that can be simultaenously granted
+    ) psel_inst (
+         .req(~(load_buffer_status)), // Input request bus
+         .gnt(chosen_spot)  // Output bus for each reLOAD_BUFFER_SZ
+    );
+
+    assign next_load_buffer_status = load_buffer_status ^ load_cdb_en ^ new_load;
+    assign load_buffer_free = ~(&next_load_buffer_status);
+    assign new_load = chosen_spot & 'load_buffer_packet_in.valid;
+
+    always_comb begin
+        next_load_buffer = load_buffer;
+
+        for (int i = 0; i < `LOAD_BUFFER_SZ; ++i) begin
+            if (new_load[i]) begin
+                next_load_buffer[i] = load_buffer_packet_in;
+            end
+        end
+
+        for (int i = 0; i < `LOAD_BUFFER_SZ; ++i) begin
+            if (mshr_valid && load_buffer[i].mshr_idx == mshr_idx) begin
+                for (int j = 0; j < 4; j++) begin
+                    if (load_buffer[i].byte_mask[j]) begin
+                        next_load_buffer[i].result.bytes[j] = mshr_data[load_buffer[i].load_addr[2]].bytes[j];
+                        next_load_buffer[i].byte_mask[j] = 1'b0;
+                    end
+                end
+            end
+        end
+    end
+
+    always_comb begin
+        for (int i = 0; i < `LOAD_BUFFER_SZ; ++i) begin
+            load_cdb_req[i] = load_buffer_status[i] && !load_buffer[i].byte_mask;
+        end
+    end
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            rob_entries <= '0;
-            head <= 0;
-            rob_tail <= 0;
-            entries <= 0;
-        end else if(tail_restore_valid) begin
-            head <= next_head;
-            rob_tail <= tail_restore;
-            entries <= (tail_restore == next_head) ? `ROB_SZ : (tail_restore - next_head + `ROB_SZ) % `ROB_SZ;
+            load_buffer_status <= '0;
+            load_buffer <= '0;
         end else begin
-            for (int i = 0; i < `N; ++i) begin
-                if (i < rob_inputs_valid) begin
-                    rob_entries[(rob_tail + i) % `ROB_SZ] <= rob_inputs[i]; 
-                end
-            end
-            head <= next_head;
-            rob_tail <= next_tail;
-            entries <= next_entries;
+            load_buffer_status <= next_load_buffer_status;
+            load_buffer <= next_load_buffer;       
         end
-
-        load <= final;
-        $display("rob_entries: %d\nrob_head: %d\nrob_tail: %d", entries, head, rob_tail);
+        for(int i = 0, i < `LOAD_BUFFER_SZ; ++i) begin
+            $display("load_cdb_req[%d]: %b", i, load_cdb_req[i]); //in case its some dont care
+        end
     end
-
-// Debug signals
-`ifdef DEBUG
-    assign rob_debug = {
-        rob_inputs:         rob_entries,
-        head:               head,
-        rob_tail:           rob_tail,
-        rob_spots:          rob_spots,
-        rob_outputs_valid:  rob_outputs_valid,
-        rob_outputs:        rob_outputs,
-        rob_num_entries:    entries
-    };
-`endif
 
 endmodule
