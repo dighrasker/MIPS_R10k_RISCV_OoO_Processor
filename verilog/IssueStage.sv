@@ -21,6 +21,9 @@ module Issue # (
     input DATA            [`NUM_FU_MULT-1:0] issue_mult_read_data_2,
     input DATA          [`NUM_FU_BRANCH-1:0] issue_branch_read_data_1,
     input DATA          [`NUM_FU_BRANCH-1:0] issue_branch_read_data_2,
+    input DATA            [`NUM_FU_LOAD-1:0] issue_load_read_data_1,
+    input DATA           [`NUM_FU_STORE-1:0] issue_store_read_data_1,
+    input DATA           [`NUM_FU_STORE-1:0] issue_store_read_data_2,
 
     output PHYS_REG_IDX    [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1,
     output PHYS_REG_IDX    [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2,
@@ -28,6 +31,9 @@ module Issue # (
     output PHYS_REG_IDX   [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2,
     output PHYS_REG_IDX [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1,
     output PHYS_REG_IDX [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2,
+    output PHYS_REG_IDX   [`NUM_FU_LOAD-1:0] issue_load_regs_reading_1,
+    output PHYS_REG_IDX  [`NUM_FU_STORE-1:0] issue_store_regs_reading_1,
+    output PHYS_REG_IDX  [`NUM_FU_STORE-1:0] issue_store_regs_reading_2,
     
     // ------------- FROM CDB -------------- //
     input CDB_REG_PACKET              [`N-1:0] cdb_reg,
@@ -36,29 +42,29 @@ module Issue # (
     // ------------- TO/FROM EXECUTE -------------- //
     // TODO: include the backpressure signals from each FU. 
     input                         [`NUM_FU_MULT-1:0] mult_free, // backpressure signal from the mult FU
-    input                         [`NUM_FU_LDST-1:0] ldst_free, // backpressure signal from the ldst FU
+    input                         [`NUM_FU_LOAD-1:0] load_free, // backpressure signal from the load FU
 
     input                         [`NUM_FU_MULT-1:0] mult_cdb_req, // High if there is a valid instruction in the second to last stage of mult
-    input                         [`NUM_FU_LDST-1:0] ldst_cdb_req, // High if there is a valid instruction in the second to last stage of ldst
+    input                      [`LOAD_BUFFER_SZ-1:0] load_cdb_req, // High if there is a valid instruction in the second to last stage of load
 
     output logic                  [`NUM_FU_MULT-1:0] mult_cdb_gnt,
-    output logic                  [`NUM_FU_LDST-1:0] ldst_cdb_gnt,
+    output logic               [`LOAD_BUFFER_SZ-1:0] load_cdb_gnt,
     output ALU_PACKET              [`NUM_FU_ALU-1:0] alu_packets,
     output MULT_PACKET            [`NUM_FU_MULT-1:0] mult_packets,
     output BRANCH_PACKET        [`NUM_FU_BRANCH-1:0] branch_packets,
-    output LDST_PACKET            [`NUM_FU_LDST-1:0] ldst_packets,
+    output LOAD_ADDR_PACKET       [`NUM_FU_LOAD-1:0] load_addr_packets,
+    output STORE_ADDR_PACKET     [`NUM_FU_STORE-1:0] store_addr_packets,
 
     output logic [`N-1:0]        [`NUM_FU_TOTAL-1:0] complete_gnt_bus
 );
 
 genvar i;
-// TODO: Make the ldst and mult fu grant buses
-
 // Functional Unit Request Lines
 logic [`RS_SZ-1:0] branch_entries_valid; // Which entries in the rs are a branch instruction
 logic [`RS_SZ-1:0] mult_entries_valid;
 logic [`RS_SZ-1:0] alu_entries_valid;
-logic [`RS_SZ-1:0] ldst_entries_valid;
+logic [`RS_SZ-1:0] load_entries_valid;
+logic [`RS_SZ-1:0] store_entries_valid;
 logic [`RS_SZ-1:0] single_cycle_entries_valid;
 
 assign single_cycle_entries_valid = branch_entries_valid | alu_entries_valid; // which entries in the rs are single cycle instructions
@@ -72,17 +78,18 @@ logic                     [`NUM_FU_BRANCH-1:0] branch_cdb_gnt;
 logic [`NUM_FU_BRANCH-1:0]        [`RS_SZ-1:0] branch_inst_gnt_bus;
 logic [`NUM_FU_ALU-1:0]           [`RS_SZ-1:0] alu_inst_gnt_bus;
 logic [`NUM_FU_MULT-1:0]          [`RS_SZ-1:0] mult_inst_gnt_bus;
-logic [`NUM_FU_LDST-1:0]          [`RS_SZ-1:0] ldst_inst_gnt_bus;
+logic [`NUM_FU_LOAD-1:0]          [`RS_SZ-1:0] load_inst_gnt_bus;
+logic [`NUM_FU_STORE-1:0]         [`RS_SZ-1:0] store_inst_gnt_bus;
 
 logic [`NUM_FU_MULT-1:0]    [`NUM_FU_MULT-1:0] mult_fu_gnt_bus;
-logic [`NUM_FU_LDST-1:0]    [`NUM_FU_LDST-1:0] ldst_fu_gnt_bus;
 
 generate
 for (i = 0; i < `RS_SZ; ++i) begin
     assign branch_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == BU);
     assign mult_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == MULT); 
     assign alu_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == ALU); 
-    assign ldst_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == LDST); 
+    assign load_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && !rs_data_next[i].store_mask && (rs_data_next[i].decoded_signals.FU_type == LOAD); 
+    assign store_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == STORE); 
 end
 endgenerate
 
@@ -97,10 +104,12 @@ always_comb begin
     for (int i = 0; i < `NUM_FU_BRANCH; ++i) begin
         rs_data_issuing |= branch_inst_gnt_bus[i] & rs_cdb_gnt;
     end
-
-    // for (int i = 0; i < `NUM_FU_LDST; ++i) begin
-        
-    // end
+    for (int i = 0; i < `NUM_FU_LOAD; ++i) begin
+        rs_data_issuing |= load_inst_gnt_bus[i] & load_free; 
+    end
+    for (int i = 0; i < `NUM_FU_STORE; ++i) begin
+        rs_data_issuing |= store_inst_gnt_bus[i]; 
+    end
 end
 
 psel_gen #(
@@ -132,10 +141,19 @@ psel_gen #(
 
 psel_gen #(
     .WIDTH(`RS_SZ),
-    .REQS(`NUM_FU_LDST)
-) ldst_inst_psel (
-    .req(ldst_entries_valid),
-    .gnt_bus(ldst_inst_gnt_bus),
+    .REQS(`NUM_FU_LOAD)
+) load_inst_psel (
+    .req(load_entries_valid),
+    .gnt_bus(load_inst_gnt_bus),
+    .empty(empty)
+);
+
+psel_gen #(
+    .WIDTH(`RS_SZ),
+    .REQS(`NUM_FU_STORE)
+) store_inst_psel (
+    .req(store_entries_valid),
+    .gnt_bus(store_inst_gnt_bus),
     .empty(empty)
 );
 
@@ -150,14 +168,6 @@ psel_gen #(
     .empty(empty)
 );
 
-psel_gen #(
-    .WIDTH(`NUM_FU_LDST),
-    .REQS(`NUM_FU_LDST)
-) ldst_fu_psel (
-    .req(ldst_free),
-    .gnt_bus(ldst_fu_gnt_bus),
-    .empty(empty)
-);
 
 // CDB psel to select a total of N instructions to complete between the multi cycle FUs and the RS entries
 
@@ -165,8 +175,8 @@ psel_gen #(
     .WIDTH(`CDB_ARBITER_SZ),
     .REQS(`N)
 ) cdb_psel (
-    .req({single_cycle_entries_valid, mult_cdb_req, 1'b0}),
-    .gnt({rs_cdb_gnt, mult_cdb_gnt, ldst_cdb_gnt}),
+    .req({single_cycle_entries_valid, mult_cdb_req, load_cdb_req}),
+    .gnt({rs_cdb_gnt, mult_cdb_gnt, load_cdb_gnt}),
     .empty(empty)
 );
 
@@ -201,7 +211,7 @@ generate
                 branch_packets[i].opb_select = rs_data_next[branch_index].decoded_signals.opb_select;            
                 branch_packets[i].dest_reg_idx = rs_data_next[branch_index].T_new;
                 branch_packets[i].predict_taken = rs_data_next[branch_index].decoded_signals.predict_taken;
-                branch_packets[i].branch_func = rs_data_next[branch_index].decoded_signals.branch_func;
+                branch_packets[i].branch_func = rs_data_next[branch_index].decoded_signals.inst.b.funct3;
                 branch_packets[i].bmm = rs_data_next[branch_index].b_mask_mask;
 
                 // Get the data from the prf
@@ -339,7 +349,7 @@ always_comb begin
             mult_packets[mult_fu_index[i]].valid = rs_data_next[mult_rs_index[i]].decoded_signals.valid; // TODO: get the data from rs_entries[mult_rs_index] to form this mult packet
             mult_packets[mult_fu_index[i]].dest_reg_idx = rs_data_next[mult_rs_index[i]].T_new;
             mult_packets[mult_fu_index[i]].bm = rs_data_next[mult_rs_index[i]].b_mask;
-            mult_packets[mult_fu_index[i]].mult_func = rs_data_next[mult_rs_index[i]].decoded_signals.mult_func;
+            mult_packets[mult_fu_index[i]].mult_func = rs_data_next[mult_rs_index[i]].decoded_signals.inst.r.funct3;
 
 
             if (complete_list[rs_data_next[mult_rs_index[i]].Source1]) begin
@@ -375,45 +385,106 @@ always_comb begin
     end
 end
 
+// Create The Load Packets Issuing
+generate
+    //loop through load gnt bus
+    for (i = 0; i < `NUM_FU_load; ++i) begin : load_loop
+        logic [`RS_SZ_BITS-1:0] load_index;
+        encoder #(`RS_SZ, `RS_SZ_BITS) encoders_load (load_inst_gnt_bus[i], store_index);
 
+        always_comb begin 
+            issue_load_regs_reading_1[i] = 1'b0;
+            issue_load_regs_reading_2[i] = 1'b0;
+            load_addr_packet[i] = NOP_LOAD_ADDR_PACKET; //NOP
+            if (load_inst_gnt_bus[i] && load_free) begin
+                //regfile_read_indices
+                issue_load_regs_reading_1[i] = rs_data_next[load_index].Source1;
+                load_addr_packet[i].valid = rs_data_next[load_index].decoded_signals.valid;
+                load_addr_packet[i].bm = rs_data_next[load_index].bm;
+                load_addr_packet[i].sq_tail = rs_data_next[load_index].sq_tail;
+                load_addr_packet[i].load_func = rs_data_next[load_index].decoded_signals.inst.r.funct3;
+                load_addr_packet[i].dest_reg_idx = rs_data_next[load_index].decoded_signals.T_new;
 
-// Create The LDST Packets Issuing
-assign ldst_packets = '0;
-// generate
-//     //loop through ldst gnt bus
-//     for (i = 0; i < `NUM_FU_LDST; ++i) begin : ldst_loop
-//         logic [`RS_SZ_BITS-1:0] ldst_rs_index;
-//         encoder #(`RS_SZ, `RS_SZ_BITS) inst_encoders_ldst (ldst_inst_gnt_bus[i], ldst_rs_index);
-//         encoder #(`NUM_FU_LDST, $clog2(`NUM_FU_LDST)) fu_encoders_ldst (ldst_fu_gnt_bus[i], ldst_fu_index);
-//         assign rs_data_issuing = ldst_inst_gnt_bus[i] && ldst_fu_gnt_bus[i];
-//         always_comb begin
-//             if (ldst_inst_gnt_bus[i] && ldst_fu_gnt_bus[i]) begin
-//                 ldst_packets[ldst_fu_index] = '0;// TODO: get the data from rs_entries[ldst_rs_index] to form this ldst packet
-//                 if (complete_list[rs_data_next[ldst_rs_index].Source1]) begin
-//                     ldst_packets[ldst_fu_index].Source1_value = regfile_outputs; // TODO: change regfile
-//                 end else begin
-//                     for(int j = 0; j < `N; ++j) begin
-//                         if (rs_data_next[ldst_rs_index].Source1 == cdb_reg[j].completing_reg) begin
-//                         ldst_packets[ldst_fu_index].Source1_value = cdb_reg[j].result;
-//                         end
-//                     end
-//                 end
+                if (complete_list[rs_data_next[load_index].Source1]) begin
+                    load_addr_packets[i].source_reg_1 = issue_load_read_data_1[i];
+                end else begin
+                    for(int j = 0; j < `N; ++j) begin
+                        if (rs_data_next[load_index].Source1 == next_cdb_reg[j].completing_reg) begin
+                            load_addr_packets[i].source_reg_1 = next_cdb_reg[j].result;
+                        end
+                    end
+                    for(int j = 0; j < `N; ++j) begin
+                        if (rs_data_next[load_index].Source1 == cdb_reg[j].completing_reg) begin
+                            load_addr_packets[i].source_reg_1 = cdb_reg[j].result;
+                        end
+                    end
+                end
 
-//                 if (complete_list[rs_data[ldst_rs_index].Source2]) begin
-//                     ldst_packets[ldst_fu_index].Src2_value = regfile_outputs; // TODO: change regfile
-//                 end else begin
-//                     for(int j = 0; j < `N; ++j) begin
-//                         if(rs_data[ldst_rs_index].Source2 == cdb_reg[j].completing_reg) begin
-//                             ldst_packets[ldst_fu_index].Source2_value = cdb_reg[j].result;
-//                         end
-//                     end
-//                 end
-//             end else begin
-//                 ldst_packets[ldst_fu_index] = '0;//NOP TODO: get the data from rs_entries[mult_index] to form this alu packet
-//             end
-//         end
-//     end
-// endgenerate
+                load_addr_packets[i].source_reg_2 = `RV32_signext_Iimm(load_addr_packet.inst);
+            end
+        end
+    end
+endgenerate
+
+// Create The Store Packets Issuing
+generate
+    //loop through store gnt bus
+    for (i = 0; i < `NUM_FU_STORE; ++i) begin : store_loop
+        logic [`RS_SZ_BITS-1:0] store_index;
+        encoder #(`RS_SZ, `RS_SZ_BITS) encoders_store (store_inst_gnt_bus[i], store_index);
+
+        always_comb begin 
+            issue_store_regs_reading_1[i] = 1'b0;
+            store_addr_packet[i] = NOP_STORE_ADDR_PACKET; //NOP
+            if (store_inst_gnt_bus[i]) begin
+
+                //regfile_read_indices
+                issue_store_regs_reading_1[i] = rs_data_next[store_index].Source1;
+                issue_store_regs_reading_2[i] = rs_data_next[store_index].Source2;
+
+                store_addr_packet[i].valid = rs_data_next[store_index].decoded_signals.valid;
+                store_addr_packet[i].bm = rs_data_next[store_index].bm;
+                store_addr_packet[i].sq_mask = rs_data_next[store_index].sq_mask;
+                store_addr_packet[i].store_func = rs_data_next[store_index].decoded_signals.inst.r.funct3;
+;
+                store_addr_packet[i].dest_reg_idx = rs_data_next[store_index].decoded_signals.T_new;
+
+                if (complete_list[rs_data_next[store_index].Source1]) begin
+                    store_addr_packets[i].source_reg_1 = issue_store_read_data_1[i];
+                end else begin
+                    for(int j = 0; j < `N; ++j) begin
+                        if (rs_data_next[store_index].Source1 == next_cdb_reg[j].completing_reg) begin
+                            store_addr_packets[i].source_reg_1 = next_cdb_reg[j].result;
+                        end
+                    end
+                    for(int j = 0; j < `N; ++j) begin
+                        if (rs_data_next[store_index].Source1 == cdb_reg[j].completing_reg) begin
+                            store_addr_packets[i].source_reg_1 = cdb_reg[j].result;
+                        end
+                    end
+                end
+
+                if (complete_list[rs_data_next[store_index].Source2]) begin
+                    store_addr_packets[i].source_reg_2 = issue_store_read_data_2[i];
+                end else begin
+                    for(int j = 0; j < `N; ++j) begin
+                        if (rs_data_next[store_index].Source2 == next_cdb_reg[j].completing_reg) begin
+                            store_addr_packets[i].source_reg_2 = next_cdb_reg[j].result;
+                        end
+                    end
+                    for(int j = 0; j < `N; ++j) begin
+                        if (rs_data_next[store_index].Source2 == cdb_reg[j].completing_reg) begin
+                            store_addr_packets[i].source_reg_2 = cdb_reg[j].result;
+                        end
+                    end
+                end
+
+                store_addr_packets[i].store_imm = `RV32_signext_Simm(store_addr_packet.inst);
+
+            end
+        end
+    end
+endgenerate
 
 //Final Complete selector
 psel_gen #(

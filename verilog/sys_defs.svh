@@ -36,10 +36,9 @@
 `define NUM_FU_BRANCH 1
 `define NUM_FU_ALU `N
 `define NUM_FU_MULT `N
-`define NUM_FU_LDST 1
-`define NUM_FU_LOAD 0
-`define NUM_FU_STORE 0
-`define NUM_FU_TOTAL `NUM_FU_ALU + `NUM_FU_MULT + `NUM_FU_BRANCH +`NUM_FU_LDST
+`define NUM_FU_LOAD 1
+`define NUM_FU_STORE 1
+`define NUM_FU_TOTAL `NUM_FU_ALU + `NUM_FU_MULT + `NUM_FU_BRANCH + `LOAD_BUFFER_SZ
 
 // sizes
 `define FB_SZ 32
@@ -56,7 +55,7 @@
 `define PHYS_REG_SZ_P6 32
 `define PHYS_REG_SZ_R10K (`ARCH_REG_SZ_R10K + `ROB_SZ)
 `define PHYS_REG_NUM_ENTRIES_BITS $clog2(`PHYS_REG_SZ_R10K + 1)
-`define CDB_ARBITER_SZ `RS_SZ + `NUM_FU_MULT + `NUM_FU_LDST
+`define CDB_ARBITER_SZ `RS_SZ + `NUM_FU_MULT + `LOAD_BUFFER_SZ
 `define BTB_SZ 64
 `define CACHE_SZ 256
 `define BTB_NUM_SETS `BTB_SZ / `BTB_NUM_WAYS
@@ -67,7 +66,7 @@
 `define CACHE_TAG_BITS 32 - `CACHE_SET_IDX_BITS - 2
 `define BTB_NUM_ENTRIES_BITS $clog2(`BTB_NUM_WAYS + 1)    
 `define BTB_LRU_BITS $clog2(`BTB_NUM_WAYS)
-`define NUM_SQ_BITS $clog2(`N+1) > $clog2(`SQ_SZ+1) ? $clog2(`SQ_SZ+1) : $clog2(`N+1)
+`define NUM_SQ_BITS $clog2(`SQ_SZ+1)
 `define MSHR_IDX_BITS $clog2(`MSHR_SZ)
 `define LOAD_BUFFER_SZ 4
 `define SQ_IDX_BITS $clog2(`SQ_SZ)
@@ -93,6 +92,7 @@ typedef logic [2:0]                         LOAD_FUNC;
 typedef logic [`SQ_SZ-1:0]                  SQ_MASK;
 typedef logic [`SQ_IDX_BITS-1:0]            SQ_IDX;
 typedef logic [2:0]                         STORE_FUNC;
+typedef logic [4:0]                         STORE_IMM;
 typedef logic [3:0]                         BYTE_MASK;
 typedef logic [`FU_ID_BITS-1:0]             FU_IDX;
 typedef logic [`HISTORY_BITS-1:0]           PHT_IDX;
@@ -102,11 +102,12 @@ typedef logic [`BTB_TAG_BITS-1:0]           BTB_TAG;
 typedef logic [`BTB_LRU_BITS-1:0]           BTB_LRU;
 typedef logic [`BTB_NUM_ENTRIES_BITS-1:0]   BTB_NUM_ENTRY;
 
-typedef enum logic [1:0] {
-    ALU   = 2'h0,
-    MULT  = 2'h1,
-    BU   = 2'h2,
-    LDST = 2'h3
+typedef enum logic [2:0] {
+    ALU   = 3'b000,
+    MULT  = 3'b001,
+    BU    = 3'b010,
+    LOAD  = 3'b011,
+    STORE = 3'b100
 } FU_TYPE;
 
 // STRONGLY_NOT_TAKEN   = 2'h0,
@@ -520,6 +521,7 @@ typedef struct packed {
     PHYS_REG_IDX    T_new; // Use as unique rob id
     PHYS_REG_IDX    T_old;
     ARCH_REG_IDX    arch_reg;
+    logic           is_store; 
 } ROB_PACKET;
 
 typedef struct packed {
@@ -545,10 +547,6 @@ typedef struct packed{
     logic                   has_dest; // if there is a destination register
     ALU_FUNC                alu_func;
     logic                   mult; 
-    MULT_FUNC               mult_func;
-    BRANCH_FUNC             branch_func;
-    STORE_FUNC              store_func;
-    LOAD_FUNC               load_func;
     logic                   rd_mem; 
     logic                   wr_mem; 
     logic                   cond_branch; 
@@ -564,17 +562,16 @@ typedef struct packed{
 
 //TODO: CHANGE FOR RS
 typedef struct packed {  
-    DECODE_PACKET  decoded_signals;
-    
-    //Added during dispatch
+    DECODE_PACKET       decoded_signals;
     PHYS_REG_IDX        T_new; // Use as unique RS id ???
     PHYS_REG_IDX        Source1;
     logic               Source1_ready;
     PHYS_REG_IDX        Source2;
     logic               Source2_ready;
-    logic  [`SQ_SZ-1:0] store_mask;
     B_MASK              b_mask;
     B_MASK_MASK         b_mask_mask;
+    SQ_IDX              sq_tail;
+    SQ_MASK             sq_mask;
 } RS_PACKET;
 
 typedef struct packed {
@@ -761,9 +758,6 @@ typedef struct packed {
 } BTB_DEBUG;
 
 typedef struct packed {
-    INST            inst;
-    ALU_OPA_SELECT  opa_select; // ALU opa mux select (ALU_OPA_xxx *)
-    ALU_OPB_SELECT  opb_select; // ALU opb mux select (ALU_OPB_xxx *)
     logic           valid;
     DATA            source_reg_1;
     DATA            source_reg_2;
@@ -773,6 +767,16 @@ typedef struct packed {
     LOAD_FUNC       load_func;
 } LOAD_ADDR_PACKET;
 
+const LOAD_ADDR_PACKET NOP_LOAD_ADDR_PACKET = '{
+    valid:              '0,
+    source_reg_1:       '0,
+    source_reg_2:       '0,
+    dest_reg_idx:       '0,       // not used but might be good for identification purposes
+    bm:                 '0,
+    sq_tail:            '0.
+    load_func:          '0
+};
+
 typedef struct packed {
     logic           valid;
     PHYS_REG_IDX    dest_reg_idx;
@@ -780,35 +784,75 @@ typedef struct packed {
     ADDR            load_addr;
     B_MASK          bm;
     SQ_IDX          sq_tail;
+    LOAD_FUNC       load_func;
 } LOAD_DATA_PACKET;
 
+const LOAD_DATA_PACKET NOP_LOAD_DATA_PACKET = '{
+    valid:         '0,
+    dest_reg_idx:  '0,
+    byte_mask:     '0,
+    load_addr:     '0,
+    bm:            '0,
+    sq_tail:       '0
+};
+
 typedef struct packed {
-    B_MASK          bm;
     BYTE_MASK       byte_mask;
     MSHR_IDX        mshr_idx;
     logic           valid;
     ADDR            load_addr;
     DATA            result;
+    B_MASK          bm;
     PHYS_REG_IDX    dest_reg_idx;
+    LOAD_FUNC       load_func;
 } LOAD_BUFFER_PACKET; 
+
+const LOAD_BUFFER_PACKET NOP_LOAD_BUFFER_PACKET = '{
+    byte_mask:          '0,
+    mash_idx:           '0,
+    valid:              '0,
+    load_addr:          '0,
+    result:             '0,
+    bm:                 '0,
+    dest_reg_idx:       '0
+};
 
 typedef struct packed {
     logic           valid;
     DATA            source_reg_1;
     DATA            source_reg_2;
+    STORE_IMM       store_imm;
     B_MASK          bm;
     SQ_MASK         sq_mask;
     STORE_FUNC      store_func;
-} STORE_PACKET;
+    PHYS_REG_IDX    dest_reg_idx;
+} STORE_ADDR_PACKET;
+
+const STORE_ADDR_PACKET NOP_STORE_ADDR_PACKET = '{
+    valid:              '0,
+    source_reg_1:       '0,
+    source_reg_2:       '0,
+    store_imm:          '0;
+    bm:                 '0,
+    sq_mask:            '0,
+    store_func:         '0
+};
 
 typedef struct packed {
-    // Do we need a valid bit? Why not just use the sq_mask as a valid bit
+    logic           valid;
     ADDR            store_address;
     DATA            store_result;
     B_MASK          bm;
-    SQ_MASK         sq_mask;
     BYTE_MASK       byte_mask;
-} SQ_PACKET;
+} STORE_QUEUE_PACKET;
+
+const STORE_QUEUE_PACKET NOP_STORE_QUEUE_PACKET = '{
+    valid:              '0,
+    source_address:     '0,
+    source_result:      '0,
+    bm:                 '0,
+    byte_mask:          '0
+};
 
 typedef struct packed {
     logic nothong;

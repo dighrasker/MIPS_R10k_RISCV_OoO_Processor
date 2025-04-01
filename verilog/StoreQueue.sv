@@ -1,52 +1,41 @@
 `include "verilog/sys_defs.svh"
 
-module sq #(
+module store_queue #(
 ) (
     // ------------ FROM Store Unit ------------- //
-    input   SQ_PACKET                     sq_inputs,
+    input   SQ_PACKET                     sq_packet,
 
-    // ------------- TO/FROM Dispatch -------------- // 
-    // input   logic      [`NUM_SQ_BITS-1:0] next_sq_tail,                     
-    // input   logic            [`SQ_SZ-1:0] next_sq_mask,  
-    input   logic  [`NUM_SCALAR_BITS-1:0] stores_dispatching,
-    output  logic      [`NUM_SQ_BITS-1:0] sq_spots,
-    output  logic      [`SQ_IDX_BITS-1:0] sq_tail,
-    output  SQ_MASK                       sq_mask,
+    // ------------- TO/FROM DISPATCH -------------- // 
+    input   logic                  [`N-1:0] stores_dispatched,
+    output  logic        [`NUM_SQ_BITS-1:0] sq_spots,
+    output  SQ_IDX                          sq_tail,
+    output  SQ_MASK                         sq_mask,
     
     // ------------- TO/FROM Load Unit -------------- //
-    input ADDR                            ldAddr_from_lu,
-    output DATA                           strVal_to_lu,
-    output logic                          load_back_pressure,
+    input SQ_IDX                            load_sq_tail,
+    input ADDR                              load_addr,
+    output DATA                             sq_load_data,
+    output BYTE_MASK                        sq_data_mask,
+
+    // ------------- FROM BRANCH STACK -------------- //
+    input   logic                           sq_restore_valid,
+    input   logic      [`ROB_SZ_BITS-1:0]   sq_tail_restore,
 
     // ------------- TO/FROM D Cache-------------- //
-    /*not sure how memory access is going to work yet*/
+    input logic                             cache_store_accepted,
+    output logic                            cache_store_valid,
+    output DATA                             cache_store_data,
 
     // ------------- TO/FROM Retire -------------- //
-    input logic    [`NUM_SCALAR_BITS-1:0] stores_retiring
-    
+    input logic                 [`NUM_SCALAR_BITS-1:0] num_sq_retiring
 ); 
 
-/*
-    Stores:
-    1. Allocate space for store instructions on dispatch. At this point we will know their phys_reg_idx and set valid bit to high
-    2. Store unit will send a sq_entry_packet to SQ, we will cam from head to tail and update addr and value for any matching phys_regs
-
-    Loads:
-    1. load unit will send a load_addr to SQ
-    2. We will use aging logic to find the youngest older store instruction that has a matching address
-    3. if there is a match? forward value to Load unit : send back pressure signal to retrieve value from cache
-
-
-
-
-
-*/
-
-    // Main ROB Data Here
-    ROB_PACKET    [`ROB_SZ-1:0] rob_entries;
+    STORE_QUEUE_PACKET     [`SQ_SZ-1:0] store_queue, next_store_queue;
 
     logic          [`ROB_SZ_BITS-1:0] head, next_head;
-    logic          [`ROB_SZ_BITS-1:0] next_tail;
+    logic          [`ROB_SZ_BITS-1:0] true_head, next_true_head;
+    logic          [`ROB_SZ_BITS-1:0] tail, next_tail;
+
     logic [`ROB_NUM_ENTRIES_BITS-1:0] entries, next_entries;
 
     always_comb begin

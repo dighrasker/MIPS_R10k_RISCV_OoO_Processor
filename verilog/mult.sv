@@ -12,7 +12,7 @@ module mult # (
     input MULT_PACKET   mult_packet_in,
 
     // From the CDB, for the last stage to finish execute
-    input logic         cdb_en,
+    input logic         cdb_gnt,
     input B_MASK        b_mm_resolve,
     input logic         b_mm_mispred,
     
@@ -62,7 +62,7 @@ module mult # (
         .clock (clock),
         .reset (reset),
         .is_last_stage ({1'b1, {(`MULT_STAGES-1){1'b0}}}),
-        .next_stage_free ({cdb_en, internal_free}),
+        .next_stage_free ({cdb_gnt, internal_free}),
         .internal_mult_packet_in ({internal_mult_packets, internal_mult_packet_in}),
         .b_mm_mispred (b_mm_mispred),
         .b_mm_resolve (b_mm_resolve),

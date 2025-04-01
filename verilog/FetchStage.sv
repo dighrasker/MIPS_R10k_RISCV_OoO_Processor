@@ -37,6 +37,7 @@ module Fetch #() (
     logic [`N-1:0] valid_jump;
 
     logic [`N-1:0] valid_branch, masked_valid_branch, shifted_branches;
+    logic [`N-1:0] valid_store;
 
     logic [`NUM_SCALAR_BITS-1:0] final_valid_inst_idx;
 
@@ -94,6 +95,7 @@ module Fetch #() (
         inst_buffer_inputs = '0;
         valid_branch = '0;
         valid_jump = '0;
+        valid_store = '0;
         Next_PC_reg = PC_reg;
         
         //creating array of N PCs that will be sent to ICache

@@ -26,6 +26,8 @@ module decoder (
     assign decoder_out.PC = inst_buffer_input.PC;
     assign decoder_out.NPC = inst_buffer_input.PC + 4;
     assign decoder_out.mult_func = inst_buffer_input.inst.r.funct3;
+    assign decoder_out.load_func = inst_buffer_input.inst.r.funct3;
+    assign decoder_out.store_func = inst_buffer_input.inst.r.funct3;
     assign decoder_out.branch_func = inst_buffer_input.inst.b.funct3;
     
     assign decoder_out.bp_packet = inst_buffer_input.bp_packet;
@@ -200,7 +202,8 @@ module decoder (
     assign dest_arch_reg = inst_buffer_input.inst.r.rd;
 
     assign decoder_out.FU_type = (decoder_out.cond_branch || decoder_out.uncond_branch) ? BU :
-                                    (decoder_out.rd_mem || decoder_out.wr_mem) ? LDST :
-                                                    (decoder_out.mult) ? MULT :
-                                                                ALU;
+                                                                   (decoder_out.rd_mem) ? LOAD :
+                                                                   (decoder_out.wr_mem) ? STORE :
+                                                                     (decoder_out.mult) ? MULT :
+                                                                                          ALU;
 endmodule // decoder

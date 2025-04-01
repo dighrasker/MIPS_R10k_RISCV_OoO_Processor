@@ -1,4 +1,4 @@
-`include "verilog/sys_defs.svh"
+]`include "verilog/sys_defs.svh"
 
 module load_buffer(
     input   logic                                 clock, 
@@ -14,26 +14,26 @@ module load_buffer(
     input   DATA                            [1:0] mshr_data,    // Cachelines are doubles
 
     // ------------- TO/FROM ISSUE -------------- //
-    input  logic            [`LOAD_BUFFER_SZ-1:0] load_cdb_en,
+    input  logic            [`LOAD_BUFFER_SZ-1:0] load_cdb_gnt,
     output logic            [`LOAD_BUFFER_SZ-1:0] load_cdb_req,
 
     // ------------ TO CDB ------------- //
     output CDB_REG_PACKET   [`LOAD_BUFFER_SZ-1:0] load_result
-); 
+);
 
-    logic [`LOAD_BUFFER_SZ-1:0] load_buffer_status, next_load_buffer_status, chosen_spot, new_load;
+    logic [`LOAD_BUFFER_SZ-1:0] load_buffer_valid, next_load_buffer_valid, chosen_spot, new_load;
     LOAD_BUFFER_PACKET [`LOAD_BUFFER_SZ-1:0] load_buffer, next_load_buffer;
 
     psel_gen #(
          .WIDTH(`LOAD_BUFFER_SZ),  // The width of the request bus
          .REQS(1) // The number of requests that can be simultaenously granted
     ) psel_inst (
-         .req(~(load_buffer_status)), // Input request bus
+         .req(~(load_buffer_valid)), // Input request bus
          .gnt(chosen_spot)  // Output bus for each reLOAD_BUFFER_SZ
     );
 
-    assign next_load_buffer_status = load_buffer_status ^ load_cdb_en ^ new_load;
-    assign load_buffer_free = ~(&next_load_buffer_status);
+    assign next_load_buffer_valid = load_buffer_valid ^ load_cdb_gnt ^ new_load;
+    assign load_buffer_free = ~(&next_load_buffer_valid);
     assign new_load = chosen_spot & 'load_buffer_packet_in.valid;
 
     always_comb begin
@@ -59,16 +59,38 @@ module load_buffer(
 
     always_comb begin
         for (int i = 0; i < `LOAD_BUFFER_SZ; ++i) begin
-            load_cdb_req[i] = load_buffer_status[i] && !load_buffer[i].byte_mask;
+            load_cdb_req[i] = load_buffer_valid[i] && !load_buffer[i].byte_mask;
+            load_result[i].result = sign_extend(load_buffer[i].result, load_buffer[i].load_addr.w.offset, load_buffer[i].load_func);
+            load_result[i].completing_reg = load_buffer[i].dest_reg_idx; 
+            load_result[i].valid = load_buffer[i].valid;
         end
     end
 
+    function logic [31:0] sign_extend(input DATA result, input logic [1:0] offset, input LOAD_FUNC func);
+        sign_extend = result >> offset;
+        if (func[2]) begin
+            // unsigned: zero-extend the data
+            if (MEM_SIZE(func[1:0]) == BYTE) begin
+                sign_extend[31:8] = 0;
+            end else if (MEM_SIZE(func[1:0]) == HALF) begin
+                sign_extend[31:16] = 0;
+            end
+        end else begin
+            // signed: sign-extend the data
+            if (MEM_SIZE(func[1:0]) == BYTE) begin
+                sign_extend[31:8] = {(24){sign_extend[7]}};
+            end else if (MEM_SIZE(func[1:0]) == HALF) begin
+                sign_extend[31:16] = {(16){sign_extend[15]}};
+            end
+        end
+    endfunction
+
     always_ff @(posedge clock) begin
         if (reset) begin
-            load_buffer_status <= '0;
+            load_buffer_valid <= '0;
             load_buffer <= '0;
         end else begin
-            load_buffer_status <= next_load_buffer_status;
+            load_buffer_valid <= next_load_buffer_valid;
             load_buffer <= next_load_buffer;       
         end
         for(int i = 0, i < `LOAD_BUFFER_SZ; ++i) begin

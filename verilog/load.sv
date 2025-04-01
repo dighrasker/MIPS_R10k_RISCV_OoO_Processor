@@ -7,74 +7,87 @@
 
 module load # (
 ) (
-    input logic             clock,
-    input logic             reset, 
+    input logic                                 clock,
+    input logic                                 reset, 
     
     // ------------ TO/FROM EXECUTE ------------- //
-    input LOAD_ADDR_PACKET            load_addr_packet,
+    input LOAD_ADDR_PACKET                      load_addr_packet,
+    output logic                                load_addr_free,
 
     // ------------ TO/FROM ISSUE ------------- //
-    input logic                     [`LOAD_BUFFER_SZ-1:0] load_cdb_en,
-    output logic                    [`LOAD_BUFFER_SZ-1:0] load_cdb_req,
+    input logic           [`LOAD_BUFFER_SZ-1:0] load_cdb_en,
+    output logic          [`LOAD_BUFFER_SZ-1:0] load_cdb_req,
 
     // ------------ TO CDB ------------- //
-    output CDB_REG_PACKET           [`LOAD_BUFFER_SZ-1:0] load_result,
+    output CDB_REG_PACKET [`LOAD_BUFFER_SZ-1:0] load_result,
 
     // ------------ FROM BRANCH STACK --------------//
-    input B_MASK                    b_mm_resolve,
-    input logic                     b_mm_mispred,
+    input B_MASK                                b_mm_resolve,
+    input logic                                 b_mm_mispred,
+
+    // ------------ TO/FROM CACHE --------------//
+    input MSHR_IDX                              mshr_idx,
+    input logic                                 mshr_valid,
+    input DATA                                  mshr_data,
+    input logic                                 cache_load_accepted,
+    input DATA                                  cache_load_data,
+    input BYTE_MASK                             cache_data_mask,
+    output ADDR                                 load_addr,
+    output logic                                load_valid,
+
+    // ------------ TO/FROM STORE QUEUE ------------- //
+    input DATA                      sq_load_data,
+    input BYTE_MASK                 sq_data_mask,
+    output SQ_IDX                   load_sq_tail,
+    output ADDR                     load_addr, //also goes to cache
 );
 
-    
-    INTERNAL_MULT_PACKET [`MULT_STAGES-2:0] internal_mult_packets;
-    INTERNAL_MULT_PACKET internal_mult_packet_in, internal_mult_packet_out;
-
-    logic [`MULT_STAGES-2:0] internal_free;
-
-    // always_ff @(posedge clock) begin //TODO: Decide between letting issue know vs not letting issue know
-    //     if (reset) begin
-    //         cdb_valid <= 0;
-    //     end else begin
-    //         cdb_valid <= internal_mult_packets[`MULT_STAGES-3].valid;
-    //     end
-    // end
-
-    assign cdb_valid = internal_mult_packets[`MULT_STAGES-2].valid;
-
-    assign internal_mult_packet_in.valid        = mult_packet_in.valid;
-    assign internal_mult_packet_in.prev_sum     = 64'h0;
-    assign internal_mult_packet_in.dest_reg_idx = mult_packet_in.dest_reg_idx;
-    assign internal_mult_packet_in.bm           = mult_packet_in.bm;
-    assign internal_mult_packet_in.func         = mult_packet_in.mult_func;
-
-    always_comb begin
-        case (mult_packet_in.mult_func)
-            M_MUL, M_MULH, M_MULHSU: internal_mult_packet_in.mcand = {{(32){mult_packet_in.source_reg_1[31]}}, mult_packet_in.source_reg_1};
-            default:                 internal_mult_packet_in.mcand = {32'b0, mult_packet_in.source_reg_1};
-        endcase
-
-        case (mult_packet_in.mult_func)
-            M_MUL, M_MULH: internal_mult_packet_in.mplier = {{(32){mult_packet_in.source_reg_2[31]}}, mult_packet_in.source_reg_2};
-            default:       internal_mult_packet_in.mplier = {32'b0, mult_packet_in.source_reg_2};
-        endcase
-    end
+    logic load_data_free;
+    LOAD_DATA_PACKET load_data_packet;
+    logic load_buffer_free;
+    LOAD_BUFFER_PACKET load_buffer_packet;
 
     // instantiate an array of mult_stage modules
     // this uses concatenation syntax for internal wiring, see lab 2 slides
-    load_addr_stage  [`MULT_STAGES-1:0] (
+    load_addr_stage load_addr_stage (
         .clock (clock),
         .reset (reset),
-        .is_last_stage ({1'b1, {(`MULT_STAGES-1){1'b0}}}),
-        .next_stage_free ({cdb_en, internal_free}),
-        .internal_mult_packet_in ({internal_mult_packets, internal_mult_packet_in}),
+        .load_addr_packet_in (load_addr_packet),
+        .load_addr_free (load_addr_free),
+        .load_data_free (load_data_free),
+        .load_data_packet (load_data_packet),
+        .load_buffer_free (load_buffer_free),
         .b_mm_mispred (b_mm_mispred),
-        .b_mm_resolve (b_mm_resolve),
-        .current_stage_free ({internal_free, fu_free}),
-        .internal_mult_packet_out ({internal_mult_packet_out, internal_mult_packets})
+        .b_mm_resolve (b_mm_resolve)
     );
 
-    // assign mult_result.result = (internal_mult_packet_out.func == M_MUL) ? internal_mult_packet_out.prev_sum[31:0]
-    assign mult_result.result = internal_mult_packet_out.prev_sum[31:0];
-    assign mult_result.completing_reg = internal_mult_packet_out.dest_reg_idx;
-    assign mult_result.valid = internal_mult_packet_out.valid;
+    load_data_stage load_data_stage (
+        .clock(clock),
+        .reset(reset),
+        .load_data_packet_in(load_data_packet),
+        .load_data_free(load_data_free),
+        .cache_load_accepted(cache_load_accepted),
+        .cache_load_data(cache_load_data),
+        .cache_data_mask(cache_data_mask),
+        .cache_mshr_idx(cache_mshr_idx),
+        .load_valid(load_valid),
+        .sq_load_data(sq_load_data), //input from SQ
+        .sq_data_mask(sq_data_mask), //input from SQ
+        .load_sq_tail(load_sq_tail),    //output to SQ
+        .load_addr(load_addr), //goes to SQ and CACHE
+        .load_buffer_packet(load_buffer_packet) //to Load Buffer
+    );
+
+    load_buffer load_buffer (
+        .clock(clock), 
+        .reset(reset),
+        .load_buffer_packet_in(load_buffer_packet), // New instructions from Dispatch, MUST BE IN ORDER FROM OLDEST TO NEWEST INSTRUCTIONS
+        .load_buffer_free(load_buffer_free),
+        .mshr_valid(mshr_valid),
+        .mshr_idx(mshr_idx),
+        .mshr_data(mshr_data),
+        .load_cdb_gnt(load_cdb_gnt),
+        .load_cdb_req(load_cdb_req),
+        .load_result(load_result)
+    );
 endmodule // mult
