@@ -162,7 +162,13 @@ typedef union packed {
     struct packed {
         logic                    [31:2]  addr;
         logic                     [1:0]  offset;
-    } word;
+    } w;
+
+    struct packed {
+        logic                    [31:3]  addr;
+        logic                     [2:2]  w_idx;
+        logic                     [1:0]  offset;
+    } dw;
 
     // struct packed {
     //     logic [31:] tag;

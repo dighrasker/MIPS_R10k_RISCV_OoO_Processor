@@ -26,7 +26,7 @@ module load_addr_stage (
     assign load_data_packet.dest_reg_idx = load_addr_packet.dest_reg_idx;
     assign load_data_packet.bm = load_addr_packet.bm;
     assign load_data_packet.load_addr = opa + opb;
-    assign load_data_packet.byte_mask = temp << load_data_packet.load_addr.word.offset;
+    assign load_data_packet.byte_mask = temp << load_data_packet.load_addr.w.offset;
     assign load_data_packet.sq_tail = load_addr_packet.sq_tail;
 
     // ALU opA mux

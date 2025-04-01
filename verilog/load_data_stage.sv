@@ -9,8 +9,8 @@ module load_data_stage (
     
     // ------------ FROM CACHE ------------- //
     input logic                     cache_load_accepted,
-    input DATA                      cache_load_data,
-    input BYTE_MASK                 cache_data_mask,
+    input DATA                [1:0] cache_load_data,
+    input BYTE_MASK           [1:0] cache_data_mask,
     input MSHR_IDX                  cache_mshr_idx,
 
     // ------------ FROM STORE QUEUE ------------- //
@@ -43,7 +43,7 @@ module load_data_stage (
                 if (sq_data_mask[i]) begin
                     load_buffer_packet.result.bytes[i] = sq_load_data.bytes[i];
                     load_buffer_packet.byte_mask[i] = 1'b0;
-                end else if (cache_data_mask[i]) begin
+                end else if (cache_data_mask[load_data_packet.load_addr.dw.w_idx][i]) begin
                     load_buffer_packet.result.bytes[i] = cache_load_data.bytes[i];
                     load_buffer_packet.byte_mask[i] = 1'b0;
                 end

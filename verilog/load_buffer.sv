@@ -49,7 +49,7 @@ module load_buffer(
             if (mshr_valid && load_buffer[i].mshr_idx == mshr_idx) begin
                 for (int j = 0; j < 4; j++) begin
                     if (load_buffer[i].byte_mask[j]) begin
-                        next_load_buffer[i].result.bytes[j] = mshr_data[load_buffer[i].load_addr[2]].bytes[j];
+                        next_load_buffer[i].result.bytes[j] = mshr_data[load_buffer[i].dw.w_idx].bytes[j];
                         next_load_buffer[i].byte_mask[j] = 1'b0;
                     end
                 end
