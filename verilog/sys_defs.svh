@@ -49,6 +49,8 @@
 `define RS_SZ 32
 `define MSHR_SZ 16
 `define SQ_SZ 4
+`define SQ_IDX_BITS $clog2(`SQ_SZ)
+`define SQ_NUM_ENTRIES_BITS $clog2(`SQ_SZ + 1)
 `define RS_SZ_BITS $clog2(`RS_SZ)
 `define RS_NUM_ENTRIES_BITS $clog2(`RS_SZ + 1)
 `define ARCH_REG_SZ_R10K (32)
@@ -69,7 +71,6 @@
 `define NUM_SQ_BITS $clog2(`SQ_SZ+1)
 `define MSHR_IDX_BITS $clog2(`MSHR_SZ)
 `define LOAD_BUFFER_SZ 4
-`define SQ_IDX_BITS $clog2(`SQ_SZ)
 `define PHT_SZ 2 ** `HISTORY_BITS
 `define CTR_SZ 2 
 
@@ -581,7 +582,8 @@ typedef struct packed {
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K:0] map_table;
     B_MASK                             b_m;
     // lsq_tail
-    // branch prediction repair
+    SQ_IDX                             sq_tail;
+    SQ_MASK                            sq_mask;
     BRANCH_PREDICTOR_PACKET            bp_packet;
     logic                              is_jump;
     ADDR                               original_PC;
@@ -840,16 +842,16 @@ const STORE_ADDR_PACKET NOP_STORE_ADDR_PACKET = '{
 
 typedef struct packed {
     logic           valid;
-    ADDR            store_address;
-    DATA            store_result;
+    ADDR            addr;
+    DATA            result;
     B_MASK          bm;
     BYTE_MASK       byte_mask;
 } STORE_QUEUE_PACKET;
 
 const STORE_QUEUE_PACKET NOP_STORE_QUEUE_PACKET = '{
     valid:              '0,
-    source_address:     '0,
-    source_result:      '0,
+    addr:               '0,
+    result:             '0,
     bm:                 '0,
     byte_mask:          '0
 };

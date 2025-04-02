@@ -18,12 +18,19 @@ module store_addr_stage (
     
     BYTE_MASK temp_byte_mask;
 
-    assign store_queue_packet.valid = store_addr_packet.valid;
-    assign store_queue_packet.store_address = store_addr_packet.source_reg_1 + store_addr_packet.store_imm; 
-    assign store_queue_packet.store_result = store_addr_packet.source_reg_2;
-    assign store_queue_packet.bm = store_addr_packet.bm;
-    assign store_queue_packet.byte_mask = temp_byte_mask << store_queue_packet.store_address.w.offset;
-
+    always_comb begin
+        store_queue_packet.valid = store_addr_packet.valid;
+        store_queue_packet.addr = store_addr_packet.source_reg_1 + store_addr_packet.store_imm; 
+        store_queue_packet.result = store_addr_packet.source_reg_2;
+        store_queue_packet.bm = store_addr_packet.bm;
+        store_queue_packet.byte_mask = temp_byte_mask << store_queue_packet.store_address.w.offset;
+        if (b_mm_resolve & store_addr_packet.bm) begin
+            store_queue_packet.bm = store_addr_packet.bm & ~(b_mm_resolve);
+            if (b_mm_mispred) begin
+                store_queue_packet = NOP_STORE_QUEUE_PACKET;
+            end
+        end
+    end
 
     always_comb begin
         case (MEM_SIZE(store_addr_packet.store_func[1:0]))

@@ -1,8 +1,8 @@
 `include "verilog/sys_defs.svh"
 
 module ExecuteStage (
-    input   logic                               clock,
-    input   logic                               reset,
+    input   logic                                clock,
+    input   logic                                reset,
 
     // --------------- TO/FROM ISSUE --------------- //
     input MULT_PACKET         [`NUM_FU_MULT-1:0] mult_packets_issuing_in, 
@@ -27,9 +27,25 @@ module ExecuteStage (
     output CDB_REG_PACKET               [`N-1:0] next_cdb_reg,
 
     // --------------- TO/FROM BRANCH STACK --------------- //
-    input B_MASK_MASK                          b_mm_resolve,        // b_mm_out
-    input logic                                b_mm_mispred,        // restore_valid
-    output BRANCH_REG_PACKET                   branch_reg
+    input B_MASK_MASK                            b_mm_resolve,        // b_mm_out
+    input logic                                  b_mm_mispred,        // restore_valid
+    output BRANCH_REG_PACKET                     branch_reg,
+
+    // ------------ TO/FROM CACHE --------------//
+    input MSHR_IDX                               mshr_idx,
+    input logic                                  mshr_valid,
+    input DATA                                   mshr_data,
+    input logic                                  cache_load_accepted,
+    input DATA                                   cache_load_data,
+    input BYTE_MASK                              cache_data_mask,
+    output ADDR                                  load_addr,
+    output logic                                 load_valid,
+
+    // ------------ TO/FROM STORE QUEUE ------------- //
+    input DATA                                   sq_load_data,
+    input BYTE_MASK                              sq_data_mask,
+    output SQ_IDX                                load_sq_tail,
+    output ADDR                                  load_addr //also goes to cache
 );
 
     // MULT_PACKET   mult_packets_issuing;
@@ -128,20 +144,36 @@ module ExecuteStage (
         .clock(clock),
         .reset(reset), 
     
-    // ------------ TO/FROM EXECUTE ------------- //
+        // ------------ TO/FROM EXECUTE ------------- //
         .load_addr_packet(load_packets_issuing_in),
         .load_addr_free(load_free),
 
-    // ------------ TO/FROM ISSUE ------------- //
+        // ------------ TO/FROM ISSUE ------------- //
         .load_cdb_en(load_cdb_gnt),
         .load_cdb_req(load_cdb_valid),
 
-    // ------------ TO CDB ------------- //
+        // ------------ TO CDB ------------- //
         .load_result(load_result),
 
-    // ------------ FROM BRANCH STACK --------------//
+        // ------------ FROM BRANCH STACK --------------//
         .b_mm_resolve(b_mm_resolve),
         .b_mm_mispred(b_mm_mispred),
+
+        // ------------ TO/FROM CACHE --------------//
+        .mshr_idx(mshr_idx),
+        .mshr_valid(mshr_valid),
+        .mshr_data(mshr_data),
+        .cache_load_accepted(cache_load_accepted),
+        .cache_load_data(cache_load_data),
+        .cache_data_mask(cache_data_mask),
+        .load_addr(load_addr),
+        .load_valid(load_valid),
+
+        // ------------ TO/FROM STORE QUEUE ------------- //
+        .sq_load_data(sq_load_data),
+        .sq_data_mask(sq_data_mask),
+        .load_sq_tail(load_sq_tail),
+        .load_addr(load_addr) //also goes to cache
     );
 
     always_ff @(posedge clock) begin

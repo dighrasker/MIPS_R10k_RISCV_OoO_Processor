@@ -25,19 +25,32 @@ module load_buffer(
     LOAD_BUFFER_PACKET [`LOAD_BUFFER_SZ-1:0] load_buffer, next_load_buffer;
 
     psel_gen #(
-         .WIDTH(`LOAD_BUFFER_SZ),  // The width of the request bus
-         .REQS(1) // The number of requests that can be simultaenously granted
+         .WIDTH(`LOAD_BUFFER_SZ),
+         .REQS(1)
     ) psel_inst (
-         .req(~(load_buffer_valid)), // Input request bus
-         .gnt(chosen_spot)  // Output bus for each reLOAD_BUFFER_SZ
+         .req(~(load_buffer_valid)),
+         .gnt(chosen_spot)
     );
 
-    assign next_load_buffer_valid = load_buffer_valid ^ load_cdb_gnt ^ new_load;
-    assign load_buffer_free = ~(&next_load_buffer_valid);
     assign new_load = chosen_spot & 'load_buffer_packet_in.valid;
 
     always_comb begin
+        next_load_buffer_valid = load_buffer_valid;
         next_load_buffer = load_buffer;
+
+        for (int i = 0; i < `LOAD_BUFFER_SZ; ++i) begin
+            if (b_mm_resolve & load_buffer[i].bm) begin
+                next_load_buffer[i].bm = load_buffer.bm & ~(b_mm_resolve);
+                if (b_mm_mispred) begin
+                    next_load_buffer[i] = NOP_LOAD_BUFFER_PACKET;
+                    next_load_buffer_valid[i] = 1'b0;
+                end
+            end
+        end
+
+        load_cdb_req = next_load_buffer_valid && !load_buffer[i].byte_mask;
+        next_load_buffer_valid = next_load_buffer_valid ^ load_cdb_gnt ^ new_load;
+        load_buffer_free = ~(&next_load_buffer_valid);
 
         for (int i = 0; i < `LOAD_BUFFER_SZ; ++i) begin
             if (new_load[i]) begin
@@ -55,11 +68,8 @@ module load_buffer(
                 end
             end
         end
-    end
 
-    always_comb begin
         for (int i = 0; i < `LOAD_BUFFER_SZ; ++i) begin
-            load_cdb_req[i] = load_buffer_valid[i] && !load_buffer[i].byte_mask;
             load_result[i].result = sign_extend(load_buffer[i].result, load_buffer[i].load_addr.w.offset, load_buffer[i].load_func);
             load_result[i].completing_reg = load_buffer[i].dest_reg_idx; 
             load_result[i].valid = load_buffer[i].valid;

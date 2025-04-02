@@ -25,14 +25,22 @@ module load_addr_stage (
     
     BYTE_MASK temp_byte_mask;
 
-    assign load_addr_free = (load_buffer_free & load_data_free) | ~load_addr_packet.valid;
-    assign load_data_packet.valid = load_addr_packet.valid;
-    assign load_data_packet.dest_reg_idx = load_addr_packet.dest_reg_idx;
-    assign load_data_packet.bm = load_addr_packet.bm;
-    assign load_data_packet.load_addr = load_addr_packet.source_reg_1 + load_addr_packet.source_reg_2;
-    assign load_data_packet.byte_mask = temp_byte_mask << load_data_packet.load_addr.w.offset;
-    assign load_data_packet.sq_tail = load_addr_packet.sq_tail;
-    assign load_data_packet.load_func = load_addr_packet.load_func; 
+    always_comb begin
+        load_addr_free = (load_buffer_free & load_data_free) | ~load_addr_packet.valid;
+        load_data_packet.valid = load_addr_packet.valid;
+        load_data_packet.dest_reg_idx = load_addr_packet.dest_reg_idx;
+        load_data_packet.bm = load_addr_packet.bm;
+        load_data_packet.load_addr = load_addr_packet.source_reg_1 + load_addr_packet.source_reg_2;
+        load_data_packet.byte_mask = temp_byte_mask << load_data_packet.load_addr.w.offset;
+        load_data_packet.sq_tail = load_addr_packet.sq_tail;
+        load_data_packet.load_func = load_addr_packet.load_func; 
+        if (b_mm_resolve & load_addr_packet.bm) begin
+            load_data_packet.bm = load_data_packet.bm & ~(b_mm_resolve);
+            if (b_mm_mispred) begin
+                load_data_packet = NOP_LOAD_DATA_PACKET;
+            end
+        end
+    end
 
     always_comb begin
         case (MEM_SIZE(load_addr_packet.load_func[1:0]))

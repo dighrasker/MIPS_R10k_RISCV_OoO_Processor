@@ -40,7 +40,6 @@ module branchstack #(
 
     // ------------- TO LSQ ------------------ //
     // output logic                                 lsq_tail_restore  //<--- STILL NEED TO UPDATE THIS
-    // branch prediction repair?
 `ifdef DEBUG
     , output BS_DEBUG                            bs_debug
 `endif

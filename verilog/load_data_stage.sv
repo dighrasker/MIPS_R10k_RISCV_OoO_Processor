@@ -33,14 +33,15 @@ module load_data_stage (
     assign load_valid = load_data_packet.valid;
     assign load_sq_tail = load_data_packet.sq_tail;
 
-    assign load_buffer_packet.mshr_idx = cache_mshr_idx;
-    assign load_buffer_packet.bm = load_data_packet.bm;
-    assign load_buffer_packet.valid = load_data_packet.valid;
-    assign load_buffer_packet.dest_reg_idx = load_data_packet.dest_reg_idx;
-    assign load_buffer_packet.load_addr = load_data_packet.load_addr;
-    assign load_buffer_packet.load_func = load_data_packet.load_func;
+    
     
     always_comb begin
+        load_buffer_packet.mshr_idx = cache_mshr_idx;
+        load_buffer_packet.bm = load_data_packet.bm;
+        load_buffer_packet.valid = load_data_packet.valid;
+        load_buffer_packet.dest_reg_idx = load_data_packet.dest_reg_idx;
+        load_buffer_packet.load_addr = load_data_packet.load_addr;
+        load_buffer_packet.load_func = load_data_packet.load_func;
         load_buffer_packet.result = '0;
         load_buffer_packet.byte_mask = load_data_packet.byte_mask;
         for (int i = 0; i < 4; ++i) begin
@@ -53,6 +54,13 @@ module load_data_stage (
                     load_buffer_packet.byte_mask[i] = 1'b0;
                 end
             end 
+        end
+
+        if (b_mm_resolve & load_data_packet.bm) begin
+            load_buffer_packet.bm = load_data_packet.bm & ~(b_mm_resolve);
+            if (b_mm_mispred) begin
+                load_buffer_packet = NOP_LOAD_BUFFER_PACKET;
+            end
         end
     end
 

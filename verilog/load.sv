@@ -39,7 +39,7 @@ module load # (
     input DATA                      sq_load_data,
     input BYTE_MASK                 sq_data_mask,
     output SQ_IDX                   load_sq_tail,
-    output ADDR                     load_addr, //also goes to cache
+    output ADDR                     load_addr //also goes to cache
 );
 
     logic load_data_free;

@@ -105,7 +105,7 @@ always_comb begin
         rs_data_issuing |= branch_inst_gnt_bus[i] & rs_cdb_gnt;
     end
     for (int i = 0; i < `NUM_FU_LOAD; ++i) begin
-        rs_data_issuing |= load_inst_gnt_bus[i] & load_free; 
+        rs_data_issuing |= load_inst_gnt_bus[i] & 'load_free; 
     end
     for (int i = 0; i < `NUM_FU_STORE; ++i) begin
         rs_data_issuing |= store_inst_gnt_bus[i]; 
@@ -390,7 +390,7 @@ generate
     //loop through load gnt bus
     for (i = 0; i < `NUM_FU_load; ++i) begin : load_loop
         logic [`RS_SZ_BITS-1:0] load_index;
-        encoder #(`RS_SZ, `RS_SZ_BITS) encoders_load (load_inst_gnt_bus[i], store_index);
+        encoder #(`RS_SZ, `RS_SZ_BITS) encoders_load (load_inst_gnt_bus[i], load_index);
 
         always_comb begin 
             issue_load_regs_reading_1[i] = 1'b0;
