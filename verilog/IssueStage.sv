@@ -53,9 +53,10 @@ module Issue # (
     output MULT_PACKET            [`NUM_FU_MULT-1:0] mult_packets,
     output BRANCH_PACKET        [`NUM_FU_BRANCH-1:0] branch_packets,
     output LOAD_ADDR_PACKET       [`NUM_FU_LOAD-1:0] load_addr_packets,
-    output STORE_ADDR_PACKET     [`NUM_FU_STORE-1:0] store_addr_packets,
-
     output logic [`N-1:0]        [`NUM_FU_TOTAL-1:0] complete_gnt_bus
+
+    // ------------- TO/FROM STORE ADDR STAGE  -------------- //
+    output STORE_ADDR_PACKET     [`NUM_FU_STORE-1:0] store_addr_packets,
 );
 
 genvar i;
@@ -443,7 +444,6 @@ generate
                 issue_store_regs_reading_2[i] = rs_data_next[store_index].Source2;
 
                 store_addr_packet[i].valid = rs_data_next[store_index].decoded_signals.valid;
-                store_addr_packet[i].bm = rs_data_next[store_index].bm;
                 store_addr_packet[i].sq_mask = rs_data_next[store_index].sq_mask;
                 store_addr_packet[i].store_func = rs_data_next[store_index].decoded_signals.inst.r.funct3;
 ;

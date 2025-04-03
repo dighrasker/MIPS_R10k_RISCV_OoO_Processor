@@ -131,6 +131,20 @@ module cpu (
     DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_1;
     DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_2;
 
+    /* -------------- STORE QUEUE ----------------*/
+    input   SQ_PACKET                     sq_packet,
+    input   SQ_MASK                       resolving_sq_mask,                    
+
+    // ------------- TO/FROM DISPATCH -------------- //
+    logic        [`NUM_SQ_BITS-1:0] sq_spots,
+    SQ_POINTER                      sq_tail,
+    SQ_MASK                         sq_mask_combinational,
+    oDATA                             sq_load_data,
+    output BYTE_MASK                        sq_data_mask,
+    output logic                            cache_store_valid,
+    output DATA                             cache_store_data, 
+    output ADDR                             cache_store_addr,
+
     /*------- FETCH WIRES ----------*/  
     FETCH_PACKET         [`N-1:0] inst_buffer_inputs;   //instructions going to instruction buffer
     logic  [`NUM_SCALAR_BITS-1:0] inst_valid;
@@ -383,6 +397,43 @@ module cpu (
         .inst_buffer_outputs        (inst_buffer_outputs),   // For retire to check eligibility
         .inst_buffer_outputs_valid  (inst_buffer_outputs_valid) // If not all N FB entries are valid entries they should not be considered 
     );
+
+    /*------------------ Store Queue --------------------*/
+
+    store_queue store_queue_instance (
+        // ------------ FROM Store Unit ------------- //
+        .sq_packet(),
+        .resolving_sq_mask(),                 
+        // ------------- TO/FROM DISPATCH -------------- //
+        .stores_dispatched(),
+        .dispatch_sq_mask(),
+        .sq_spots(),
+        .sq_tail(),
+        .sq_mask_combinational(),    
+        // ------------- TO/FROM Load Unit -------------- //
+        .load_sq_tail(),
+        .load_addr(),,
+        .sq_load_data(),
+        .
+        input SQ_POINTER                        load_sq_tail,
+        input ADDR                              load_addr,
+        output DATA                             sq_load_data,
+        output BYTE_MASK                        sq_data_mask,
+
+        // ------------- FROM BRANCH STACK -------------- //
+        input   logic                           sq_restore_valid,
+        input   SQ_POINTER                      sq_tail_restore,
+        input   SQ_MASK                         sq_mask_restore,
+
+        // ------------- TO/FROM D Cache-------------- //
+        input logic                             cache_store_accepted,
+        output logic                            cache_store_valid,
+        output DATA                             cache_store_data, 
+        output ADDR                             cache_store_addr,
+
+        // ------------- TO/FROM Retire -------------- //
+        input logic                 [`NUM_SCALAR_BITS-1:0] num_store_retiring
+    )
     
 
     //////////////////////////////////////////////////

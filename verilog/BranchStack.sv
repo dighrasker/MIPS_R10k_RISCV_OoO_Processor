@@ -36,10 +36,15 @@ module branchstack #(
     // ------------- TO BTB -------------- //
     output  logic                                      resolving_valid,
     output  ADDR                                       resolving_target_PC,
-    output  ADDR                                       resolving_branch_PC
+    output  ADDR                                       resolving_branch_PC,
 
-    // ------------- TO LSQ ------------------ //
-    // output logic                                 lsq_tail_restore  //<--- STILL NEED TO UPDATE THIS
+    // ------------- FROM STORE UNIT ------------------ //
+    input  SQ_MASK                                     sq_mask_resolving,
+
+    // ------------- TO SQ ------------------ //
+    output SQ_POINTER                                  sq_tail_restore,
+    output SQ_MASK                                     sq_mask_restore
+    
 `ifdef DEBUG
     , output BS_DEBUG                            bs_debug
 `endif
@@ -68,6 +73,7 @@ module branchstack #(
         next_branch_stack = branch_stack;
         b_mask_combinational = b_mask_reg;
         for (int i = 0; i < `B_MASK_WIDTH; i++) begin
+            next_branch_stack[i].sq_mask &= ~sq_mask_resolving;
             if ((b_mm_mispred && (branch_stack[i].b_m & b_mm_resolve)) || b_mm_resolve[i]) begin
                 b_mask_combinational[i] = 1'b0;
                 next_branch_stack[i] = '0;
@@ -91,6 +97,8 @@ module branchstack #(
         resolving_valid_branch = '0;
         bs_bp_packet = '0;
         resolving_branch_PC = '0;
+        sq_tail_restore = '0;
+        sq_mask_restore = '0;
         
         for (int i = 0; i < `B_MASK_WIDTH; i++) begin
             if (b_mm_resolve[i] && b_mask_reg[i]) begin
@@ -105,10 +113,11 @@ module branchstack #(
                     rob_tail_restore = branch_stack[i].rob_tail;
                     free_list_restore = branch_stack[i].free_list;
                     map_table_restore = branch_stack[i].map_table;
+                    sq_tail_restore = branch_stack[i].sq_tail;
+                    sq_mask_restore = branch_stack[i].sq_mask;
                 end
             end
-        end
-        
+        end  
     end
     
     always_ff @(posedge clock) begin
@@ -119,10 +128,7 @@ module branchstack #(
         end else begin
             //branch_stack_spots <= next_branch_stack_spots;
             b_mask_reg <= next_b_mask;
-
-            for (int i = 0; i < `B_MASK_WIDTH; i++) begin
-                branch_stack[i] <= next_branch_stack[i] | branch_stack_entries[i];
-            end
+            branch_stack <= next_branch_stack | branch_stack_entries;
             $display("PC_restore: %h", PC_restore);
             $display("restore_valid: %b", restore_valid);
         end

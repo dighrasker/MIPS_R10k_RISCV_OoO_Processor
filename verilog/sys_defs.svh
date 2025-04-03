@@ -152,6 +152,11 @@ typedef union packed {
     logic [1:0][15:0]   halfs;
 } DATA;
 
+typedef struct packed {
+    logic parity;
+    SQ_IDX sq_idx;
+} SQ_POINTER;
+
 typedef union packed {
     logic [31:0] addr;
 
@@ -589,15 +594,6 @@ typedef struct packed {
     ADDR                               original_PC;
 } BS_ENTRY_PACKET;
 
-// typedef struct packed {
-//     ADDR            NPC;
-//     logic           illegal;
-//     logic           halt;
-//     PHYS_REG_IDX    T_new; // Use as unique rob id
-//     PHYS_REG_IDX    T_old;
-//     ARCH_REG_IDX    arch_reg;
-// } SQ_PACKET;
-
 typedef struct packed {
     // ADDR            PC;
     ROB_PACKET         [`N-1:0] rob_inputs; // Use as unique rob id
@@ -824,7 +820,6 @@ typedef struct packed {
     DATA            source_reg_1;
     DATA            source_reg_2;
     STORE_IMM       store_imm;
-    B_MASK          bm;
     SQ_MASK         sq_mask;
     STORE_FUNC      store_func;
     PHYS_REG_IDX    dest_reg_idx;
@@ -835,7 +830,6 @@ const STORE_ADDR_PACKET NOP_STORE_ADDR_PACKET = '{
     source_reg_1:       '0,
     source_reg_2:       '0,
     store_imm:          '0;
-    bm:                 '0,
     sq_mask:            '0,
     store_func:         '0
 };
@@ -844,7 +838,6 @@ typedef struct packed {
     logic           valid;
     ADDR            addr;
     DATA            result;
-    B_MASK          bm;
     BYTE_MASK       byte_mask;
 } STORE_QUEUE_PACKET;
 
@@ -852,7 +845,6 @@ const STORE_QUEUE_PACKET NOP_STORE_QUEUE_PACKET = '{
     valid:              '0,
     addr:               '0,
     result:             '0,
-    bm:                 '0,
     byte_mask:          '0
 };
 

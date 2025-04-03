@@ -34,7 +34,8 @@ module Dispatch (
     // ------------ TO/FROM SQ ------------- // 
     input   logic            [`NUM_SQ_BITS-1:0] sq_spots,
     input   SQ_IDX                              sq_tail,
-    input   SQ_MASK                             sq_mask,
+    input   SQ_MASK                             sq_mask_combinational,
+    output  SQ_MASK                             dispatch_sq_mask,
     output  logic        [`NUM_SCALAR_BITS-1:0] stores_dispatching,
 
     // ------------ TO/FROM FREDDY LIST ------------- //
@@ -58,7 +59,6 @@ module Dispatch (
 );
 
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K-1:0] map_table, next_map_table;
-    SQ_MASK sq_mask_combinational;
 
     // PHYS_REG_IDX [`N:0] [`ARCH_REG_SZ_R10K-1:0] next_map_table;
     // assign next_map_table[0] = map_table;
@@ -91,7 +91,7 @@ module Dispatch (
 
     always_comb begin
         branch_stack_entries = '0;
-        sq_mask_combinational = sq_mask;
+        dispatch_sq_mask = sq_mask_combinational;
         sq_tail_combinational = sq_tail;
         next_b_mask = b_mask_combinational;
         num_dispatched = '0;
@@ -161,6 +161,8 @@ module Dispatch (
                                 branch_stack_entries[j].bp_packet = decoder_out[i].bp_packet;
                                 branch_stack_entries[j].is_jump = decoder_out[i].is_jump;
                                 branch_stack_entries[j].original_PC = decoder_out[i].PC;
+                                branch_stack_entries[j].sq_tail = sq_tail_combinational;
+                                branch_stack_entries[j].sq_mask = sq_mask_combinational;
                                 next_b_mask[j] = 1'b1;
                                 rs_entries[i].b_mask_mask[j] = 1'b1;
                             end
@@ -174,7 +176,7 @@ module Dispatch (
                 // Store Dispatched
                 if (decoder_out[i].wr_mem) begin 
                     if (stores_dispatching < sq_spots) begin
-                        sq_mask_combinational[sq_tail_combinational] = 1'b1;
+                        dispatch_sq_mask[sq_tail_combinational] = 1'b1;
                         rs_entries[i].sq_mask[sq_tail_combinational] = 1'b1;
                         sq_tail_combinational = (sq_tail_combinational + 1) % `SQ_SZ;
                         stores_dispatching += 1;
@@ -185,7 +187,7 @@ module Dispatch (
 
                 // Load Dispatched
                 if (decoder_out[i].rd_mem) begin
-                    rs_entries[i].sq_mask = sq_mask;
+                    rs_entries[i].sq_mask = dispatch_sq_mask;
                 end
 
                 updated_free_list[regs_to_use[i]] = 0;

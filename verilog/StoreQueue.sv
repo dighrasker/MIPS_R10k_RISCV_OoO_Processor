@@ -4,105 +4,141 @@ module store_queue #(
 ) (
     // ------------ FROM Store Unit ------------- //
     input   SQ_PACKET                     sq_packet,
+    input   SQ_MASK                       resolving_sq_mask,                    
 
     // ------------- TO/FROM DISPATCH -------------- // 
-    input   logic    [`NUM_SCALAR_BITS-1:0] stores_dispatched,
+    input   logic    [`NUM_SCALAR_BITS-1:0] stores_dispatching,
+    input   SQ_MASK                         dispatch_sq_mask,
     output  logic        [`NUM_SQ_BITS-1:0] sq_spots,
-    output  SQ_IDX                          sq_tail,
-    output  SQ_MASK                         sq_mask,
+    output  SQ_POINTER                      sq_tail,
+    output  SQ_MASK                         sq_mask_combinational,
+
     
     // ------------- TO/FROM Load Unit -------------- //
-    input SQ_IDX                            load_sq_tail,
+    input SQ_POINTER                        load_sq_tail,
     input ADDR                              load_addr,
     output DATA                             sq_load_data,
     output BYTE_MASK                        sq_data_mask,
 
     // ------------- FROM BRANCH STACK -------------- //
     input   logic                           sq_restore_valid,
-    input   SQ_IDX                          sq_tail_restore,
+    input   SQ_POINTER                      sq_tail_restore,
     input   SQ_MASK                         sq_mask_restore,
 
     // ------------- TO/FROM D Cache-------------- //
     input logic                             cache_store_accepted,
     output logic                            cache_store_valid,
-    output DATA                             cache_store_data,
+    output DATA                             cache_store_data, 
     output ADDR                             cache_store_addr,
 
     // ------------- TO/FROM Retire -------------- //
     input logic                 [`NUM_SCALAR_BITS-1:0] num_store_retiring
 ); 
-
     STORE_QUEUE_PACKET     [`SQ_SZ-1:0] store_queue, next_store_queue;
 
-    SQ_IDX head, next_head;
-    SQ_IDX true_head, next_true_head;
-    SQ_IDX next_tail;
+    //TODO: Update these to add parity bit to the front assuming SQ_SZ is a power of 2
+    SQ_POINTER head, next_head;
+    SQ_POINTER true_head, next_true_head;
+    SQ_POINTER next_tail;
 
     logic [`SQ_NUM_ENTRIES_BITS-1:0] sq_entries, next_sq_entries;
     logic [`SQ_NUM_ENTRIES_BITS-1:0] store_buffer_entries, next_store_buffer_entries;
+    logic [`SQ_NUM_ENTRIES_BITS-1:0] sq_mask, next_sq_mask;
+
+    assign sq_mask_combinational = sq_mask & (~resolving_sq_mask);
+    assign next_store_buffer_entries = store_buffer_entries + num_store_retiring - cache_store_accepted;
+    assign cache_store_data          = store_queue[true_head].store_result;
+    assign cache_store_addr          = store_queue[true_head].store_addr;
+    assign cache_store_valid         = store_buffer_entries != 0;
+    assign next_true_head            = true_head + cache_store_accepted;
+    assign next_head                 = (head + num_sq_retiring) % `SQ_SZ;
+    assign next_tail                 = sq_restore_valid ? sq_tail_restore : (sq_tail + stores_dispatching);
+    assign sq_spots                  = (`SQ_SZ - sq_entries < `N) ? `SQ_SZ - sq_entries : `N;
+
+    assign next_sq_entries           = sq_restore_valid ? (next_head ^ sq_tail_restore) == (1'b1 << `SQ_IDX_BITS) ? `SQ_SZ : 
+                                                                                  sq_tail_restore.sq_idx - next_head.sq_id : 
+                                                                      sq_entries + stores_dispatching - cache_store_accepted;  // if restore valid -> if only parities different -> full
+                                                                                                                              //                  -> else -> size = difference between indices
+                                                                                                                              // else calculate with entries
+
+    assign next_sq_mask = sq_restore_valid ? sq_mask_restore & (~resolving_sq_mask) : dispatch_sq_mask;
+
+    generate
+    for (genvar i = 0; i < 4; ++i) begin
+        logic [`SQ_SZ-1:0] byte_matches;
+        logic [`SQ_SZ-1:0] dependent_store; 
+
+        psel_gen #(
+            .WIDTH(`SQ_SZ),
+            .REQS(1)
+        ) newest_inst (
+            .req(byte_matches),
+            .gnt(dependent_store)
+        );
+        
+        always_comb begin
+            //address checking
+            for(int j = 0; j < `SQ_SZ; ++j) begin
+                byte_matches[j] = (load_addr.w.addr == store_queue[j].addr.w.addr) && store_queue[j].byte_mask[i];
+            end
+
+            //rotation logic
+            byte_matches = (byte_matches << (`SQ_SZ - load_sq_tail.sq_idx)) | (byte_matches >> load_sq_tail.sq_idx);
+            
+            //squashing 
+            for (int j = 0; j < `SQ_SZ; ++j) begin
+                if (j < (true_head.sq_idx - load_sq_tail.sq_idx)) begin
+                    byte_matches[j] = 1'b0;
+                end
+            end
+            
+            // sq is empty
+            if (true_head == load_sq_tail) begin
+                byte_matches = '0;
+            end
+        end
+            // psel that shit
+        
+        always_comb begin
+            sq_load_data.bytes[i] = '0;
+            sq_data_mask[i] = 1'b0;
+            for (int j = 0; j < `SQ_SZ; ++j) begin
+                if (dependent_store[j]) begin
+                    sq_load_data.bytes[i] = sq_entries[j].result.bytes[i];
+                    sq_data_mask[i] = 1'b1;
+                end
+            end
+        end
+    end
+    endgenerate
 
     always_comb begin
-        cache_store_data = store_queue[true_head].store_result;
-        cache_store_addr = store_queue[true_head].store_addr;
+        next_store_queue = store_queue;
+        for (int i = 0; i < `SQ_SZ; ++i) begin
+            if (resolving_sq_mask[i]) begin
+                next_store_queue[i] = sq_packet;
+            end
+        end
     end
-
-    always_comb begin
-        next_head = (head + num_sq_retiring) % `SQ_SZ;
-        next_tail = (sq_tail + stores_dispatched) % `SQ_SZ;
-        next_true_head = (true_head + cache_store_accepted) % `SQ_SZ;
-        next_sq_entries = sq_entries + stores_dispatched - cache_store_accepted;
-        next_store_buffer_entries = store_buffer_entries + num_store_retiring - cache_store_accepted;
-        sq_spots = (`SQ_SZ - sq_entries < `N) ? `SQ_SZ - sq_entries : `N;
-        cache_store_valid = store_buffer_entries != 0;
-    end
-
-generate
-for (int i = 0; i < 4; ++i) begin
-   psel_gen #(
-        .WIDTH(`SQ_SZ),
-        .REQS(1)
-   ) newest_inst (
-        .req(),
-        .gnt()
-   );
-
-end
-endgenerate
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            rob_entries <= '0;
-            head <= 0;
-            rob_tail <= 0;
-            entries <= 0;
-        end else if(tail_restore_valid) begin
-            head <= next_head;
-            rob_tail <= tail_restore;
-            entries <= (tail_restore == next_head) ? `ROB_SZ : (tail_restore - next_head + `ROB_SZ) % `ROB_SZ;
+            sq_tail <= '0;
+            head <= '0;
+            true_head <= '0;
+            sq_entries <= '0;
+            store_buffer_entries <= '0;
+            sq_mask <= '0;
+            store_queue <= '0;
         end else begin
-            for (int i = 0; i < `N; ++i) begin
-                if (i < rob_inputs_valid) begin
-                    rob_entries[(rob_tail + i) % `ROB_SZ] <= rob_inputs[i]; 
-                end
-            end
+            sq_tail <= next_tail;
             head <= next_head;
-            rob_tail <= next_tail;
-            entries <= next_entries;
+            true_head <= next_true_head;
+            sq_entries <= next_sq_entries;
+            store_buffer_entries <= next_store_buffer_entries;
+            sq_mask <= next_sq_mask;
+            store_queue <= next_store_queue;
         end
-        $display("rob_entries: %d\nrob_head: %d\nrob_tail: %d", entries, head, rob_tail);
     end
-
-// Debug signals
-`ifdef DEBUG
-    assign rob_debug = {
-        rob_inputs:         rob_entries,
-        head:               head,
-        rob_tail:           rob_tail,
-        rob_spots:          rob_spots,
-        rob_outputs_valid:  rob_outputs_valid,
-        rob_outputs:        rob_outputs,
-        rob_num_entries:    entries
-    };
-`endif
 
 endmodule

@@ -22,7 +22,10 @@ module freddylist #(
     output logic   [`PHYS_REG_SZ_R10K-1:0] free_list,              // bitvector of the phys reg that are complete
     // ------------- TO ISSUE -------------- //
     output logic   [`PHYS_REG_SZ_R10K-1:0] next_complete_list,           // bitvector of the phys reg that are complete
-    output logic   [`PHYS_REG_SZ_R10K-1:0] complete_list
+    output logic   [`PHYS_REG_SZ_R10K-1:0] complete_list,
+    // ------------- FROM STORE ADDR -------------- //
+    input  PHYS_REG_IDX                    store_reg_completing,
+    input  logic                           store_valid
     
 );
 
@@ -70,9 +73,12 @@ module freddylist #(
             if (completing_valid[i]) begin
                 next_complete_list[phys_reg_completing[i]] = 1'b1;
             end
+            next_complete_list = ~(dispatched_reg) & next_complete_list;
         end
 
-        next_complete_list = ~(dispatched_reg) & next_complete_list;
+        if (store_valid) begin
+            next_complete_list[store_reg_completing] = 1'b1;
+        end
     end
 
     always_comb begin

@@ -5,7 +5,7 @@ module cache #(
     input   logic                                clock, 
     input   logic                                reset,
 
-    input   
+    input
 
 `ifdef DEBUG
     , output CACHE_DEBUG                           cache_debug //define BP_DEBUG later sys defs

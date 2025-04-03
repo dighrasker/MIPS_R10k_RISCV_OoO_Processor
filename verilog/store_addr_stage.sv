@@ -5,32 +5,23 @@ module store_addr_stage (
     input                   clock,
     input                   reset,
 
-    // ------------ TO/FROM STORE UNIT ------------- //
+    // ------------ FROM ISSUE --------------- //
     input STORE_ADDR_PACKET            store_addr_packet_in,
-    output STORE_QUEUE_PACKET          store_queue_packet,
 
-    // ------------ FROM BRANCH STACK --------------//
-    input B_MASK                        b_mm_resolve,
-    input logic                         b_mm_mispred,
+    // ------------- TO STORE QUEUE ----------//
+    output SQ_MASK                     resolving_sq_mask,
+    output STORE_QUEUE_PACKET          sq_packet
 );
 
     STORE_ADDR_PACKET store_addr_packet; 
     
     BYTE_MASK temp_byte_mask;
 
-    always_comb begin
-        store_queue_packet.valid = store_addr_packet.valid;
-        store_queue_packet.addr = store_addr_packet.source_reg_1 + store_addr_packet.store_imm; 
-        store_queue_packet.result = store_addr_packet.source_reg_2;
-        store_queue_packet.bm = store_addr_packet.bm;
-        store_queue_packet.byte_mask = temp_byte_mask << store_queue_packet.store_address.w.offset;
-        if (b_mm_resolve & store_addr_packet.bm) begin
-            store_queue_packet.bm = store_addr_packet.bm & ~(b_mm_resolve);
-            if (b_mm_mispred) begin
-                store_queue_packet = NOP_STORE_QUEUE_PACKET;
-            end
-        end
-    end
+    assign sq_packet.valid = store_addr_packet.valid;
+    assign sq_packet.addr = store_addr_packet.source_reg_1 + store_addr_packet.store_imm; 
+    assign sq_packet.result = store_addr_packet.source_reg_2;
+    assign sq_packet.byte_mask = temp_byte_mask << sq_packet.store_address.w.offset;
+    assign resolving_sq_mask = store_addr_packet.sq_mask;
 
     always_comb begin
         case (MEM_SIZE(store_addr_packet.store_func[1:0]))

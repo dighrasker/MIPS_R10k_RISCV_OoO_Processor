@@ -13,7 +13,9 @@ module rs #(
     // --------- FROM: CDB ------------ //
     input  CDB_ETB_PACKET      [`N-1:0] ETB_tags,            // Tags that are broadcasted from the CDB
     
-    
+    // --------- FROM: STORE UNIT ------------ //
+    input  SQ_MASK                      store_mask,
+
     // ------- TO/FROM: ISSUE --------- //
     input  logic           [`RS_SZ-1:0] rs_data_issuing,      // bit vector of rs_data that is being issued by issue stage
     output RS_PACKET       [`RS_SZ-1:0] rs_data_next,        // The entire RS data 
@@ -28,7 +30,7 @@ module rs #(
 );
 
     RS_PACKET           [`RS_SZ-1:0] rs_data;        // 1 if RS data is valid <-- Coded
-    RS_PACKET           [`RS_SZ-1:0] rs_data_next_next;   // TODO::: DO NNOT CHANGE OR ELSE!!!!!!
+    RS_PACKET           [`RS_SZ-1:0] rs_data_next_next;
     logic [`RS_SZ-1:0] rs_valid, next_rs_valid;
     //TODO Need to handle corner case where RS_SZ is odd - maybe with genvar
 
@@ -65,8 +67,9 @@ module rs #(
         rs_data_next = rs_data;
 
         for(int i = 0; i < `RS_SZ; ++i) begin
-            //resolving mask
+            //resolving masks 
             rs_data_next[i].b_mask = rs_data[i].b_mask & ~(b_mm_resolve);
+            rs_data_next[i].sq_mask = rs_data[i].sq_mask & ~(store_mask);
         end
         for(int i = 0; i < `RS_SZ; ++i) begin
             //squashing step
