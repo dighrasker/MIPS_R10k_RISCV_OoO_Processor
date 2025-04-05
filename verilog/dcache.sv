@@ -84,6 +84,7 @@ module dcache (
     MSHR_IDX                         store_mshr_idx;
 
     logic [`MSHR_NUM_ENTRIES_BITS-1:0] mshr_spots;
+    logic                              mshr_allocated;                         
 
     
     // ---- DCACHE WIRES ---- //
@@ -91,13 +92,18 @@ module dcache (
     DCACHE_META_DATA [`DCACHE_NUM_SETS-1:0] [`DCACHE_NUM_WAYS-1:0] dcache_meta_data, next_dcache_meta_data;
     DCACHE_WAY_IDX [`DCACHE_NUM_SETS-1:0] dcache_lru_idx;
     
-    
     logic                                load_dcache_hit;
     DCACHE_IDX                           load_dcache_idx;
     logic                                store_dcache_hit;
     DCACHE_IDX                           store_dcache_idx;
 
-    logic                                dirty_dcache_lru;
+    DCACHE_IDX                           dcache_idx;
+    DATA                           [1:0] dcache_data_out;
+    logic                                dcache_rd_en;
+    logic                                dcache_wr_en;
+    DATA                           [1:0] dcache_wr_data;
+
+    
 
     // ----- VCACHE WIRES ---- //
     VCACHE_META_DATA [`VCACHE_LINES-1:0] vcache_meta_data, next_vcache_meta_data;
@@ -107,7 +113,12 @@ module dcache (
     VCACHE_IDX                           load_vcache_idx;
     logic                                store_vcache_hit;
     VCACHE_IDX                           store_vcache_idx;
-    logic                                dirty_vcache_lru;
+
+    VCACHE_IDX                           vcache_idx;
+    DATA                           [1:0] vcache_data_out;
+    logic                                vcache_rd_en;
+    logic                                vcache_wr_en;
+    DATA                           [1:0] vcache_wr_data;
 
     // --------     
 
@@ -118,6 +129,9 @@ module dcache (
     logic mshr_full;
     assign mshr_full = mshr_spots == 0;
 
+    logic  dirty_dcache_lru, dirty_vcache_lru;
+    assign dirty_dcache_lru = dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].dirty;
+    assign dirty_vcache_lru = vcache_meta_data[vcache_lru_idx].dirty;
     logic full_eviction;
     assign full_eviction = dirty_dcache_lru && dirty_vcache_lru && (wb_buffer.spots == 0);
 
@@ -129,12 +143,12 @@ module dcache (
     dcache_mem (
         .clock(clock),
         .reset(reset),
-        .re   (1'b1),
-        .raddr(current_index),
-        .rdata(Icache_data_out),
-        .we   (got_mem_data),
-        .waddr(current_index),
-        .wdata(Imem2proc_data)
+        .re   (dcache_rd_en),
+        .raddr(dcache_idx),
+        .rdata(dcache_data_out),
+        .we   (dcache_wr_en),
+        .waddr(dcache_idx),
+        .wdata(dcache_wr_data)
     );
 
     memDP #(
@@ -145,19 +159,103 @@ module dcache (
     vcache_mem (
         .clock(clock),
         .reset(reset),
-        .re   (1'b1),
-        .raddr(current_index),
-        .rdata(Icache_data_out),
-        .we   (got_mem_data),
-        .waddr(current_index),
-        .wdata(Imem2proc_data)
+        .re   (vcache_rd_en),
+        .raddr(vcache_idx),
+        .rdata(vcache_data_out),
+        .we   (vcache_wr_en),
+        .waddr(vcache_idx),
+        .wdata(vcache_wr_data)
     );
 
+    // choose who gets the read/write ports
+    always_comb begin
+        dcache_idx = '0;
+        dcache_rd_en = 1'b0;
+        dcache_wr_en = 1'b0;
+        dcache_wr_data = '0;
+
+        vcache_idx = '0;
+        vcache_rd_en = 1'b0;
+        vcache_wr_en = 1'b0;
+        vcache_wr_data = '0;
+
+        load_data_cache_packet = '0;
+
+        if (load_dcache_hit) begin
+            dcache_idx = load_dcache_idx;
+            load_data_cache_packet = 
+        end else if (load_vcache_hit) begin
+            dcache_rd_en = 1'b1;
+            dcache_wr_en = 1'b1;
+            vcache_rd_en = 1'b1;
+            vcache_wr_en = 1'b1;
+
+            dcache_index = dcache_lru_idx[load_req_addr.addr.dcache.set_idx]
+            vcache_index = vcache_lru_idx;
+            dcache_wr_data = vcache_data_out;
+            vcache_wr_data = dcache_data_out;
+
+        end else if (store_dcache_hit) begin
+
+        end else if (store_vcache_hit) begin
+            
+        end else if ((mshr_true_head != mshr_head || mshr_spots == 0) && (!full_eviction || (dcache_mem_req_accepted && mshr_allocated))) begin
+            dcache_idx = (mshrs[mshr_true_head].addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx];
+            if () begin
+
+            end
+        end
+    end
+
+    // Find the LRU index for each set in the dcache
+    generate
+    genvar i;
+    genvar j;
+
+    for (i = 0; i < `DCACHE_NUM_SETS; ++i) begin
+        logic [`DCACHE_NUM_WAYS-1:0] lru_gnt_line;
+        logic [`DCACHE_NUM_WAYS-1:0] requests;
+
+        for(j = 0; j < `DCACHE_NUM_WAYS; ++j) begin
+            assign requests[j] = dcache_meta_data[i][j].lru == 0;
+        end
+        
+        psel_gen #(
+            .WIDTH(`DCACHE_NUM_WAYS),
+            .REQS(1)
+        ) lru_psel (
+            .req(requests),
+            .gnt(lru_gnt_line)
+        );
+
+        encoder #(`DCACHE_NUM_WAYS, `DCACHE_WAY_IDX_BITS) lru_idx_encoder (lru_gnt_line, dcache_lru_idx[i]);
+    end
+
+    endgenerate
+
+    // Find the LRU index for the vcache
+    logic [`VCACHE_NUM_WAYS-1:0] vcache_lru_gnt_line;
+    logic [`VCACHE_NUM_WAYS-1:0] vcache_lru_requests;
+    for(j = 0; j < `VCACHE_NUM_WAYS; ++j) begin
+        assign vcache_lru_requests[j] = vcache_meta_data[i][j].lru == 0;
+    end
+    
+    psel_gen #(
+        .WIDTH(`VCACHE_NUM_WAYS),
+        .REQS(1)
+    ) lru_psel (
+        .req(vcache_lru_requests),
+        .gnt(vcache_lru_gnt_line)
+    );
+
+    encoder #(`VCACHE_NUM_WAYS, `VCACHE_WAY_IDX_BITS) lru_idx_encoder (vcache_lru_gnt_line, vcache_lru_idx);
+
+    // TODO:: MAKE SURE THIS IS UPDATED
     always_comb begin
     //Set LRU ? ? ? ? ? ? ?sus
         if (load_dcache_hit) begin
             for (int i = 0; i < `DCACHE_NUM_WAYS; ++i) begin
-                next_dcache_meta_data[load_req_addr.dcache.set_idx][load_dcache_idx] = `DCACHE_NUM_WAYS-1;
+                next_dcache_meta_data[load_req_addr.dcache.set_idx][load_dcache_idx].lru = `DCACHE_NUM_WAYS-1;
                 if (dcache_meta_data[i].lru > dcache_meta_data[load_req_addr.dcache.set_idx].lru) begin
                     next_dcache_meta_data[i].lru--;
                 end
@@ -177,15 +275,6 @@ module dcache (
             end
         end 
     end
-    
-    // find lru of dcache
-    always_comb begin
-        for (int i = 0; i < `DCACHE_NUM_SETS; ++i) begin
-            for (int j = 0; j < `DCACHE_NUM_WAYS; ++j) begin
-                if ()
-            end
-        end
-    end
 
     // cam that dcache shi
     always_comb begin
@@ -194,15 +283,15 @@ module dcache (
         load_dcache_idx = 0;
         store_dcache_idx = 0;
         for (int i = 0; i < `DCACHE_NUM_WAYS; ++i) begin
-            if (load_req_valid && dcache_meta_data[load_req_addr.dcache.set_idx][i].addr.dcache.tag == load_req_addr.dcache.tag) begin
+            if (load_req_valid && dcache_meta_data[load_req_addr.dcache.set_idx][i].tag == load_req_addr.dcache.tag && dcache_meta_data[load_req_addr.dcache.set_idx][i].valid) begin
                 load_dcache_hit = 1;
-                load_dcache_idx = (load_req_addr.dcache.set_idx * `DCACHE_NUM_WAYS) + i;
+                load_dcache_idx = (load_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + i;
             end
         end
         for (int i = 0; i < `DCACHE_NUM_WAYS; ++i) begin
-            if (store_req_valid && dcache_meta_data[store_req_addr.dcache.set_idx][i].addr.dcache.tag == store_req_addr.dcache.tag) begin
+            if (store_req_valid && dcache_meta_data[store_req_addr.dcache.set_idx][i].tag == store_req_addr.dcache.tag && dcache_meta_data[store_req_addr.dcache.set_idx][i].tag) begin
                 store_dcache_hit = 1;
-                store_dcache_idx = (store_req_addr.dcache.set_idx * `DCACHE_NUM_WAYS) + i;
+                store_dcache_idx = (store_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + i;
             end
         end
     end
@@ -253,22 +342,19 @@ module dcache (
         store_wb_hit = 1'b0;
         store_wb_idx = '0;
         for (int i = 0; i < `WB_LINES; ++i) begin
-            if(load_req_valid && wb_buffer[i].addr.dw.addr == load_req_addr.dw.addr) begin
-                load_wb_hit = 1'b1;
-                load_wb_idx = i; 
-            end       
-            if (store_req_valid && wb_buffer[i].addr.dw.addr == store_req_addr.dw.addr) begin
-                store_wb_hit = 1'b1;
-                store_wb_idx = i; 
+            if (i < `WB_LINES - wb_spots) begin
+                if(load_req_valid && wb_buffer[(wb_head + i) % `WB_LINES].addr.dw.addr == load_req_addr.dw.addr) begin
+                    load_wb_hit = 1'b1;
+                    load_wb_idx = (wb_head + i) % `WB_LINES; 
+                end       
+                if (store_req_valid && wb_buffer[(wb_head + i) % `WB_LINES].addr.dw.addr == store_req_addr.dw.addr) begin
+                    store_wb_hit = 1'b1;
+                    store_wb_idx = (wb_head + i) % `WB_LINES; 
+                end
             end
         end
     end
 
-    // find dcache lru
-    always_comb begin
-
-
-    end
 
     always_ff @(posedge clock) begin
         if (reset) begin
