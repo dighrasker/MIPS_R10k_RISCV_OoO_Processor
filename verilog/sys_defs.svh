@@ -30,7 +30,6 @@
 `define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]
 `define HISTORY_BITS 5
 `define BTB_NUM_WAYS 4
-`define CACHE_NUM_WAYS 4
 
 // functional units (you should decide if you want more or fewer types of FUs)
 `define NUM_FU_BRANCH 1
@@ -59,13 +58,9 @@
 `define PHYS_REG_NUM_ENTRIES_BITS $clog2(`PHYS_REG_SZ_R10K + 1)
 `define CDB_ARBITER_SZ `RS_SZ + `NUM_FU_MULT + `LOAD_BUFFER_SZ
 `define BTB_SZ 64
-`define CACHE_SZ 256
 `define BTB_NUM_SETS `BTB_SZ / `BTB_NUM_WAYS
-`define CACHE_NUM_SETS `CACHE_SZ / `CACHE_NUM_WAYS
 `define BTB_SET_IDX_BITS $clog2(`BTB_NUM_SETS)
-`define CACHE_SET_IDX_BITS $clog2(`CACHE_NUM_SETS)
 `define BTB_TAG_BITS 32 - `BTB_SET_IDX_BITS - 2
-`define CACHE_TAG_BITS 32 - `CACHE_SET_IDX_BITS - 2
 `define BTB_NUM_ENTRIES_BITS $clog2(`BTB_NUM_WAYS + 1)    
 `define BTB_LRU_BITS $clog2(`BTB_NUM_WAYS)
 `define NUM_SQ_BITS $clog2(`SQ_SZ+1)
@@ -73,6 +68,7 @@
 `define LOAD_BUFFER_SZ 4
 `define PHT_SZ 2 ** `HISTORY_BITS
 `define CTR_SZ 2 
+
 
 // EDITED HERE
 `define ROB_ENTRY_ID_BITS $clog2(`ROB_SZ)
@@ -215,9 +211,39 @@ typedef union packed {
 `define NUM_MEM_TAGS 15
 typedef logic [3:0] MEM_TAG;
 
+`define DCACHE_SET_IDX_BITS $clog2(`DCACHE_NUM_SETS)
+`define ICACHE_SET_IDX_BITS $clog2(`ICACHE_NUM_SETS)
+
 // icache definitions
+`define ICACHE_NUM_WAYS 4
 `define ICACHE_LINES 32
+`define ICACHE_NUM_SETS `ICACHE_LINES / `ICACHE_NUM_WAYS
 `define ICACHE_LINE_BITS $clog2(`ICACHE_LINES)
+`define ICACHE_TAG_BITS 32 - `ICACHE_SET_IDX_BITS - 3
+`define ICACHE_LRU_BITS $clog2(`ICACHE_NUM_WAYS)
+typedef logic [`ICACHE_TAG_BITS-1:0] ICACHE_TAG;
+
+// dcache definitions
+`define DCACHE_NUM_WAYS 4
+`define DCACHE_LINES 32
+`define DCACHE_NUM_SETS `DCACHE_LINES / `DCACHE_NUM_WAYS
+`define DCACHE_LINE_BITS $clog2(`DCACHE_LINES)
+`define DCACHE_TAG_BITS 32 - `DCACHE_SET_IDX_BITS - 3
+`define DCACHE_LRU_BITS $clog2(`DCACHE_NUM_WAYS)
+typedef logic [`DCACHE_TAG_BITS-1:0] DCACHE_TAG; 
+
+// vcache definitions
+`define VCACHE_NUM_WAYS 4
+`define VCACHE_LINES 4
+`define VCACHE_NUM_SETS `VCACHE_LINES / `VCACHE_NUM_WAYS
+`define VCACHE_LINE_BITS $clog2(`VCACHE_LINES)
+`define VCACHE_TAG_BITS 32 - `VCACHE_SET_IDX_BITS - 3
+`define VCACHE_LRU_BITS $clog2(`VCACHE_NUM_WAYS)
+typedef logic [`VCACHE_TAG_BITS-1:0] VCACHE_TAG; 
+
+// WB buffer definitions
+`define WB_LINE 4 //restircted to 4 mem blocks (lines)
+`define WB_LINE_BITS $clog2(`WB_LINE)
 
 `define MEM_SIZE_IN_BYTES (64*1024)
 `define MEM_64BIT_LINES   (`MEM_SIZE_IN_BYTES/8)
@@ -245,10 +271,10 @@ typedef enum logic [1:0] {
 } MEM_COMMAND;
 
 // icache tag struct
-typedef struct packed {
-    logic [12-`ICACHE_LINE_BITS:0] tags;
-    logic                          valid;
-} ICACHE_TAG;
+// typedef struct packed {
+//     logic [12-`ICACHE_LINE_BITS:0] tags;
+//     logic                          valid;
+// } ICACHE_TAG;
 
 ///////////////////////////////
 // ---- Exception Codes ---- //
@@ -847,6 +873,57 @@ const STORE_QUEUE_PACKET NOP_STORE_QUEUE_PACKET = '{
     result:             '0,
     byte_mask:          '0
 };
+
+typedef struct packed {
+    logic           valid;
+    BYTE_MASK [1:0] byte_mask;
+    DATA      [1:0] data;
+    MSHR_IDX        mshr_idx;
+} LOAD_DATA_CACHE_PACKET;
+
+typedef struct packed {
+    logic           valid;
+    MSHR_IDX        mshr_idx;
+    DATA      [1:0] data;
+} LOAD_BUFFER_CACHE_PACKET;
+
+typedef struct packed {
+    logic           valid;
+    ADDR            addr;
+    DATA      [1:0] data;
+} MEM_REQ_PACKET;
+
+typedef struct packed {
+    MEM_TAG         mem_data_tag;
+    DATA      [1:0] data;
+} MEM_DATA_PACKET;
+
+typedef struct packed {
+    ADDR            addr;
+    DATA      [1:0] data;
+} WB_ENTRY;
+
+typedef struct packed {
+    ADDR            addr;
+    DATA      [1:0] data;
+} ICACHE_MSHR_ENTRY;
+
+typedef struct packed {
+    ADDR            addr;
+    DATA      [1:0] data;
+    BYTE_MASK [1:0] byte_mask;
+} DCACHE_MSHR_ENTRY;
+
+typedef struct packed {
+    DCACHE_TAG      dcache_tag;
+} DCACHE_META_DATA;
+
+typedef struct packed {
+    BTB_TAG         btb_tag;
+    BTB_LRU         btb_lru;
+    logic           valid;
+    ADDR            target_PC;
+} BTB_ENTRY;
 
 typedef struct packed {
     logic nothong;

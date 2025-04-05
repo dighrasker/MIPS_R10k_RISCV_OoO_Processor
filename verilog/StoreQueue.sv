@@ -16,7 +16,7 @@ module store_queue #(
     
     // ------------- TO/FROM Load Unit -------------- //
     input SQ_POINTER                        load_sq_tail,
-    input ADDR                              load_addr,
+    input ADDR                              load_req_addr,
     output DATA                             sq_load_data,
     output BYTE_MASK                        sq_data_mask,
 
@@ -26,10 +26,10 @@ module store_queue #(
     input   SQ_MASK                         sq_mask_restore,
 
     // ------------- TO/FROM D Cache-------------- //
-    input logic                             cache_store_accepted,
-    output logic                            cache_store_valid,
-    output DATA                             cache_store_data, 
-    output ADDR                             cache_store_addr,
+    input logic                             store_req_accepted,
+    output logic                            store_req_valid,
+    output DATA                             store_req_data, 
+    output ADDR                             store_req_addr,
 
     // ------------- TO/FROM Retire -------------- //
     input logic                 [`NUM_SCALAR_BITS-1:0] num_store_retiring
@@ -46,18 +46,18 @@ module store_queue #(
     logic [`SQ_NUM_ENTRIES_BITS-1:0] sq_mask, next_sq_mask;
 
     assign sq_mask_combinational = sq_mask & (~resolving_sq_mask);
-    assign next_store_buffer_entries = store_buffer_entries + num_store_retiring - cache_store_accepted;
-    assign cache_store_data          = store_queue[true_head].store_result;
-    assign cache_store_addr          = store_queue[true_head].store_addr;
-    assign cache_store_valid         = store_buffer_entries != 0;
-    assign next_true_head            = true_head + cache_store_accepted;
+    assign next_store_buffer_entries = store_buffer_entries + num_store_retiring - store_req_accepted;
+    assign store_req_data            = store_queue[true_head].store_result;
+    assign store_req_addr            = store_queue[true_head].store_addr;
+    assign store_req_valid           = store_buffer_entries != 0;
+    assign next_true_head            = true_head + store_req_accepted;
     assign next_head                 = (head + num_sq_retiring) % `SQ_SZ;
     assign next_tail                 = sq_restore_valid ? sq_tail_restore : (sq_tail + stores_dispatching);
     assign sq_spots                  = (`SQ_SZ - sq_entries < `N) ? `SQ_SZ - sq_entries : `N;
 
     assign next_sq_entries           = sq_restore_valid ? (next_head ^ sq_tail_restore) == (1'b1 << `SQ_IDX_BITS) ? `SQ_SZ : 
                                                                                   sq_tail_restore.sq_idx - next_head.sq_id : 
-                                                                      sq_entries + stores_dispatching - cache_store_accepted;  // if restore valid -> if only parities different -> full
+                                                                      sq_entries + stores_dispatching - store_req_accepted;  // if restore valid -> if only parities different -> full
                                                                                                                               //                  -> else -> size = difference between indices
                                                                                                                               // else calculate with entries
 
@@ -79,7 +79,7 @@ module store_queue #(
         always_comb begin
             //address checking
             for(int j = 0; j < `SQ_SZ; ++j) begin
-                byte_matches[j] = (load_addr.w.addr == store_queue[j].addr.w.addr) && store_queue[j].byte_mask[i];
+                byte_matches[j] = (load_req_addr.w.addr == store_queue[j].addr.w.addr) && store_queue[j].byte_mask[i];
             end
 
             //rotation logic

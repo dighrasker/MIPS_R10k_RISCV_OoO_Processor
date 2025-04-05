@@ -62,7 +62,6 @@ module icache (
 
     // ---- Cache data ---- //
 
-    ICACHE_TAG [`ICACHE_LINES-1:0] icache_tags;
 
     memDP #(
         .WIDTH     ($bits(MEM_BLOCK)),

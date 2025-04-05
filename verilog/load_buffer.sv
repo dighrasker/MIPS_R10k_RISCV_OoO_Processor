@@ -9,8 +9,7 @@ module load_buffer(
     output  logic                                 load_buffer_free,
 
     // ------------- TO/FROM CACHE -------------- //
-    input   logic                                 mshr_valid,
-    input   MSHR_IDX                              mshr_idx,
+    input   LOAD_BUFFER_CACHE_PACKET              load_buffer_cache_packet,
     input   DATA                            [1:0] mshr_data,    // Cachelines are doubles
 
     // ------------- TO/FROM ISSUE -------------- //
@@ -59,10 +58,10 @@ module load_buffer(
         end
 
         for (int i = 0; i < `LOAD_BUFFER_SZ; ++i) begin
-            if (mshr_valid && load_buffer[i].mshr_idx == mshr_idx) begin
+            if (load_buffer_cache_packet.valid && load_buffer[i].mshr_idx == load_buffer_cache_packet.mshr_idx) begin
                 for (int j = 0; j < 4; j++) begin
                     if (load_buffer[i].byte_mask[j]) begin
-                        next_load_buffer[i].result.bytes[j] = mshr_data[load_buffer[i].dw.w_idx].bytes[j];
+                        next_load_buffer[i].result.bytes[j] = load_buffer_cache_packet.data[load_buffer[i].dw.w_idx].bytes[j];
                         next_load_buffer[i].byte_mask[j] = 1'b0;
                     end
                 end

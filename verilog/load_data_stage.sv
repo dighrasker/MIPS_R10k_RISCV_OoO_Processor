@@ -9,17 +9,14 @@ module load_data_stage (
     output logic                    load_data_free,
     
     // ------------ TO/FROM CACHE ------------- //
-    input logic                     cache_load_accepted,
-    input DATA                [1:0] cache_load_data,
-    input BYTE_MASK           [1:0] cache_data_mask,
-    input MSHR_IDX                  cache_mshr_idx,
-    output logic                    load_valid,
+    input LOAD_DATA_CACHE_PACKET    load_data_cache_packet,
+    output logic                    load_req_valid,
 
     // ------------ TO/FROM STORE QUEUE ------------- //
     input DATA                      sq_load_data,
     input BYTE_MASK                 sq_data_mask,
     output SQ_IDX                   load_sq_tail,
-    output ADDR                     load_addr, //also goes to cache
+    output ADDR                     load_req_addr, //also goes to cache
     
     // ------------ TO LOAD BUFFER ------------- //
     output LOAD_BUFFER_PACKET       load_buffer_packet
@@ -28,17 +25,16 @@ module load_data_stage (
     LOAD_DATA_PACKET load_data_packet;
 
     //ldback press
-    assign load_data_free = !load_data_packet.valid | cache_load_accepted;
+
+    // TODO: make sure this logic is correct
+    assign load_data_free = !load_data_packet.valid || load_data_cache_packet.valid || !load_buffer_packet.byte_mask;
     assign load_addr = load_data_packet.load_addr;
-    assign load_valid = load_data_packet.valid;
+    assign load_req_valid = load_data_packet.valid;
     assign load_sq_tail = load_data_packet.sq_tail;
 
-    
-    
     always_comb begin
-        load_buffer_packet.mshr_idx = cache_mshr_idx;
+        load_buffer_packet.mshr_idx = load_data_cache_packet.mshr_idx
         load_buffer_packet.bm = load_data_packet.bm;
-        load_buffer_packet.valid = load_data_packet.valid;
         load_buffer_packet.dest_reg_idx = load_data_packet.dest_reg_idx;
         load_buffer_packet.load_addr = load_data_packet.load_addr;
         load_buffer_packet.load_func = load_data_packet.load_func;
@@ -49,12 +45,15 @@ module load_data_stage (
                 if (sq_data_mask[i]) begin
                     load_buffer_packet.result.bytes[i] = sq_load_data.bytes[i];
                     load_buffer_packet.byte_mask[i] = 1'b0;
-                end else if (cache_data_mask[load_data_packet.load_addr.dw.w_idx][i]) begin
-                    load_buffer_packet.result.bytes[i] = cache_load_data[load_data_packet.load_addr.dw.w_idx].bytes[i];
+                end else if (load_data_cache_packet.byte_mask[load_data_packet.load_addr.dw.w_idx][i]) begin
+                    load_buffer_packet.result.bytes[i] = load_data_cache_packet.data[load_data_packet.load_addr.dw.w_idx].bytes[i];
                     load_buffer_packet.byte_mask[i] = 1'b0;
                 end
             end 
         end
+
+        // TODO: make sure this logic is correct
+        load_buffer_packet.valid = load_data_packet.valid && (load_data_cache_packet.valid || !load_buffer_packet.byte_mask);
 
         if (b_mm_resolve & load_data_packet.bm) begin
             load_buffer_packet.bm = load_data_packet.bm & ~(b_mm_resolve);

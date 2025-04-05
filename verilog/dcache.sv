@@ -34,43 +34,60 @@
  * feature points, but will require careful management of memory tags.
  */
 
-module dcahce (
+module dcache (
     input clock,
     input reset,
 
-    // From memory
-    input MEM_TAG   Imem2proc_transaction_tag, // Should be zero unless there is a response
-    input MEM_BLOCK Imem2proc_data,
-    input MEM_TAG   Imem2proc_data_tag,
+    // ------------------- LOAD DATA STAGE --------------- //
+    input logic                             load_req_valid,
+    input ADDR                              load_req_addr,
+    output LOAD_DATA_CACHE_PACKET           load_data_cache_packet,        
 
-    // From fetch stage
-    input ADDR proc2Icache_addr,
+    // ------------------- LOAD BUFFER --------------- //
+    output LOAD_BUFFER_CACHE_PACKET         load_buffer_cache_packet,
+    
+    // ------------------- STORE UNIT --------------- //
+    input logic                             store_req_valid,
+    input ADDR                              store_req_addr,
+    input DATA                              store_req_data,
+    input SQ_MASK                           store_req_byte_mask,
+    output logic                            store_req_accepted,
 
-    // To memory
-    output MEM_COMMAND proc2Imem_command,
-    output ADDR        proc2Imem_addr,
-
-    // To fetch stage
-    output MEM_BLOCK Icache_data_out, // Data is mem[proc2Icache_addr]
-    output logic     Icache_valid_out // When valid is high
+    // ------------------ MAIN MEM ------------------- //
+    input logic                             dcache_mem_req_accepted,
+    input MEM_TAG                           dcache_mem_trxn_tag,
+    input MEM_DATA_PACKET                   mem_data_packet,
+    output MEM_REQ_PACKET                   dcache_mem_req_packet
 );
-
+    
     // Note: cache tags, not memory tags
-    logic [12-`ICACHE_LINE_BITS:0] current_tag,   last_tag;
-    logic [`ICACHE_LINE_BITS -1:0] current_index, last_index;
-    logic                          got_mem_data;
+    logic [12-`DCACHE_LINE_BITS:0] current_tag,   last_tag;
+    logic [`DCACHE_LINE_BITS -1:0] current_idx, last_idx;
+    logic                          got_mem_data; 
 
+    // ------- WB BUFFER WIRES -------- //
+    
+    WB_ENTRY [`WB_LINE-1:0] wb_buffer, next_wb_buffer; 
+    WB_LINE_BITS wb_head, next_wb_head;
+    WB_LINE_BITS wb_tail, next_wb_tail; 
 
-    // ---- Cache data ---- //
+    // ------- MSHR WIRES -------- //
+    
+    DCACHE_MSHR_ENTRY [`MSHR_SZ-1:0] mshrs, next_mshrs; 
+    MSHR_IDX mshr_true_head, next_mshr_true_head;
+    MSHR_IDX mshr_head, next_mshr_head; 
+    MSHR_IDX mshr_tail, next_mshr_tail; 
+    
+    // ---- DCACHE META DATA WIRES ---- //
 
-    ICACHE_TAG [`ICACHE_LINES-1:0] icache_tags;
+    DCACHE_META_DATA [`DCACHE_LINES-1:0] dcache_tags;
 
     memDP #(
         .WIDTH     ($bits(MEM_BLOCK)),
-        .DEPTH     (`ICACHE_LINES),
+        .DEPTH     (`DCACHE_LINES),
         .READ_PORTS(1),
         .BYPASS_EN (0))
-    icache_mem (
+    dcache_mem (
         .clock(clock),
         .reset(reset),
         .re   (1'b1),
@@ -80,7 +97,22 @@ module dcahce (
         .waddr(current_index),
         .wdata(Imem2proc_data)
     );
-    
+
+    memDP #(
+        .WIDTH     ($bits(MEM_BLOCK)),
+        .DEPTH     (`VCACHE_LINES), 
+        .READ_PORTS(1),
+        .BYPASS_EN (0))
+    vcache_mem (
+        .clock(clock),
+        .reset(reset),
+        .re   (1'b1),
+        .raddr(current_index),
+        .rdata(Icache_data_out),
+        .we   (got_mem_data),
+        .waddr(current_index),
+        .wdata(Imem2proc_data)
+    ); 
 
     // ---- Addresses and final outputs ---- //
 
