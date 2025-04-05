@@ -65,6 +65,7 @@
 `define BTB_LRU_BITS $clog2(`BTB_NUM_WAYS)
 `define NUM_SQ_BITS $clog2(`SQ_SZ+1)
 `define MSHR_IDX_BITS $clog2(`MSHR_SZ)
+`define MSHR_NUM_ENTRIES_BITS $clog2(`MSHR_SZ+1)
 `define LOAD_BUFFER_SZ 4
 `define PHT_SZ 2 ** `HISTORY_BITS
 `define CTR_SZ 2 
@@ -173,6 +174,18 @@ typedef union packed {
         logic                     [1:0]  offset;
     } dw;
 
+    struct packed {
+        logic                    [31:`DCACHE_SET_IDX_BITS+2] tag;
+        logic                    [`DCACHE_SET_IDX_BITS+2-1:2] set_idx;
+        logic                    [1:0] offset;
+    } dcache;
+
+    struct packed {
+        logic                    [31:`ICACHE_SET_IDX_BITS+2] tag;
+        logic                    [`ICACHE_SET_IDX_BITS+2-1:2] set_idx;
+        logic                    [1:0] offset;
+    } icache;
+
     // struct packed {
     //     logic [31:] tag;
     //     logic  [`BTB_SET_IDX_BITS+1:2] set_idx;
@@ -211,6 +224,9 @@ typedef union packed {
 `define NUM_MEM_TAGS 15
 typedef logic [3:0] MEM_TAG;
 
+`define MEM_SIZE_IN_BYTES (64*1024)
+`define MEM_64BIT_LINES   (`MEM_SIZE_IN_BYTES/8)
+
 `define DCACHE_SET_IDX_BITS $clog2(`DCACHE_NUM_SETS)
 `define ICACHE_SET_IDX_BITS $clog2(`ICACHE_NUM_SETS)
 
@@ -220,8 +236,11 @@ typedef logic [3:0] MEM_TAG;
 `define ICACHE_NUM_SETS `ICACHE_LINES / `ICACHE_NUM_WAYS
 `define ICACHE_LINE_BITS $clog2(`ICACHE_LINES)
 `define ICACHE_TAG_BITS 32 - `ICACHE_SET_IDX_BITS - 3
-`define ICACHE_LRU_BITS $clog2(`ICACHE_NUM_WAYS)
+`define ICACHE_WAY_IDX_BITS $clog2(`ICACHE_NUM_WAYS)
 typedef logic [`ICACHE_TAG_BITS-1:0] ICACHE_TAG;
+typedef logic [`ICACHE_WAY_IDX_BITS-1:0] ICACHE_LRU;
+typedef logic [`ICACHE_WAY_IDX_BITS-1:0] ICACHE_WAY_IDX;
+typedef logic [`ICACHE_LINE_BITS-1:0] ICACHE_IDX;
 
 // dcache definitions
 `define DCACHE_NUM_WAYS 4
@@ -229,24 +248,25 @@ typedef logic [`ICACHE_TAG_BITS-1:0] ICACHE_TAG;
 `define DCACHE_NUM_SETS `DCACHE_LINES / `DCACHE_NUM_WAYS
 `define DCACHE_LINE_BITS $clog2(`DCACHE_LINES)
 `define DCACHE_TAG_BITS 32 - `DCACHE_SET_IDX_BITS - 3
-`define DCACHE_LRU_BITS $clog2(`DCACHE_NUM_WAYS)
+`define DCACHE_WAY_IDX_BITS $clog2(`DCACHE_NUM_WAYS)
 typedef logic [`DCACHE_TAG_BITS-1:0] DCACHE_TAG; 
+typedef logic [`DCACHE_WAY_IDX_BITS-1:0] DCACHE_LRU;
+typedef logic [`DCACHE_WAY_IDX_BITS-1:0] DCACHE_WAY_IDX;
+typedef logic [`DCACHE_LINE_BITS-1:0] DCACHE_IDX;
 
 // vcache definitions
 `define VCACHE_NUM_WAYS 4
 `define VCACHE_LINES 4
 `define VCACHE_NUM_SETS `VCACHE_LINES / `VCACHE_NUM_WAYS
 `define VCACHE_LINE_BITS $clog2(`VCACHE_LINES)
-`define VCACHE_TAG_BITS 32 - `VCACHE_SET_IDX_BITS - 3
-`define VCACHE_LRU_BITS $clog2(`VCACHE_NUM_WAYS)
-typedef logic [`VCACHE_TAG_BITS-1:0] VCACHE_TAG; 
+typedef logic [`VCACHE_LINE_BITS-1:0] VCACHE_LRU;
+typedef logic [`VCACHE_LINE_BITS-1:0] VCACHE_IDX;
 
 // WB buffer definitions
-`define WB_LINE 4 //restircted to 4 mem blocks (lines)
-`define WB_LINE_BITS $clog2(`WB_LINE)
-
-`define MEM_SIZE_IN_BYTES (64*1024)
-`define MEM_64BIT_LINES   (`MEM_SIZE_IN_BYTES/8)
+`define WB_LINES 4 //restricted to 4 mem blocks (lines)
+`define WB_NUM_ENTRIES_BITS $clog2(`WB_LINES+1)
+`define WB_LINE_BITS $clog2(`WB_LINES)
+typedef logic [`WB_LINE_BITS-1:0] WB_IDX;
 
 // A memory or cache block
 typedef union packed {
@@ -915,8 +935,25 @@ typedef struct packed {
 } DCACHE_MSHR_ENTRY;
 
 typedef struct packed {
-    DCACHE_TAG      dcache_tag;
+    logic           valid;
+    ICACHE_TAG      tag;
+    ICACHE_LRU      lru;
+    logic           dirty;
+} ICACHE_META_DATA;
+
+typedef struct packed {
+    logic           valid;
+    DCACHE_TAG      tag;
+    DCACHE_LRU      lru;
+    logic           dirty;
 } DCACHE_META_DATA;
+
+typedef struct packed {
+    logic           valid;
+    ADDR            addr;
+    VCACHE_LRU      lru;
+    logic           dirty;
+} VCACHE_META_DATA;
 
 typedef struct packed {
     BTB_TAG         btb_tag;
