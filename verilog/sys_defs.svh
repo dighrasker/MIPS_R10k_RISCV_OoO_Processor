@@ -785,17 +785,17 @@ typedef struct packed {
     FU_TYPE                     [`N-1:0] fu_type;
 } DISPATCH_DEBUG;
 
-typedef struct packed {
-    BTB_TAG         btb_tag;
-    BTB_LRU         btb_lru;
-    logic           valid;
-    ADDR            target_PC;
-} BTB_ENTRY;
+// typedef struct packed {
+//     BTB_TAG         btb_tag;
+//     BTB_LRU         btb_lru;
+//     logic           valid;
+//     ADDR            target_PC;
+// } BTB_ENTRY;
 
-typedef struct packed {
-    BTB_ENTRY [`BTB_NUM_WAYS-1:0] btb_entries;
-    BTB_NUM_ENTRY num_entry;
-} BTB_SET_PACKET;
+// typedef struct packed {
+//     BTB_ENTRY [`BTB_NUM_WAYS-1:0] btb_entries;
+//     BTB_NUM_ENTRY num_entry;
+// } BTB_SET_PACKET;
 
 typedef struct packed {
     logic place_holder_btb;
@@ -817,7 +817,7 @@ const LOAD_ADDR_PACKET NOP_LOAD_ADDR_PACKET = '{
     source_reg_2:       '0,
     dest_reg_idx:       '0,       // not used but might be good for identification purposes
     bm:                 '0,
-    sq_tail:            '0.
+    sq_tail:            '0,
     load_func:          '0
 };
 
@@ -914,7 +914,7 @@ typedef struct packed {
 } MEM_REQ_PACKET;
 
 typedef struct packed {
-    MEM_TAG         mem_data_tag;
+    MEM_TAG         mem_tag;
     DATA      [1:0] data;
 } MEM_DATA_PACKET;
 
@@ -924,11 +924,14 @@ typedef struct packed {
 } WB_ENTRY;
 
 typedef struct packed {
+    logic           dirty;
     ADDR            addr;
     DATA      [1:0] data;
 } ICACHE_MSHR_ENTRY;
 
 typedef struct packed {
+    logic           dirty;
+    MEM_TAG         mem_tag;
     ADDR            addr;
     DATA      [1:0] data;
     BYTE_MASK [1:0] byte_mask;
@@ -936,14 +939,15 @@ typedef struct packed {
 
 typedef struct packed {
     logic           valid;
-    ICACHE_TAG      tag;
+    MEM_TAG         mem_tag;
+    ADDR            addr;
     ICACHE_LRU      lru;
     logic           dirty;
 } ICACHE_META_DATA;
 
 typedef struct packed {
     logic           valid;
-    DCACHE_TAG      tag;
+    ADDR            addr;
     DCACHE_LRU      lru;
     logic           dirty;
 } DCACHE_META_DATA;
