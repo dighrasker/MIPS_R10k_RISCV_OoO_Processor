@@ -69,9 +69,10 @@ module dcache (
     WB_IDX                           load_wb_idx;
     logic                            store_wb_hit;
     WB_IDX                           store_wb_idx;
-    logic [`WB_NUM_ENTRIES_BITS-1:0] wb_spots;
+    logic [`WB_NUM_ENTRIES_BITS-1:0] wb_spots, next_wb_spots;
     logic                            wb_allocated;
     logic                            wb_mem_accepted;
+    logic                           
     
 
     // ------- MSHR WIRES -------- //
@@ -86,9 +87,10 @@ module dcache (
     logic                            store_mshr_hit;
     MSHR_IDX                         store_mshr_idx;
 
-    logic [`MSHR_NUM_ENTRIES_BITS-1:0] mshr_spots;
+    logic [`MSHR_NUM_ENTRIES_BITS-1:0] mshr_spots, next_mshr_spots;
     logic                              mshr_cache_accepted;
     logic                              mshr_allocated;
+    logic                              mem_data_returned;
 
     
     // ---- DCACHE WIRES ---- //
@@ -126,8 +128,6 @@ module dcache (
     logic                                vcache_wr_en;
     DATA                           [1:0] vcache_wr_data;
 
-    // --------     
-
     logic  load_miss, store_miss;
     assign load_miss = load_req_valid && !load_wb_hit && !load_mshr_hit && !load_dcache_hit && !load_vcache_hit;
     assign store_miss = store_req_valid && !store_wb_hit && !store_mshr_hit && !store_dcache_hit && !store_vcache_hit; 
@@ -138,10 +138,9 @@ module dcache (
     logic  dirty_dcache_lru, dirty_vcache_lru;
     assign dirty_dcache_lru = dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].dirty;
     assign dirty_vcache_lru = vcache_meta_data[vcache_lru_idx].dirty;
-    logic full_eviction;
-    assign full_eviction = dirty_dcache_lru && dirty_vcache_lru && (wb_buffer.spots == 0);
 
-    assign wb_mem_accepted = (dcache_mem_req_accepted && !mshr_allocated);
+    logic full_eviction;
+    assign full_eviction = dirty_dcache_lru && dirty_vcache_lru && (wb_spots == 0);
 
     memDP #(
         .WIDTH     ($bits(MEM_BLOCK)),
@@ -175,7 +174,26 @@ module dcache (
         .wdata(vcache_wr_data)
     );
 
-    // all hit logic
+    // ---------------------- create mem req ------------------- //
+
+    always_comb begin 
+        dcache_mem_req_packet = '0;
+        wb_mem_accepted = 1'b0;
+        if (mshr_allocated) begin
+            dcache_mem_req_packet.valid = 1'b1;
+            dcache_mem_req_packet.priority = 1'b1;
+            dcache_mem_req_packet.addr = next_mshrs[mshr_tail].addr;
+            dcache_mem_req_packet.data = next_mshrs[mshr_tail].data;
+        end else if (wb_spots != `WB_LINES) begin
+            dcache_mem_req_packet.valid = 1'b1;
+            dcache_mem_req_packet.priority = 1'b0;
+            dcache_mem_req_packet.addr = next_wb_buffer[wb_head].addr;
+            dcache_mem_req_packet.data = next_wb_buffer[wb_head].data; 
+            wb_mem_accepted = dcache_mem_req_accepted;
+        end
+    end
+
+    // ---------------------- all hit logic -------------------- //
     always_comb begin
         next_dcache_meta_data = dcache_meta_data;
         dcache_idx = '0;
@@ -189,19 +207,17 @@ module dcache (
         vcache_wr_en = 1'b0;
         vcache_wr_data = '0;
         
-        next_mshr_true_head = mshr_true_head;
-        next_mshr_head = mshr_head;
-        next_mshr_tail = mshr_tail;
         mshr_cache_accepted = 1'b0;
+        mshr_allocated = 1'b0;
 
         next_wb_buffer = wb_buffer;
-        next_wb_tail = wb_tail;
-        wb_allocated = 0;
+        wb_allocated = 1'b0;
 
         store_req_accepted = 1'b0;
         load_data_cache_packet = '0;
 
         if (mem_data_packet.mem_tag == mshrs[mshr_head].mem_tag) begin
+            mem_data_returned = 1'b1;
             for (int i = 0; i < 2; ++i) begin
                 for (int j = 0; j < 4; ++j) begin
                     if (!mshrs[mshr_head].byte_mask[i][j]) begin
@@ -210,7 +226,6 @@ module dcache (
                 end
             end
             next_mshrs[mshrs_head].byte_mask = '1;
-            next_mshr_head = (mshr_head + 1) % `MSHR_SZ;
 
             load_buffer_cache_packet.valid = 1'b1;
             load_buffer_cache_packet.mshr_idx = mshr_head;
@@ -239,7 +254,7 @@ module dcache (
 
         if (load_wb_hit) begin
             load_data_cache_packet.valid = 1'b1;
-            load_data_cache_packet.byte_mask = 2'hFF;
+            load_data_cache_packet.byte_mask = 8'hFF;
             load_data_cache_packet.data = wb_buffer[load_wb_idx].data;
         end
 
@@ -258,7 +273,7 @@ module dcache (
 
             dcache_index = (load_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + load_dcache_idx;
 
-            load_data_cache_packet.byte_mask = 2'hFF; //shove that shi IN 
+            load_data_cache_packet.byte_mask = 8'hFF; //shove that shi IN 
             load_data_cache_packet.data = dcache_data_out;
 
         end else if (load_vcache_hit) begin
@@ -279,7 +294,7 @@ module dcache (
             next_vcache_meta_data[load_vcache_idx].addr = dcache_meta_data[load_req_addr.dcache.set_idx][dcache_lru_idx[load_req_addr.dcache.set_idx]].addr;
             next_vcache_meta_data[load_vcache_idx].dirty = dcache_meta_data[load_req_addr.dcache.set_idx][dcache_lru_idx[load_req_addr.dcache.set_idx]].dirty;
             
-            load_buffer_cache_packet.byte_mask = 2'hFF;
+            load_buffer_cache_packet.byte_mask = 8'hFF;
             load_data_cache_packet.data = vcache_data_out;
             
         end else if (store_dcache_hit) begin
@@ -325,14 +340,12 @@ module dcache (
             next_vcache_meta_data[store_vcache_idx].dirty = dcache_meta_data[store_req_addr.dcache.set_idx][dcache_lru_idx[store_req_addr.dcache.set_idx]].dirty;
 
         end else if ((mshr_true_head != next_mshr_head || mshr_full) && (!full_eviction || wb_mem_accepted)) begin
-            mshr_cache_accepted = 1;
+            mshr_cache_accepted = 1'b1;
 
             dcache_rd_en = 1'b1;
             dcache_wr_en = 1'b1;
             dcache_wr_data = next_mshrs[mshr_true_head].data;
             dcache_idx = (mshrs[mshr_true_head].addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx];
-
-            next_mshr_true_head = (mshr_true_head + 1) % `MSHR_SZ;
 
             next_dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].dirty = next_mshrs[mshr_true_head].dirty;
             next_dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].addr = next_mshrs[mshr_true_head].addr;
@@ -343,7 +356,7 @@ module dcache (
 
                 next_vcache_meta_data[vcache_lru].addr = dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].addr;
                 next_vcache_meta_data[vcache_lru].dirty = dirty_dcache_lru;
-                next_vcache_meta_data[vcache_lru].valid = 1;
+                next_vcache_meta_data[vcache_lru].valid = 1'b1;
                 vcache_rd_en = 1'b1;
                 vcache_wr_en = 1'b1;
                 vcache_wr_data = dcache_data_out;
@@ -352,7 +365,6 @@ module dcache (
                 // punt to wb buffer
                 if (vcache_meta_data[vcache_lru].valid) begin
                     next_wb_buffer[wb_tail] = vcache_data_out;
-                    next_wb_tail = wb_tail + 1;
                     wb_allocated = 1;
                 end
             end    
@@ -361,20 +373,24 @@ module dcache (
         if (!mshr_full) begin
             if (load_miss) begin
                 load_data_cache_packet.valid = 1'b1;
+                mshr_allocated = 1'b1;
                 next_mshrs[mshr_tail].dirty = 0;
-                next_mshrs[mshr_tail].mem_tag = dcache_mem_trxn_tag; 
                 next_mshrs[mshr_tail].addr = load_req_addr; 
                 next_mshrs[mshr_tail].data = '0;
-                next_mshrs[mshr_tail].byte_mask = '0;      
-                next_mshr_tail = (mshr_tail + 1) % `MSHR_SZ;       
+                next_mshrs[mshr_tail].byte_mask = '0;
+
+                // Happens after the mem request is created
+                next_mshrs[mshr_tail].mem_tag = dcache_mem_trxn_tag;
             end else if (store_miss) begin
                 store_req_accepted = 1'b1;
+                mshr_allocated = 1'b1;
                 next_mshrs[mshr_tail].dirty = 1;
-                next_mshrs[mshr_tail].mem_tag = dcache_mem_trxn_tag; 
                 next_mshrs[mshr_tail].addr = store_req_addr;
                 next_mshrs[mshr_tail].data[store_req_addr.dw.w_idx] = store_req_data;
                 next_mshrs[mshr_tail].byte_mask[store_req_addr.dw.w_idx] = store_req_byte_mask;
-                next_mshr_tail = (mshr_tail + 1) % `MSHR_SZ;
+
+                // Happens after the mem request is created
+                next_mshrs[mshr_tail].mem_tag = dcache_mem_trxn_tag;
             end
         end
 
@@ -441,10 +457,10 @@ module dcache (
 
     // cam that dcache shi
     always_comb begin
-        load_dcache_hit = 0;
-        store_dcache_hit = 0;
-        load_dcache_idx = 0;
-        store_dcache_idx = 0;
+        load_dcache_hit = 1'b0;
+        load_dcache_idx = '0;
+        store_dcache_hit = 1'b0;
+        store_dcache_idx = '0;
         for (int i = 0; i < `DCACHE_NUM_WAYS; ++i) begin
             if (load_req_valid && dcache_meta_data[load_req_addr.dcache.set_idx][i].valid && dcache_meta_data[load_req_addr.dcache.set_idx][i].addr.dcache.tag == load_req_addr.dcache.tag) begin
                 load_dcache_hit = 1;
@@ -489,11 +505,11 @@ module dcache (
         for (int i = 0; i < `VCACHE_LINES; ++i) begin
             if (load_req_valid && vcache_meta_data[i].addr.dw.addr == load_req_addr.dw.addr) begin
                 load_vcache_hit = 1'b1;
-                load_vcache_idx = i; 
+                load_vcache_idx = i;
             end 
             if (store_req_valid && vcache_meta_data[i].addr.dw.addr == store_req_addr.dw.addr) begin
                 store_vcache_hit = 1'b1;
-                store_vcache_idx = i; 
+                store_vcache_idx = i;
             end
         end
     end
@@ -508,22 +524,58 @@ module dcache (
             if (i < `WB_LINES - wb_spots) begin
                 if(load_req_valid && wb_buffer[wb_head + i].addr.dw.addr == load_req_addr.dw.addr) begin
                     load_wb_hit = 1'b1;
-                    load_wb_idx = wb_head + i; 
+                    load_wb_idx = wb_head + i;
                 end       
                 if (store_req_valid && wb_buffer[wb_head + i].addr.dw.addr == store_req_addr.dw.addr) begin
                     store_wb_hit = 1'b1;
-                    store_wb_idx = wb_head + i; 
+                    store_wb_idx = wb_head + i;
                 end
             end
         end
     end
 
+    // update next pointers
+    always_comb begin
+        next_wb_head = wb_head + wb_mem_accepted;
+        next_wb_tail = wb_tail + wb_allocated;
+        next_wb_spots = wb_spots + wb_mem_accepted - wb_allocated;
+
+        next_mshr_head = (mshr_head + mem_data_returned) % `MSHR_SZ;
+        next_mshr_tail = (mshr_tail + mshr_allocated) % `MSHR_SZ;
+        next_mshr_true_head = (mshr_true_head + mshr_cache_accepted) % `MSHR_SZ;
+        next_mshr_spots = mshr_spots + mshr_cache_accepted - mshr_allocated;
+    end
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            
+            wb_head <= '0;
+            wb_tail <= '0;
+            wb_spots <= '0;
+            wb_buffer <= '0;
+
+            mshr_head <= '0;
+            mshr_tail <= '0;
+            mshr_true_head <= '0;
+            mshr_spots <= '0;
+            mshrs <= '0;
+
+            dcache_meta_data <= '0;
+            vcache_meta_data <= '0;
+
         end else begin
-            
+            wb_head <= next_wb_head;
+            wb_tail <= next_wb_tail;
+            wb_spots <= next_wb_spots;
+            wb_buffer <= next_wb_buffer;
+
+            mshr_head <= next_mshr_head;
+            mshr_tail <= next_mshr_tail;
+            mshr_true_head <= next_mshr_true_head;
+            mshr_spots <= next_mshr_spots;
+            mshrs <= next_mshrs;
+
+            dcache_meta_data <= next_dcache_meta_data;
+            vcache_meta_data <= next_vcache_meta_data;
         end
     end
 

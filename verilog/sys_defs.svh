@@ -154,44 +154,6 @@ typedef struct packed {
     SQ_IDX sq_idx;
 } SQ_POINTER;
 
-typedef union packed {
-    logic [31:0] addr;
-
-    struct packed {
-        logic [31:`BTB_SET_IDX_BITS+2] tag;
-        logic  [`BTB_SET_IDX_BITS+1:2] set_idx;
-        logic                    [1:0] byte_offset;
-    } btb;
-
-    struct packed {
-        logic                    [31:2]  addr;
-        logic                     [1:0]  offset;
-    } w;
-
-    struct packed {
-        logic                    [31:3]  addr;
-        logic                     [2:2]  w_idx;
-        logic                     [1:0]  offset;
-    } dw;
-
-    struct packed {
-        logic                    [31:`DCACHE_SET_IDX_BITS+2] tag;
-        logic                    [`DCACHE_SET_IDX_BITS+2-1:2] set_idx;
-        logic                    [1:0] offset;
-    } dcache;
-
-    struct packed {
-        logic                    [31:`ICACHE_SET_IDX_BITS+2] tag;
-        logic                    [`ICACHE_SET_IDX_BITS+2-1:2] set_idx;
-        logic                    [1:0] offset;
-    } icache;
-
-    // struct packed {
-    //     logic [31:] tag;
-    //     logic  [`BTB_SET_IDX_BITS+1:2] set_idx;
-    // } cache;
-} ADDR; // ADDER UNION
-
 // the zero register
 // In RISC-V, any read of this register returns zero and any writes are thrown away
 `define ZERO_REG 5'd0
@@ -209,7 +171,7 @@ typedef union packed {
 // processor will have to account for this effect on mem.
 // Notably, you can no longer write data without first reading.
 // TODO: uncomment this line once you've implemented your cache
-//`define CACHE_MODE
+`define CACHE_MODE
 
 // you are not allowed to change this definition for your final processor
 // the project 3 processor has a massive boost in performance just from having no mem latency
@@ -232,11 +194,15 @@ typedef logic [3:0] MEM_TAG;
 
 // icache definitions
 `define ICACHE_NUM_WAYS 4
-`define ICACHE_LINES 32
+`define ICACHE_NUM_BANKS  1 << $clog2($ceil(`N/2)+1) // TODO: talk about whether we need this to be + 1 or not
+`define ICACHE_LINES 32 / `ICACHE_NUM_BANKS
 `define ICACHE_NUM_SETS `ICACHE_LINES / `ICACHE_NUM_WAYS
+`define ICACHE_NUM_BANKS_BITS $clog2(`ICACHE_NUM_BANKS)
 `define ICACHE_LINE_BITS $clog2(`ICACHE_LINES)
-`define ICACHE_TAG_BITS 32 - `ICACHE_SET_IDX_BITS - 3
+`define ICACHE_TAG_BITS 32 - `ICACHE_NUM_BANKS_BITS - `ICACHE_SET_IDX_BITS - 3
 `define ICACHE_WAY_IDX_BITS $clog2(`ICACHE_NUM_WAYS)
+`define PREFETCH_DIST `ICACHE_NUM_BANKS * `ICACHE_NUM_SETS
+
 typedef logic [`ICACHE_TAG_BITS-1:0] ICACHE_TAG;
 typedef logic [`ICACHE_WAY_IDX_BITS-1:0] ICACHE_LRU;
 typedef logic [`ICACHE_WAY_IDX_BITS-1:0] ICACHE_WAY_IDX;
@@ -267,6 +233,45 @@ typedef logic [`VCACHE_LINE_BITS-1:0] VCACHE_IDX;
 `define WB_NUM_ENTRIES_BITS $clog2(`WB_LINES+1)
 `define WB_LINE_BITS $clog2(`WB_LINES)
 typedef logic [`WB_LINE_BITS-1:0] WB_IDX;
+
+typedef union packed {
+    logic [31:0] addr;
+
+    struct packed {
+        logic [31:`BTB_SET_IDX_BITS+2] tag;
+        logic  [`BTB_SET_IDX_BITS+1:2] set_idx;
+        logic                    [1:0] byte_offset;
+    } btb;
+
+    struct packed {
+        logic                    [31:2]  addr;
+        logic                     [1:0]  offset;
+    } w;
+
+    struct packed {
+        logic                    [31:3]  addr;
+        logic                     [2:2]  w_idx;
+        logic                     [1:0]  offset;
+    } dw;
+
+    struct packed {
+        logic                    [31:`DCACHE_SET_IDX_BITS+2] tag;
+        logic                    [`DCACHE_SET_IDX_BITS+2-1:2] set_idx;
+        logic                    [1:0] offset;
+    } dcache;
+
+    struct packed {
+        logic                    [31:`ICACHE_SET_IDX_BITS+`ICACHE_NUM_BANKS_BITS+2] tag;
+        logic                    [`ICACHE_SET_IDX_BITS+`ICACHE_NUM_BANKS_BITS+2-1:`ICACHE_NUM_BANKS_BITS+2] set_idx;
+        logic                    [`ICACHE_NUM_BANKS_BITS+2-1:2] bank_idx;
+        logic                    [1:0] offset;
+    } icache;
+
+    // struct packed {
+    //     logic [31:] tag;
+    //     logic  [`BTB_SET_IDX_BITS+1:2] set_idx;
+    // } cache;
+} ADDR; // ADDER UNION
 
 // A memory or cache block
 typedef union packed {
@@ -909,6 +914,7 @@ typedef struct packed {
 
 typedef struct packed {
     logic           valid;
+    logic           priority;
     ADDR            addr;
     DATA      [1:0] data;
 } MEM_REQ_PACKET;
@@ -924,7 +930,7 @@ typedef struct packed {
 } WB_ENTRY;
 
 typedef struct packed {
-    logic           dirty;
+    MEM_TAG         mem_tag;
     ADDR            addr;
     DATA      [1:0] data;
 } ICACHE_MSHR_ENTRY;

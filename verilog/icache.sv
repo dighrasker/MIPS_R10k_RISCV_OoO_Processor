@@ -37,22 +37,39 @@ module icache (
     input clock,
     input reset,
 
-    // From memory
-    input MEM_TAG   Imem2proc_transaction_tag, // Should be zero unless there is a response
-    input MEM_BLOCK Imem2proc_data,
-    input MEM_TAG   Imem2proc_data_tag,
-
-    // From fetch stage
-    input ADDR proc2Icache_addr,
-
-    // To memory
-    output MEM_COMMAND proc2Imem_command,
-    output ADDR        proc2Imem_addr,
-
-    // To fetch stage
-    output MEM_BLOCK Icache_data_out, // Data is mem[proc2Icache_addr]
-    output logic     Icache_valid_out // When valid is high
+    // ------------ TO/FROM FETCH ---------------//
+    input ADDR                   [`N-1:0] PCs,
+    output logic                 [`N-1:0] icache_miss, 
+    output INST                  [`N-1:0] icache_data, //instructions being sent to Fetch
+ 
+    // ------------ TO/FROM MAIN MEMORY ---------------//
+    input logic                             icache_mem_req_accepted,
+    input MEM_TAG                           icache_mem_trxn_tag,
+    input MEM_DATA_PACKET                   mem_data_packet,
+    output MEM_REQ_PACKET                   icache_mem_req_packet
+   
 );
+    
+    ADDR [`PREFETCH_DIST-1:0] prefetch_window;
+
+    always_comb begin
+        prefetch_window = '0;
+        for (int i = 0; i < `PREFETCH_DIST; ++i) begin
+            prefetch_window[i].dw.addr = PCs[0].dw.addr + (8 * i);
+        end
+    end
+
+    generate
+        ganvar i;
+        for (i = 0; i < `ICACHE_NUM_BANKS; ++i) begin
+
+
+
+
+        end
+    endgenerate
+
+
 
     // Note: cache tags, not memory tags
     logic [12-`ICACHE_LINE_BITS:0] current_tag,   last_tag;
@@ -61,7 +78,6 @@ module icache (
 
 
     // ---- Cache data ---- //
-
 
     memDP #(
         .WIDTH     ($bits(MEM_BLOCK)),
