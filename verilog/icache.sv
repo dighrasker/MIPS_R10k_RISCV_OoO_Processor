@@ -39,118 +39,114 @@ module icache (
 
     // ------------ TO/FROM FETCH ---------------//
     input ADDR                   [`N-1:0] PCs,
-    output logic                 [`N-1:0] icache_miss, 
-    output INST                  [`N-1:0] icache_data, //instructions being sent to Fetch
+    output DATA                  [`N-1:0] cache_data, //instructions being sent to Fetch
+    output logic                 [`N-1:0] cache_miss, 
  
     // ------------ TO/FROM MAIN MEMORY ---------------//
     input logic                             icache_mem_req_accepted,
     input MEM_TAG                           icache_mem_trxn_tag,
     input MEM_DATA_PACKET                   mem_data_packet,
     output MEM_REQ_PACKET                   icache_mem_req_packet
-   
 );
     
-    ADDR [`PREFETCH_DIST-1:0] prefetch_window;
+    // ----- mshr wires ----- // 
+
+    ICACHE_MSHR_ENTRY [`MSHR_SZ-1:0] mshrs, next_mshrs; 
+    MSHR_IDX                         mshr_head, next_mshr_head; // Next mshr to get mem data
+    MSHR_IDX                         mshr_tail, next_mshr_tail; // Next mshr to get assigned a mem req
+    logic       [`PREFETCH_DIST-1:0] mshr_miss;   
+
+    logic                            mem_data_returned;
+
+    
+    // ---- ICACHE WIRES ---- //
+
+    wand                               [`PREFETCH_DIST-1:0] icache_miss;  // TODO: MAKE SURE THIS WORKS! (. O .)
+    DATA                      [`ICACHE_NUM_BANKS-1:0] [1:0] icache_rd_data; 
+    ADDR [`PREFETCH_DIST-1:0]                               prefetch_window;
+    logic                              [`PREFETCH_DIST-1:0] prefetch_miss;  
+
+    assign prefetch_miss = icache_miss & mshr_miss;
 
     always_comb begin
         prefetch_window = '0;
         for (int i = 0; i < `PREFETCH_DIST; ++i) begin
-            prefetch_window[i].dw.addr = PCs[0].dw.addr + (8 * i);
+            prefetch_window[i] = PCs[0] + (4 * i);
         end
     end
 
+    //generate the BANKS 
     generate
-        ganvar i;
+        genvar i;
         for (i = 0; i < `ICACHE_NUM_BANKS; ++i) begin
+            logic icache_rd_en, icache_wr_en;
+            ICACHE_IDX icache_rd_idx, icache_wr_idx;
+            DATA [1:0] icache_wr_data;
+            ICACHE_META_DATA [`ICACHE_NUM_SETS-1:0] [`ICACHE_NUM_WAYS-1:0] icache_meta_data, next_icache_meta_data;
 
+            memDP #(
+                .WIDTH     ($bits(MEM_BLOCK)),
+                .DEPTH     (`ICACHE_LINES),
+                .READ_PORTS(1),
+                .BYPASS_EN (0))
+            icache_mem (
+                .clock(clock),
+                .reset(reset),
+                .re   (1'b1),
+                .raddr(icache_rd_idx),
+                .rdata(icache_rd_data[i]),
+                .we   (icache_wr_en),
+                .waddr(icache_wr_idx),
+                .wdata(icache_wr_data)
+            );
 
+            // cam
+            always_comb begin
+                icache_miss = '1;
+                for (int j = 0; j < `PREFETCH_DIST; ++j) begin
+                    for (int k = 0; k < `ICACHE_NUM_WAYS; ++k) begin
+                        if ((prefetch_window[j].icache.bank_idx == i) && (icache_meta_data[prefetch_window[j].icache.set_idx][k].addr.icache.tag == prefetch_window[i].icache.tag)) begin
+                            icache_miss[j] = 1'b0;
+                            if (j < `N) begin
+                                icache_rd_idx = (prefetch_window[i].icache.set_idx << `ICACHE_NUM_WAYS) + k;
+                            end
+                        end
+                    end
+                end
+            end
 
-
+            always_ff @(posedge clock) begin
+                if (reset) begin
+                    icache_meta_data <= '0;
+                end else begin
+                    icache_meta_data <= next_icache_meta_data;
+                end
+            end
         end
     endgenerate
 
-
-
-    // Note: cache tags, not memory tags
-    logic [12-`ICACHE_LINE_BITS:0] current_tag,   last_tag;
-    logic [`ICACHE_LINE_BITS -1:0] current_index, last_index;
-    logic                          got_mem_data;
-
-
-    // ---- Cache data ---- //
-
-    memDP #(
-        .WIDTH     ($bits(MEM_BLOCK)),
-        .DEPTH     (`ICACHE_LINES),
-        .READ_PORTS(1),
-        .BYPASS_EN (0))
-    icache_mem (
-        .clock(clock),
-        .reset(reset),
-        .re   (1'b1),
-        .raddr(current_index),
-        .rdata(Icache_data_out),
-        .we   (got_mem_data),
-        .waddr(current_index),
-        .wdata(Imem2proc_data)
-    );
-    
-
-    // ---- Addresses and final outputs ---- //
-
-    assign {current_tag, current_index} = proc2Icache_addr[15:3];
-
-    assign Icache_valid_out =  icache_tags[current_index].valid &&
-                              (icache_tags[current_index].tags == current_tag);
-
-    // ---- Main cache logic ---- //
-
-    MEM_TAG current_mem_tag; // The current memory tag we might be waiting on
-    logic miss_outstanding; // Whether a miss has received its response tag to wait on
-
-    logic changed_addr;
-    logic update_mem_tag;
-    logic unanswered_miss;
-
-    assign got_mem_data = (current_mem_tag == Imem2proc_data_tag) && (current_mem_tag != 0);
-
-    assign changed_addr = (current_index != last_index) || (current_tag != last_tag);
-
-    // Set mem tag to zero if we changed_addr, and keep resetting while there is
-    // a miss_outstanding. Then set to zero when we got_mem_data.
-    // (this relies on Imem2proc_transaction_tag being zero when there is no request)
-    assign update_mem_tag = changed_addr || miss_outstanding || got_mem_data;
-
-    // If we have a new miss or still waiting for the response tag, we might
-    // need to wait for the response tag because dcache has priority over icache
-    assign unanswered_miss = changed_addr ? !Icache_valid_out :
-                                        miss_outstanding && (Imem2proc_transaction_tag == 0);
-
-    // Keep sending memory requests until we receive a response tag or change addresses
-    assign proc2Imem_command = (miss_outstanding && !changed_addr) ? MEM_LOAD : MEM_NONE;
-    assign proc2Imem_addr    = {proc2Icache_addr[31:3],3'b0};
-
-    // ---- Cache state registers ---- //
-
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            last_index       <= -1; // These are -1 to get ball rolling when
-            last_tag         <= -1; // reset goes low because addr "changes"
-            current_mem_tag  <= '0;
-            miss_outstanding <= '0;
-            icache_tags      <= '0; // Set all cache tags and valid bits to 0
-        end else begin
-            last_index       <= current_index;
-            last_tag         <= current_tag;
-            miss_outstanding <= unanswered_miss;
-            if (update_mem_tag) begin
-                current_mem_tag <= Imem2proc_transaction_tag;
+    //cam mshrs for in flight pcs
+    always_comb begin
+        mshr_miss = '1;
+        for (int i = 0; i < `PREFETCH_DIST; ++i) begin
+            for (int j = 0; j < `MSHR_SZ; ++j) begin
+                if((j < `MSHR_SZ - mshr_spots) && (prefetch_window[i].dw.addr == mshrs[(mshr_head + j) % `MSHR_SZ].dw.addr)) begin
+                   mshr_miss[i] = 1'b0;
+                end
             end
-            if (got_mem_data) begin // If data came from memory, meaning tag matches
-                icache_tags[current_index].tags  <= current_tag;
-                icache_tags[current_index].valid <= 1'b1;
+        end
+
+    end
+
+    always_comb begin
+        cache_miss = '1;
+        for (int i = 0; i < `N; ++i) begin
+            if (!icache_miss[i]) begin
+                cache_miss[i] = 1'b0;
+                cache_data[i] = icache_rd_data[PCs[i].icache.bank_idx][PCs[i].dw.w_idx];
             end
         end
     end
+
 
 endmodule // icache

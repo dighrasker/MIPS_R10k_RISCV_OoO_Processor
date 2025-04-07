@@ -26,7 +26,6 @@ module load_addr_stage (
     BYTE_MASK temp_byte_mask;
 
     always_comb begin
-        load_addr_free = (load_buffer_free & load_data_free) | ~load_addr_packet.valid;
         load_data_packet.valid = load_addr_packet.valid;
         load_data_packet.dest_reg_idx = load_addr_packet.dest_reg_idx;
         load_data_packet.bm = load_addr_packet.bm;
@@ -40,6 +39,7 @@ module load_addr_stage (
                 load_data_packet = NOP_LOAD_DATA_PACKET;
             end
         end
+        load_addr_free = (load_buffer_free & load_data_free) | ~load_data_packet.valid;
     end
 
     always_comb begin

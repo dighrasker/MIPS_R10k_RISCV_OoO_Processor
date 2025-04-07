@@ -27,7 +27,7 @@ module load_data_stage (
     //ldback press
 
     // TODO: make sure this logic is correct
-    assign load_data_free = !load_data_packet.valid || load_data_cache_packet.valid || !load_buffer_packet.byte_mask;
+    assign load_data_free = !load_buffer_packet.valid || load_data_cache_packet.valid || !load_buffer_packet.byte_mask;
     assign load_addr = load_data_packet.load_addr;
     assign load_req_valid = load_data_packet.valid;
     assign load_sq_tail = load_data_packet.sq_tail;
