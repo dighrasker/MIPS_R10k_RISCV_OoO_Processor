@@ -521,7 +521,7 @@ module cpu (
         .reset(reset),
         .PCs_out(PCs_out),
         .cache_data(cache_data),
-        .cache_miss('0),
+        .cache_miss(cache_miss),
         .PC_restore(PC_restore),  // Retire module tells the ROB how many entries can be cleared
         .restore_valid(restore_valid),
         .inst_buffer_spots(inst_buffer_spots),     //number of spots in instruction buffer

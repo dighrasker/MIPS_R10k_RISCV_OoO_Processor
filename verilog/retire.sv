@@ -51,8 +51,8 @@ logic halt, next_halt;
 */
 
 always_comb begin
-    num_retiring = 0;
-    num_store_retiring = 0;
+    num_retiring = '0;
+    num_store_retiring = '0;
     phys_regs_retiring = '0;
     next_halt = halt;
     committed_insts = '0;

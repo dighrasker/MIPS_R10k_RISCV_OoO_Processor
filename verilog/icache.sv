@@ -170,6 +170,11 @@ module icache (
                 end else begin
                     icache_meta_data <= next_icache_meta_data;
                 end
+
+                for(int i = 0; i < `ICACHE_LINES; ++i) begin
+                    $display("I$[%d]: %d", i, icache_mem.memData[i]);
+                end
+
             end
         end
     endgenerate
@@ -216,6 +221,9 @@ module icache (
             mshrs <= next_mshrs;
             mshr_spots <= next_mshr_spots;
         end
+        $display("cache_miss: %b", cache_miss);
+        $display("icache_mem_trxn_tag: %d", icache_mem_trxn_tag);
+        $display("icache_mem_data_tag: %d", mem_data_packet.mem_tag);
     end
 
 

@@ -26,6 +26,10 @@ module memarbiter (
 
 );
 
+    assign mem_trxn_tag = mem2proc_transaction_tag;
+    assign mem_data_packet.data = mem2proc_data;
+    assign mem_data_packet.mem_tag = mem2proc_data_tag;
+
     always_comb begin
         //defaults
         dcache_mem_req_accepted = 0;
@@ -33,9 +37,6 @@ module memarbiter (
         proc2mem_command = 0;
         proc2mem_addr = '0;
         proc2mem_data = '0;
-        mem_trxn_tag = mem2proc_transaction_tag;
-        mem_data_packet.data = mem2proc_data;
-        mem_data_packet.mem_tag = mem2proc_data_tag;
 
         if (dcache_mem_req_packet.valid && dcache_mem_req_packet.prior == 1) begin
             dcache_mem_req_accepted = 1;
@@ -58,6 +59,13 @@ module memarbiter (
             proc2mem_data = icache_mem_req_packet.data;
             proc2mem_command = 1;
         end
+    end
+
+    always_ff @(posedge clock) begin
+        $display(": %b", branches_taken);
+        $display("inst_valid_temp: %d", inst_valid_temp);
+        $display("no_limiting_inst: %b", no_limiting_inst);
+        $display("cache_miss_in_fetch: %b", cache_miss);
     end
 
 endmodule

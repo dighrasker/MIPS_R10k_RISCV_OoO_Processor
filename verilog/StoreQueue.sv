@@ -5,8 +5,8 @@ module store_queue #(
     input   logic reset,
     input   logic clock,
     // ------------ FROM Store Unit ------------- //
-    input   STORE_QUEUE_PACKET                     sq_packet,
-    input   SQ_MASK                       resolving_sq_mask,                    
+    input   STORE_QUEUE_PACKET              sq_packet,
+    input   SQ_MASK                         resolving_sq_mask,                    
 
     // ------------- TO/FROM DISPATCH -------------- // 
     input   logic    [`NUM_SCALAR_BITS-1:0] stores_dispatching,

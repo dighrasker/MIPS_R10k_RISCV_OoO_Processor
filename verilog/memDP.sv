@@ -71,6 +71,9 @@ always_ff @(posedge clock) begin
     end else if (we) begin
         memData[waddr] <= wdata;
     end
+    // for(int i = 0; i < DEPTH; ++i) begin
+    //     $display("MemDP[%d]: %d", i, memData[i]);
+    // end
 end
 
 ///////////////////////////////////////////////////////////////////
@@ -83,7 +86,7 @@ end
     // Track which entries are valid
     always_ff @(posedge clock) begin
         if      (reset) valid        <= '0;
-        else if (we)    valid[waddr] <= 1'b1;       
+        else if (we)    valid[waddr] <= 1'b1;              
     end
 
     // ---------- Verify Write Interface ---------- 
