@@ -19,7 +19,11 @@ module load_data_stage (
     output ADDR                     load_req_addr, //also goes to cache
     
     // ------------ TO LOAD BUFFER ------------- //
-    output LOAD_BUFFER_PACKET       load_buffer_packet
+    output LOAD_BUFFER_PACKET       load_buffer_packet,
+
+    // ------------ FROM BS ------------- //
+    input B_MASK                                b_mm_resolve,
+    input logic                                 b_mm_mispred
 );
 
     LOAD_DATA_PACKET load_data_packet;
@@ -28,12 +32,12 @@ module load_data_stage (
 
     // TODO: make sure this logic is correct
     assign load_data_free = !load_buffer_packet.valid || load_data_cache_packet.valid || !load_buffer_packet.byte_mask;
-    assign load_addr = load_data_packet.load_addr;
+    assign load_req_addr = load_data_packet.load_addr;
     assign load_req_valid = load_data_packet.valid;
     assign load_sq_tail = load_data_packet.sq_tail;
 
     always_comb begin
-        load_buffer_packet.mshr_idx = load_data_cache_packet.mshr_idx
+        load_buffer_packet.mshr_idx = load_data_cache_packet.mshr_idx;
         load_buffer_packet.bm = load_data_packet.bm;
         load_buffer_packet.dest_reg_idx = load_data_packet.dest_reg_idx;
         load_buffer_packet.load_addr = load_data_packet.load_addr;

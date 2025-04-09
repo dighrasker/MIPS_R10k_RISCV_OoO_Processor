@@ -32,20 +32,16 @@ module ExecuteStage (
     output BRANCH_REG_PACKET                     branch_reg,
 
     // ------------ TO/FROM CACHE --------------//
-    input MSHR_IDX                               mshr_idx,
-    input logic                                  mshr_valid,
-    input DATA                                   mshr_data,
-    input logic                                  cache_load_accepted,
-    input DATA                                   cache_load_data,
-    input BYTE_MASK                              cache_data_mask,
-    output ADDR                                  load_addr,
-    output logic                                 load_valid,
+
+    input LOAD_DATA_CACHE_PACKET                 load_data_cache_packet,
+    input LOAD_BUFFER_CACHE_PACKET               load_buffer_cache_packet,
+    output ADDR                                  load_req_addr,
+    output logic                                 load_req_valid,
 
     // ------------ TO/FROM STORE QUEUE ------------- //
     input DATA                                   sq_load_data,
     input BYTE_MASK                              sq_data_mask,
-    output SQ_IDX                                load_sq_tail,
-    output ADDR                                  load_addr //also goes to cache
+    output SQ_POINTER                            load_sq_tail
 );
 
     // MULT_PACKET   mult_packets_issuing;
@@ -160,20 +156,15 @@ module ExecuteStage (
         .b_mm_mispred(b_mm_mispred),
 
         // ------------ TO/FROM CACHE --------------//
-        .mshr_idx(mshr_idx),
-        .mshr_valid(mshr_valid),
-        .mshr_data(mshr_data),
-        .cache_load_accepted(cache_load_accepted),
-        .cache_load_data(cache_load_data),
-        .cache_data_mask(cache_data_mask),
-        .load_addr(load_addr),
-        .load_valid(load_valid),
+        .load_data_cache_packet(load_data_cache_packet),
+        .load_buffer_cache_packet(load_buffer_cache_packet),
+        .load_req_valid(load_req_valid),
 
         // ------------ TO/FROM STORE QUEUE ------------- //
         .sq_load_data(sq_load_data),
         .sq_data_mask(sq_data_mask),
         .load_sq_tail(load_sq_tail),
-        .load_addr(load_addr) //also goes to cache
+        .load_req_addr(load_req_addr) //also goes to cache
     );
 
     always_ff @(posedge clock) begin

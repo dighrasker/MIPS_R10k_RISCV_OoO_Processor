@@ -18,7 +18,7 @@ module load_addr_stage (
 
     // ------------ FROM BRANCH STACK --------------//
     input B_MASK            b_mm_resolve,
-    input logic             b_mm_mispred,
+    input logic             b_mm_mispred
 );
 
     LOAD_ADDR_PACKET load_addr_packet;
@@ -43,7 +43,7 @@ module load_addr_stage (
     end
 
     always_comb begin
-        case (MEM_SIZE(load_addr_packet.load_func[1:0]))
+        case (MEM_SIZE'(load_addr_packet.load_func[1:0]))
             BYTE:       temp_byte_mask = 4'b0001;
             HALF:       temp_byte_mask = 4'b0011;
             WORD:       temp_byte_mask = 4'b1111;

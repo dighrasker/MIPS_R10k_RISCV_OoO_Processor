@@ -253,6 +253,7 @@ CPU_SOURCES = verilog/alu.sv \
 			  verilog/btb.sv \
 			  verilog/CountOnes.sv \
 			  verilog/cpu.sv \
+			  verilog/dcache.sv \
 		      verilog/decoder.sv \
 			  verilog/DispatchStage.sv \
 			  verilog/encoder.sv \
@@ -262,7 +263,12 @@ CPU_SOURCES = verilog/alu.sv \
 		      verilog/icache.sv \
 			  verilog/InstBuffer.sv \
 		      verilog/IssueStage.sv \
+			  verilog/load_addr_stage.sv \
+			  verilog/load_data_stage.sv \
+			  verilog/load_buffer.sv \
+			  verilog/load.sv \
 			  verilog/MapTable.sv \
+			  verilog/MemArbiter.sv \
 			  verilog/memDP.sv \
 		      verilog/mult.sv \
 			  verilog/mult_stage.sv \
@@ -272,7 +278,9 @@ CPU_SOURCES = verilog/alu.sv \
 			  verilog/regfile.sv \
 			  verilog/retire.sv \
 			  verilog/rob.sv \
-		      verilog/RS.sv 
+		      verilog/RS.sv \
+			  verilog/store_addr_stage.sv \
+			  verilog/StoreQueue.sv \
 			  
 build/cpu.simv: $(CPU_SOURCES) $(CPU_HEADERS) $(CPU_TESTBENCH)
 synth/cpu.vg: $(CPU_SOURCES) $(CPU_HEADERS)

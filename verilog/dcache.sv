@@ -62,7 +62,7 @@ module dcache (
 
     // ------- WB BUFFER WIRES -------- //
     
-    WB_ENTRY          [`WB_LINE-1:0] wb_buffer, next_wb_buffer; 
+    WB_ENTRY         [`WB_LINES-1:0] wb_buffer, next_wb_buffer; 
     WB_IDX                           wb_head, next_wb_head;
     WB_IDX                           wb_tail, next_wb_tail; 
     logic                            load_wb_hit;
@@ -72,7 +72,6 @@ module dcache (
     logic [`WB_NUM_ENTRIES_BITS-1:0] wb_spots, next_wb_spots;
     logic                            wb_allocated;
     logic                            wb_mem_accepted;
-    logic                           
     
 
     // ------- MSHR WIRES -------- //
@@ -115,7 +114,8 @@ module dcache (
 
     // ----- VCACHE WIRES ---- //
     VCACHE_META_DATA [`VCACHE_LINES-1:0] vcache_meta_data, next_vcache_meta_data;
-    VCACHE_IDX                           vcache_lru;
+    logic         [`VCACHE_NUM_WAYS-1:0] vcache_lru_gnt_line;
+    VCACHE_IDX                           vcache_lru_idx;
 
     logic                                load_vcache_hit;
     VCACHE_IDX                           load_vcache_idx;
@@ -181,12 +181,12 @@ module dcache (
         wb_mem_accepted = 1'b0;
         if (mshr_allocated) begin
             dcache_mem_req_packet.valid = 1'b1;
-            dcache_mem_req_packet.priority = 1'b1;
+            dcache_mem_req_packet.prior = 1'b1;
             dcache_mem_req_packet.addr = next_mshrs[mshr_tail].addr;
             dcache_mem_req_packet.data = next_mshrs[mshr_tail].data;
         end else if (wb_spots != `WB_LINES) begin
             dcache_mem_req_packet.valid = 1'b1;
-            dcache_mem_req_packet.priority = 1'b0;
+            dcache_mem_req_packet.prior = 1'b0;
             dcache_mem_req_packet.addr = next_wb_buffer[wb_head].addr;
             dcache_mem_req_packet.data = next_wb_buffer[wb_head].data; 
             wb_mem_accepted = dcache_mem_req_accepted;
@@ -209,6 +209,7 @@ module dcache (
         
         mshr_cache_accepted = 1'b0;
         mshr_allocated = 1'b0;
+        mem_data_returned = 1'b0;
 
         next_wb_buffer = wb_buffer;
         wb_allocated = 1'b0;
@@ -216,7 +217,7 @@ module dcache (
         store_req_accepted = 1'b0;
         load_data_cache_packet = '0;
 
-        if (mem_data_packet.mem_tag == mshrs[mshr_head].mem_tag) begin
+        if ((mshr_head != mshr_tail) && mem_data_packet.mem_tag == mshrs[mshr_head].mem_tag) begin
             mem_data_returned = 1'b1;
             for (int i = 0; i < 2; ++i) begin
                 for (int j = 0; j < 4; ++j) begin
@@ -225,11 +226,11 @@ module dcache (
                     end
                 end
             end
-            next_mshrs[mshrs_head].byte_mask = '1;
+            next_mshrs[mshr_head].byte_mask = '1;
 
             load_buffer_cache_packet.valid = 1'b1;
             load_buffer_cache_packet.mshr_idx = mshr_head;
-            load_buffer_cache_packet.data = next_mshrs[mshrs_head].data;
+            load_buffer_cache_packet.data = next_mshrs[mshr_head].data;
         end
 
         // include mshr hit logic
@@ -271,7 +272,7 @@ module dcache (
             load_data_cache_packet.valid = 1'b1;
             dcache_rd_en = 1'b1;
 
-            dcache_index = (load_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + load_dcache_idx;
+            dcache_idx = (load_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + load_dcache_idx;
 
             load_data_cache_packet.byte_mask = 8'hFF; //shove that shi IN 
             load_data_cache_packet.data = dcache_data_out;
@@ -283,8 +284,8 @@ module dcache (
             vcache_rd_en = 1'b1;
             vcache_wr_en = 1'b1;
 
-            dcache_index = (load_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + dcache_lru_idx[load_req_addr.dcache.set_idx];
-            vcache_index = load_vcache_idx;
+            dcache_idx = (load_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + dcache_lru_idx[load_req_addr.dcache.set_idx];
+            vcache_idx = load_vcache_idx;
             dcache_wr_data = vcache_data_out;
             vcache_wr_data = dcache_data_out;
 
@@ -294,7 +295,7 @@ module dcache (
             next_vcache_meta_data[load_vcache_idx].addr = dcache_meta_data[load_req_addr.dcache.set_idx][dcache_lru_idx[load_req_addr.dcache.set_idx]].addr;
             next_vcache_meta_data[load_vcache_idx].dirty = dcache_meta_data[load_req_addr.dcache.set_idx][dcache_lru_idx[load_req_addr.dcache.set_idx]].dirty;
             
-            load_buffer_cache_packet.byte_mask = 8'hFF;
+            load_data_cache_packet.byte_mask = 8'hFF;
             load_data_cache_packet.data = vcache_data_out;
             
         end else if (store_dcache_hit) begin
@@ -302,7 +303,7 @@ module dcache (
 
             dcache_rd_en = 1'b1;
             dcache_wr_en = 1'b1;
-            dcache_index = (store_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + dcache_lru_idx[store_req_addr.dcache.set_idx];
+            dcache_idx = (store_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + dcache_lru_idx[store_req_addr.dcache.set_idx];
 
             dcache_wr_data = dcache_data_out;
             for (int i = 0; i < 4; ++i) begin
@@ -321,8 +322,8 @@ module dcache (
             vcache_rd_en = 1'b1;
             vcache_wr_en = 1'b1;
 
-            dcache_index = (store_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + dcache_lru_idx[store_req_addr.dcache.set_idx];
-            vcache_index = vcache_lru_idx;
+            dcache_idx = (store_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + dcache_lru_idx[store_req_addr.dcache.set_idx];
+            vcache_idx = vcache_lru_idx;
 
             dcache_wr_data = vcache_data_out; //return store to d$
             for (int i = 0; i < 4; ++i) begin
@@ -351,19 +352,19 @@ module dcache (
             next_dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].addr = next_mshrs[mshr_true_head].addr;
             next_dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].valid = 1;
 
-            // punt to victim cache
-            if (dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx].valid) begin
+            // punt to victim cache 
+            if (dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].valid) begin
 
-                next_vcache_meta_data[vcache_lru].addr = dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].addr;
-                next_vcache_meta_data[vcache_lru].dirty = dirty_dcache_lru;
-                next_vcache_meta_data[vcache_lru].valid = 1'b1;
+                next_vcache_meta_data[vcache_lru_idx].addr = dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].addr;
+                next_vcache_meta_data[vcache_lru_idx].dirty = dirty_dcache_lru;
+                next_vcache_meta_data[vcache_lru_idx].valid = 1'b1;
                 vcache_rd_en = 1'b1;
                 vcache_wr_en = 1'b1;
                 vcache_wr_data = dcache_data_out;
-                vcache_idx = vcache_lru;
+                vcache_idx = vcache_lru_idx;
                 
                 // punt to wb buffer
-                if (vcache_meta_data[vcache_lru].valid) begin
+                if (vcache_meta_data[vcache_lru_idx].valid) begin
                     next_wb_buffer[wb_tail] = vcache_data_out;
                     wb_allocated = 1;
                 end
@@ -396,7 +397,7 @@ module dcache (
 
         // update lru bits
         dcache_set_idx = dcache_idx >> `DCACHE_WAY_IDX_BITS;
-        dcache_way_idx = dcache_idx & `DCACHE_WAY_IDX_BITS{1'b1};
+        dcache_way_idx = dcache_idx & {`DCACHE_WAY_IDX_BITS{1'b1}};
         next_dcache_meta_data[dcache_set_idx][dcache_way_idx].lru = `DCACHE_NUM_WAYS - 1;
         for (int i = 0; i < `DCACHE_NUM_WAYS; ++i) begin
             if ((dcache_rd_en || dcache_wr_en) && dcache_meta_data[dcache_set_idx][i].valid && dcache_meta_data[dcache_set_idx][i].lru > dcache_meta_data[dcache_set_idx][dcache_way_idx].lru) begin
@@ -439,10 +440,13 @@ module dcache (
     endgenerate
 
     // Find the LRU index for the vcache
-    logic [`VCACHE_NUM_WAYS-1:0] vcache_lru_gnt_line;
+
     logic [`VCACHE_NUM_WAYS-1:0] vcache_lru_requests;
-    for(j = 0; j < `VCACHE_NUM_WAYS; ++j) begin
-        assign vcache_lru_requests[j] = vcache_meta_data[i][j].lru == 0;
+
+    always_comb begin
+        for(int jj = 0; jj < `VCACHE_NUM_WAYS; ++jj) begin
+            vcache_lru_requests[jj] = vcache_meta_data[jj].lru == 0;
+        end
     end
     
     psel_gen #(

@@ -1,4 +1,4 @@
-]`include "verilog/sys_defs.svh"
+`include "verilog/sys_defs.svh"
 
 module load_buffer(
     input   logic                                 clock, 
@@ -10,14 +10,17 @@ module load_buffer(
 
     // ------------- TO/FROM CACHE -------------- //
     input   LOAD_BUFFER_CACHE_PACKET              load_buffer_cache_packet,
-    input   DATA                            [1:0] mshr_data,    // Cachelines are doubles
 
     // ------------- TO/FROM ISSUE -------------- //
     input  logic            [`LOAD_BUFFER_SZ-1:0] load_cdb_gnt,
     output logic            [`LOAD_BUFFER_SZ-1:0] load_cdb_req,
 
     // ------------ TO CDB ------------- //
-    output CDB_REG_PACKET   [`LOAD_BUFFER_SZ-1:0] load_result
+    output CDB_REG_PACKET   [`LOAD_BUFFER_SZ-1:0] load_result,
+
+    // ------------ FROM BS ------------- //
+    input B_MASK                                b_mm_resolve,
+    input logic                                 b_mm_mispred
 );
 
     logic [`LOAD_BUFFER_SZ-1:0] load_buffer_valid, next_load_buffer_valid, chosen_spot, new_load;
@@ -31,7 +34,10 @@ module load_buffer(
          .gnt(chosen_spot)
     );
 
-    assign new_load = chosen_spot & 'load_buffer_packet_in.valid;
+    
+    
+    assign new_load = load_buffer_packet_in.valid ? chosen_spot : '0;
+
 
     always_comb begin
         next_load_buffer_valid = load_buffer_valid;
@@ -39,7 +45,7 @@ module load_buffer(
 
         for (int i = 0; i < `LOAD_BUFFER_SZ; ++i) begin
             if (b_mm_resolve & load_buffer[i].bm) begin
-                next_load_buffer[i].bm = load_buffer.bm & ~(b_mm_resolve);
+                next_load_buffer[i].bm = load_buffer[i].bm & ~(b_mm_resolve);
                 if (b_mm_mispred) begin
                     next_load_buffer[i] = NOP_LOAD_BUFFER_PACKET;
                     next_load_buffer_valid[i] = 1'b0;
@@ -47,7 +53,10 @@ module load_buffer(
             end
         end
 
-        load_cdb_req = next_load_buffer_valid && !load_buffer[i].byte_mask;
+        for (int i = 0; i < `LOAD_BUFFER_SZ; ++i) begin    
+            load_cdb_req[i] = next_load_buffer_valid && !load_buffer[i].byte_mask;
+        end
+        
         next_load_buffer_valid = next_load_buffer_valid ^ load_cdb_gnt ^ new_load;
         load_buffer_free = ~(&next_load_buffer_valid);
 
@@ -61,7 +70,7 @@ module load_buffer(
             if (load_buffer_cache_packet.valid && load_buffer[i].mshr_idx == load_buffer_cache_packet.mshr_idx) begin
                 for (int j = 0; j < 4; j++) begin
                     if (load_buffer[i].byte_mask[j]) begin
-                        next_load_buffer[i].result.bytes[j] = load_buffer_cache_packet.data[load_buffer[i].dw.w_idx].bytes[j];
+                        next_load_buffer[i].result.bytes[j] = load_buffer_cache_packet.data[load_buffer[i].load_addr.dw.w_idx].bytes[j];
                         next_load_buffer[i].byte_mask[j] = 1'b0;
                     end
                 end
@@ -79,16 +88,16 @@ module load_buffer(
         sign_extend = result >> offset;
         if (func[2]) begin
             // unsigned: zero-extend the data
-            if (MEM_SIZE(func[1:0]) == BYTE) begin
+            if (MEM_SIZE'(func[1:0]) == BYTE) begin
                 sign_extend[31:8] = 0;
-            end else if (MEM_SIZE(func[1:0]) == HALF) begin
+            end else if (MEM_SIZE'(func[1:0]) == HALF) begin
                 sign_extend[31:16] = 0;
             end
         end else begin
             // signed: sign-extend the data
-            if (MEM_SIZE(func[1:0]) == BYTE) begin
+            if (MEM_SIZE'(func[1:0]) == BYTE) begin
                 sign_extend[31:8] = {(24){sign_extend[7]}};
-            end else if (MEM_SIZE(func[1:0]) == HALF) begin
+            end else if (MEM_SIZE'(func[1:0]) == HALF) begin
                 sign_extend[31:16] = {(16){sign_extend[15]}};
             end
         end
@@ -102,8 +111,8 @@ module load_buffer(
             load_buffer_valid <= next_load_buffer_valid;
             load_buffer <= next_load_buffer;       
         end
-        for(int i = 0, i < `LOAD_BUFFER_SZ; ++i) begin
-            $display("load_cdb_req[%d]: %b", i, load_cdb_req[i]); //in case its some dont care
+        for(int ii = 0; ii < `LOAD_BUFFER_SZ; ++ii) begin
+            $display("load_cdb_req[%d]: %b", ii, load_cdb_req[ii]); //in case its some dont care
         end
     end
 

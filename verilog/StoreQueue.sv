@@ -2,8 +2,10 @@
 
 module store_queue #(
 ) (
+    input   logic reset,
+    input   logic clock,
     // ------------ FROM Store Unit ------------- //
-    input   SQ_PACKET                     sq_packet,
+    input   STORE_QUEUE_PACKET                     sq_packet,
     input   SQ_MASK                       resolving_sq_mask,                    
 
     // ------------- TO/FROM DISPATCH -------------- // 
@@ -30,6 +32,7 @@ module store_queue #(
     output logic                            store_req_valid,
     output DATA                             store_req_data, 
     output ADDR                             store_req_addr,
+    output BYTE_MASK                        store_req_byte_mask,
 
     // ------------- TO/FROM Retire -------------- //
     input logic                 [`NUM_SCALAR_BITS-1:0] num_store_retiring
@@ -47,16 +50,17 @@ module store_queue #(
 
     assign sq_mask_combinational = sq_mask & (~resolving_sq_mask);
     assign next_store_buffer_entries = store_buffer_entries + num_store_retiring - store_req_accepted;
-    assign store_req_data            = store_queue[true_head].store_result;
-    assign store_req_addr            = store_queue[true_head].store_addr;
+    assign store_req_data            = store_queue[true_head].result;
+    assign store_req_addr            = store_queue[true_head].addr;
+    assign store_req_byte_mask       = store_queue[true_head].byte_mask;
     assign store_req_valid           = store_buffer_entries != 0;
     assign next_true_head            = true_head + store_req_accepted;
-    assign next_head                 = (head + num_sq_retiring) % `SQ_SZ;
+    assign next_head                 = (head + num_store_retiring) % `SQ_SZ;
     assign next_tail                 = sq_restore_valid ? sq_tail_restore : (sq_tail + stores_dispatching);
     assign sq_spots                  = (`SQ_SZ - sq_entries < `N) ? `SQ_SZ - sq_entries : `N;
 
     assign next_sq_entries           = sq_restore_valid ? (next_head ^ sq_tail_restore) == (1'b1 << `SQ_IDX_BITS) ? `SQ_SZ : 
-                                                                                  sq_tail_restore.sq_idx - next_head.sq_id : 
+                                                                                 sq_tail_restore.sq_idx - next_head.sq_idx : 
                                                                       sq_entries + stores_dispatching - store_req_accepted;  // if restore valid -> if only parities different -> full
                                                                                                                               //                  -> else -> size = difference between indices
                                                                                                                               // else calculate with entries
@@ -104,7 +108,7 @@ module store_queue #(
             sq_data_mask[i] = 1'b0;
             for (int j = 0; j < `SQ_SZ; ++j) begin
                 if (dependent_store[j]) begin
-                    sq_load_data.bytes[i] = sq_entries[j].result.bytes[i];
+                    sq_load_data.bytes[i] = store_queue[j].result.bytes[i];
                     sq_data_mask[i] = 1'b1;
                 end
             end

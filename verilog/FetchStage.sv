@@ -96,11 +96,11 @@ module Fetch #() (
         valid_branch = '0;
         valid_jump = '0;
         valid_store = '0;
-        Next_PC_reg = PC_reg;
+        Next_PC_reg = restore_valid ? PC_restore : PC_reg;
         
         //creating array of N PCs that will be sent to ICache
         for (int i = 0; i <= `N; ++i) begin
-            PCs[i] = PC_reg + (4 * i);
+            PCs[i] = Next_PC_reg + (4 * i);
         end
         
         //fetching N instructions from I cache if they are a hit
@@ -129,8 +129,8 @@ module Fetch #() (
     always_ff @(posedge clock) begin
         if (reset) begin
             PC_reg <= 0;             // initial PC value is 0 (the memory address where our program starts)
-        end else if (restore_valid) begin
-            PC_reg <= PC_restore;    // or transition to next PC if valid
+        // end else if (restore_valid) begin
+        //     PC_reg <= PC_restore;    // or transition to next PC if valid
         end else begin
             PC_reg <= Next_PC_reg;
         end

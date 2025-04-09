@@ -193,15 +193,15 @@ typedef logic [3:0] MEM_TAG;
 `define ICACHE_SET_IDX_BITS $clog2(`ICACHE_NUM_SETS)
 
 // icache definitions
-`define ICACHE_NUM_WAYS 4
-`define ICACHE_NUM_BANKS  1 << $clog2($ceil(`N/2)+1) // TODO: talk about whether we need this to be + 1 or not
+`define ICACHE_NUM_WAYS 1 //LEAVE THIS SHI
+`define ICACHE_NUM_BANKS 4
 `define ICACHE_LINES 32 / `ICACHE_NUM_BANKS
 `define ICACHE_NUM_SETS `ICACHE_LINES / `ICACHE_NUM_WAYS
 `define ICACHE_NUM_BANKS_BITS $clog2(`ICACHE_NUM_BANKS)
 `define ICACHE_LINE_BITS $clog2(`ICACHE_LINES)
 `define ICACHE_TAG_BITS 32 - `ICACHE_NUM_BANKS_BITS - `ICACHE_SET_IDX_BITS - 3
 `define ICACHE_WAY_IDX_BITS $clog2(`ICACHE_NUM_WAYS)
-`define PREFETCH_DIST (`ICACHE_NUM_BANKS * `ICACHE_NUM_SETS * 2) - 1
+`define PREFETCH_DIST 8
 
 typedef logic [`ICACHE_TAG_BITS-1:0] ICACHE_TAG;
 typedef logic [`ICACHE_WAY_IDX_BITS-1:0] ICACHE_LRU;
@@ -225,6 +225,7 @@ typedef logic [`DCACHE_LINE_BITS-1:0] DCACHE_IDX;
 `define VCACHE_LINES 4
 `define VCACHE_NUM_SETS `VCACHE_LINES / `VCACHE_NUM_WAYS
 `define VCACHE_LINE_BITS $clog2(`VCACHE_LINES)
+`define VCACHE_WAY_IDX_BITS $clog2(`VCACHE_NUM_WAYS)
 typedef logic [`VCACHE_LINE_BITS-1:0] VCACHE_LRU;
 typedef logic [`VCACHE_LINE_BITS-1:0] VCACHE_IDX;
 
@@ -842,7 +843,8 @@ const LOAD_DATA_PACKET NOP_LOAD_DATA_PACKET = '{
     byte_mask:     '0,
     load_addr:     '0,
     bm:            '0,
-    sq_tail:       '0
+    sq_tail:       '0,
+    load_func:     '0
 };
 
 typedef struct packed {
@@ -858,12 +860,13 @@ typedef struct packed {
 
 const LOAD_BUFFER_PACKET NOP_LOAD_BUFFER_PACKET = '{
     byte_mask:          '0,
-    mash_idx:           '0,
+    mshr_idx:           '0,
     valid:              '0,
     load_addr:          '0,
     result:             '0,
     bm:                 '0,
-    dest_reg_idx:       '0
+    dest_reg_idx:       '0,
+    load_func:          '0
 };
 
 typedef struct packed {
@@ -880,9 +883,10 @@ const STORE_ADDR_PACKET NOP_STORE_ADDR_PACKET = '{
     valid:              '0,
     source_reg_1:       '0,
     source_reg_2:       '0,
-    store_imm:          '0;
+    store_imm:          '0,
     sq_mask:            '0,
-    store_func:         '0
+    store_func:         '0,
+    dest_reg_idx:           '0
 };
 
 typedef struct packed {
@@ -890,13 +894,15 @@ typedef struct packed {
     ADDR            addr;
     DATA            result;
     BYTE_MASK       byte_mask;
+    PHYS_REG_IDX    dest_reg_idx;
 } STORE_QUEUE_PACKET;
 
 const STORE_QUEUE_PACKET NOP_STORE_QUEUE_PACKET = '{
     valid:              '0,
     addr:               '0,
     result:             '0,
-    byte_mask:          '0
+    byte_mask:          '0,
+    dest_reg_idx:       '0
 };
 
 typedef struct packed {
@@ -914,7 +920,7 @@ typedef struct packed {
 
 typedef struct packed {
     logic           valid;
-    logic           priority;
+    logic           prior;
     ADDR            addr;
     DATA      [1:0] data;
 } MEM_REQ_PACKET;
@@ -932,10 +938,10 @@ typedef struct packed {
 typedef struct packed {
     MEM_TAG         mem_tag;
     ADDR            addr;
-    DATA      [1:0] data;
 } ICACHE_MSHR_ENTRY;
 
 typedef struct packed {
+    logic           valid;
     logic           dirty;
     MEM_TAG         mem_tag;
     ADDR            addr;
@@ -945,10 +951,7 @@ typedef struct packed {
 
 typedef struct packed {
     logic           valid;
-    MEM_TAG         mem_tag;
     ADDR            addr;
-    ICACHE_LRU      lru;
-    logic           dirty;
 } ICACHE_META_DATA;
 
 typedef struct packed {

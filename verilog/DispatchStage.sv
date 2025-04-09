@@ -33,7 +33,7 @@ module Dispatch (
 
     // ------------ TO/FROM SQ ------------- // 
     input   logic            [`NUM_SQ_BITS-1:0] sq_spots,
-    input   SQ_IDX                              sq_tail,
+    input   SQ_POINTER                          sq_tail,
     input   SQ_MASK                             sq_mask_combinational,
     output  SQ_MASK                             dispatch_sq_mask,
     output  logic        [`NUM_SCALAR_BITS-1:0] stores_dispatching,
@@ -77,6 +77,7 @@ module Dispatch (
 
     logic [MIN_BRANCH_WIDTH_N-1:0] [`B_MASK_WIDTH-1:0] b_mask_chosen_spots;
     logic [`NUM_B_MASK_BITS-1:0] branches_dispatching;
+    SQ_POINTER sq_tail_combinational;
 
     psel_gen #(
          .WIDTH(`B_MASK_WIDTH),  // The width of the request bus

@@ -23,33 +23,19 @@ module cpu (
 
     output MEM_COMMAND proc2mem_command, // Command sent to memory
     output ADDR        proc2mem_addr,    // Address sent to memory
-    output MEM_BLOCK   proc2mem_data,    // Data sent to memory
+    output MEM_BLOCK   proc2mem_data,     // Data sent to memory
+    `ifndef CACHE_MODE
     output MEM_SIZE    proc2mem_size,    // Data size sent to memory
-    
+    `endif
 
     // Note: these are assigned at the very bottom of the module
-    input  INST          [`N-1:0] inst,
-    output COMMIT_PACKET [`N-1:0] committed_insts,
-    output ADDR          [`N-1:0] PCs_out,
+    // input  INST          [`N-1:0] inst,
+    output COMMIT_PACKET [`N-1:0] committed_insts
+    // output ADDR          [`N-1:0] PCs_out,
 
     // Debug outputs: these signals are solely used for debugging in testbenches
     // Do not change for project 3
     // You should definitely change these for project 4
-    output ADDR  if_NPC_dbg,
-    output DATA  if_inst_dbg,
-    output logic if_valid_dbg,
-    output ADDR  if_id_NPC_dbg,
-    output DATA  if_id_inst_dbg,
-    output logic if_id_valid_dbg,
-    output ADDR  id_ex_NPC_dbg,
-    output DATA  id_ex_inst_dbg,
-    output logic id_ex_valid_dbg,
-    output ADDR  ex_mem_NPC_dbg,
-    output DATA  ex_mem_inst_dbg,
-    output logic ex_mem_valid_dbg,
-    output ADDR  mem_wb_NPC_dbg,
-    output DATA  mem_wb_inst_dbg,
-    output logic mem_wb_valid_dbg
 );
 
     // ONLY OUTPUTS ARE UNCOMMENTED
@@ -101,6 +87,8 @@ module cpu (
     logic                                resolving_valid;
     ADDR                                 resolving_target_PC;
     ADDR                                 resolving_branch_PC;
+    SQ_POINTER                           sq_tail_restore;
+    SQ_MASK                              sq_mask_restore;
     
     `ifdef DEBUG
     BS_DEBUG                             bs_debug;
@@ -129,21 +117,7 @@ module cpu (
     DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_1;
     DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_2;
     DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_1;
-    DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_2;
-
-    /* -------------- STORE QUEUE ----------------*/
-    input   SQ_PACKET                     sq_packet,
-    input   SQ_MASK                       resolving_sq_mask,                    
-
-    // ------------- TO/FROM DISPATCH -------------- //
-    logic        [`NUM_SQ_BITS-1:0] sq_spots,
-    SQ_POINTER                      sq_tail,
-    SQ_MASK                         sq_mask_combinational,
-    oDATA                             sq_load_data,
-    output BYTE_MASK                        sq_data_mask,
-    output logic                            cache_store_valid,
-    output DATA                             cache_store_data, 
-    output ADDR                             cache_store_addr,
+    DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_2;                   
 
     /*------- FETCH WIRES ----------*/  
     FETCH_PACKET         [`N-1:0] inst_buffer_inputs;   //instructions going to instruction buffer
@@ -151,8 +125,9 @@ module cpu (
     logic [`N-1:0]       [`N-1:0] branch_gnt_bus;
     logic                [`N-1:0] final_branch_gnt_line;
     logic                         no_branches_fetched;
+    ADDR                 [`N-1:0] PCs_out;
 
-    /*------- FETCH BUFFER WIRES ----------*/    
+    /*------- INST BUFFER WIRES ----------*/    
     logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_spots;
     FETCH_PACKET         [`N-1:0] inst_buffer_outputs;   
     logic  [`NUM_SCALAR_BITS-1:0] inst_buffer_outputs_valid;
@@ -170,18 +145,20 @@ module cpu (
     /*------- DISPATCH WIRES ----------*/
 
     BS_ENTRY_PACKET [`B_MASK_WIDTH-1:0] branch_stack_entries;
-    B_MASK next_b_mask;
-    ROB_PACKET [`N-1:0] rob_entries;
-    RS_PACKET [`N-1:0] rs_entries;
-    logic [`PHYS_REG_SZ_R10K-1:0] updated_free_list;
-    logic [`NUM_SCALAR_BITS-1:0] num_dispatched;
+    B_MASK                              next_b_mask;
+    ROB_PACKET                 [`N-1:0] rob_entries;
+    RS_PACKET                  [`N-1:0] rs_entries;
+    logic       [`PHYS_REG_SZ_R10K-1:0] updated_free_list;
+    logic        [`NUM_SCALAR_BITS-1:0] num_dispatched;
+    SQ_MASK                             dispatch_sq_mask;
+    logic        [`NUM_SCALAR_BITS-1:0] stores_dispatching;
     `ifdef DEBUG
-        DISPATCH_DEBUG dispatch_debug;
+        DISPATCH_DEBUG                  dispatch_debug;
     `endif
 
     /*------- ISSUE WIRES ----------*/
 
-    wor                    [`RS_SZ-1:0] rs_data_issuing;     // set index to 1 when a rs_data is selected to be issued
+    logic                  [`RS_SZ-1:0] rs_data_issuing;     // set index to 1 when a rs_data is selected to be issued
     PHYS_REG_IDX      [`NUM_FU_ALU-1:0] issue_alu_regs_reading_1;
     PHYS_REG_IDX      [`NUM_FU_ALU-1:0] issue_alu_regs_reading_2;
     PHYS_REG_IDX     [`NUM_FU_MULT-1:0] issue_mult_regs_reading_1;
@@ -189,22 +166,27 @@ module cpu (
     PHYS_REG_IDX   [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1;
     PHYS_REG_IDX   [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2;
     logic            [`NUM_FU_MULT-1:0] mult_cdb_gnt;
-    logic            [`NUM_FU_LDST-1:0] ldst_cdb_gnt;
+    logic            [`LOAD_BUFFER_SZ-1:0] load_cdb_gnt;
     ALU_PACKET        [`NUM_FU_ALU-1:0] alu_packets;
     MULT_PACKET      [`NUM_FU_MULT-1:0] mult_packets;
     BRANCH_PACKET  [`NUM_FU_BRANCH-1:0] branch_packets;
-    LDST_PACKET      [`NUM_FU_LDST-1:0] ldst_packets;
+    LOAD_ADDR_PACKET      [`NUM_FU_LOAD-1:0] load_addr_packets;
     logic [`N-1:0]  [`NUM_FU_TOTAL-1:0] complete_gnt_bus;
+    STORE_ADDR_PACKET     [`NUM_FU_STORE-1:0] store_addr_packets;
     
     /*----------EXECUTE WIRES -------------*/
     logic              [`NUM_FU_MULT-1:0] mult_free;
-    logic              [`NUM_FU_LDST-1:0] ldst_free;
+    logic              [`NUM_FU_LOAD-1:0] load_free;
     CDB_ETB_PACKET               [`N-1:0] cdb_completing;
     CDB_REG_PACKET               [`N-1:0] cdb_reg;
     CDB_REG_PACKET               [`N-1:0] next_cdb_reg;
     BRANCH_REG_PACKET                     branch_reg;
     logic              [`NUM_FU_MULT-1:0] mult_cdb_valid;
-    logic              [`NUM_FU_LDST-1:0] ldst_cdb_valid;
+    logic              [`LOAD_BUFFER_SZ-1:0] load_cdb_valid;
+    ADDR                                  load_req_addr;
+    logic                                 load_req_valid;
+    logic                                 load_valid;
+    SQ_POINTER                            load_sq_tail;
 
     always_comb begin
         for (int i = 0; i < `N; ++i) begin
@@ -218,11 +200,46 @@ module cpu (
         actual_taken = branch_reg.actual_taken; //decoding taken for branch predictor
     end
 
+    /*------- STORE ADDR STAGE WIRES ------ */
+    SQ_MASK                     resolving_sq_mask;
+    STORE_QUEUE_PACKET          sq_packet;
+
+    /*------- STORE QUEUE WIRES ------ */
+    logic        [`NUM_SQ_BITS-1:0] sq_spots;
+    SQ_POINTER                      sq_tail;
+    SQ_MASK                         sq_mask_combinational;
+    DATA                             sq_load_data;
+    BYTE_MASK                        sq_data_mask;
+    logic                            store_req_valid;
+    DATA                             store_req_data; 
+    ADDR                             store_req_addr;
+    BYTE_MASK                        store_req_byte_mask;
+
     /*------- RETIRE WIRES ----------*/
 
     logic [`NUM_SCALAR_BITS-1:0] num_retiring;
     PHYS_REG_IDX [`N-1:0] phys_regs_retiring;
     PHYS_REG_IDX [`N-1:0] retire_phys_regs_reading;
+    logic  [`NUM_SCALAR_BITS-1:0] num_store_retiring;
+
+    /*----------- DCACHE ---------------*/
+    LOAD_DATA_CACHE_PACKET           load_data_cache_packet;        
+    LOAD_BUFFER_CACHE_PACKET         load_buffer_cache_packet;
+    logic                            store_req_accepted;
+    MEM_REQ_PACKET                   dcache_mem_req_packet;
+
+    /*----------- ICACHE ---------------*/
+    DATA                  [`N-1:0] cache_data; //instructions being sent to Fetch
+    logic                 [`N-1:0] cache_miss;
+    MEM_REQ_PACKET                 icache_mem_req_packet;
+
+    /*----------- MEM ARBITER ---------------*/
+    logic                             dcache_mem_req_accepted;
+    logic                             icache_mem_req_accepte;
+    MEM_TAG                           mem_trxn_tag;
+    MEM_DATA_PACKET                   mem_data_packet;
+          
+
 
     //////////////////////////////////////////////////
     //                                              //
@@ -286,7 +303,9 @@ module cpu (
         .regs_to_use            (regs_to_use),
         .free_list              (free_list),
         .next_complete_list     (next_complete_list),
-        .complete_list          (complete_list)
+        .complete_list          (complete_list),
+        .store_reg_completing   (sq_packet.dest_reg_idx),
+        .store_valid            (sq_packet.valid)
     );
 
 
@@ -310,7 +329,10 @@ module cpu (
         .resolving_valid_branch (resolving_valid_branch),
         .resolving_valid        (resolving_valid),
         .resolving_target_PC    (resolving_target_PC),
-        .resolving_branch_PC    (resolving_branch_PC)
+        .resolving_branch_PC    (resolving_branch_PC),
+        .sq_mask_resolving      (resolving_sq_mask),
+        .sq_tail_restore        (sq_tail_restore),
+        .sq_mask_restore        (sq_mask_restore)
         `ifdef DEBUG
         , .bs_debug(bs_debug)
         `endif
@@ -401,39 +423,91 @@ module cpu (
     /*------------------ Store Queue --------------------*/
 
     store_queue store_queue_instance (
-        // ------------ FROM Store Unit ------------- //
-        .sq_packet(),
-        .resolving_sq_mask(),                 
-        // ------------- TO/FROM DISPATCH -------------- //
-        .stores_dispatched(),
-        .dispatch_sq_mask(),
-        .sq_spots(),
-        .sq_tail(),
-        .sq_mask_combinational(),    
-        // ------------- TO/FROM Load Unit -------------- //
-        .load_sq_tail(),
-        .load_addr(),,
-        .sq_load_data(),
-        .
-        input SQ_POINTER                        load_sq_tail,
-        input ADDR                              load_addr,
-        output DATA                             sq_load_data,
-        output BYTE_MASK                        sq_data_mask,
+        .reset(reset),
+        .clock(clock),
+        .sq_packet(sq_packet),
+        .resolving_sq_mask(resolving_sq_mask),                    
+        .stores_dispatching(stores_dispatching),
+        .dispatch_sq_mask(dispatch_sq_mask),
+        .sq_spots(sq_spots),
+        .sq_tail(sq_tail),
+        .sq_mask_combinational(sq_mask_combinational),
+        .load_sq_tail(load_sq_tail),
+        .load_req_addr(load_req_addr),
+        .sq_load_data(sq_load_data),
+        .sq_data_mask(sq_data_mask),
+        .sq_restore_valid(restore_valid),
+        .sq_tail_restore(sq_tail_restore),
+        .sq_mask_restore(sq_mask_restore),
+        .store_req_accepted(store_req_accepted),
+        .store_req_valid(store_req_valid),
+        .store_req_data(store_req_data), 
+        .store_req_addr(store_req_addr),
+        .store_req_byte_mask(store_req_byte_mask),        
+        .num_store_retiring(num_store_retiring)
+    );
 
-        // ------------- FROM BRANCH STACK -------------- //
-        input   logic                           sq_restore_valid,
-        input   SQ_POINTER                      sq_tail_restore,
-        input   SQ_MASK                         sq_mask_restore,
+    dcache dcache_instance (
+        .clock(clock),
+        .reset(reset),
+        .load_req_valid(load_req_valid),
+        .load_req_addr(load_req_addr),
+        .load_data_cache_packet(load_data_cache_packet),
+        .load_buffer_cache_packet(load_buffer_cache_packet),
+        .store_req_valid(store_req_valid),
+        .store_req_addr(store_req_addr),
+        .store_req_data(store_req_data),
+        .store_req_byte_mask(store_req_byte_mask),
+        .store_req_accepted(store_req_accepted),
+        .dcache_mem_req_accepted(dcache_mem_req_accepted),
+        .dcache_mem_trxn_tag(mem_trxn_tag),
+        .mem_data_packet(mem_data_packet),                  //NEED TO INSTANTIATE MEM DATA PACKET 
+        .dcache_mem_req_packet(dcache_mem_req_packet)
+    );
 
-        // ------------- TO/FROM D Cache-------------- //
-        input logic                             cache_store_accepted,
-        output logic                            cache_store_valid,
-        output DATA                             cache_store_data, 
-        output ADDR                             cache_store_addr,
 
-        // ------------- TO/FROM Retire -------------- //
-        input logic                 [`NUM_SCALAR_BITS-1:0] num_store_retiring
-    )
+    icache icache_instance (
+        .clock(clock),
+        .reset(reset),
+        .PCs_out(PCs_out),
+        .cache_data(cache_data), 
+        .cache_miss(cache_miss),
+        .icache_mem_req_accepted(icache_mem_req_accepted),
+        .icache_mem_trxn_tag(mem_trxn_tag),
+        .mem_data_packet(mem_data_packet),
+        .icache_mem_req_packet(icache_mem_req_packet), 
+        .restore_valid(restore_valid)
+    );
+
+    memarbiter memarbiter_instance (
+        .clock(clock),
+        .reset(reset),
+        .dcache_mem_req_packet(dcache_mem_req_packet),
+        .dcache_mem_req_accepted(dcache_mem_req_accepted),
+        .icache_mem_req_packet(icache_mem_req_packet),
+        .icache_mem_req_accepted(icache_mem_req_accepted),
+        .mem_trxn_tag(mem_trxn_tag),
+        .mem_data_packet(mem_data_packet),
+        .mem2proc_transaction_tag(mem2proc_transaction_tag),
+        .mem2proc_data(mem2proc_data),
+        .mem2proc_data_tag(mem2proc_data_tag),
+        .proc2mem_addr(proc2mem_addr),
+        .proc2mem_data(proc2mem_data),
+        .proc2mem_command(proc2mem_command)
+    );
+
+    // mem main_memory (
+    //     .clock(clock),         
+    //     .proc2mem_addr(proc2mem_addr),             
+    //     .proc2mem_data(proc2mem_data),
+    //     `ifndef CACHE_MODE
+    //     .proc2mem_size(proc2mem_size),
+    //     `endif
+    //     .proc2mem_command(proc2mem_command),
+    //     .mem2proc_transaction_tag(mem2proc_transaction_tag), // Memory tag for current transaction (0 = can't accept)
+    //     .mem2proc_data(mem2proc_data),            // Data for a load
+    //     .mem2proc_data_tag(mem2proc_data_tag)         // Tag for finished transactions (0 = no value)
+    // );
     
 
     //////////////////////////////////////////////////
@@ -446,7 +520,7 @@ module cpu (
         .clock(clock), 
         .reset(reset),
         .PCs_out(PCs_out),
-        .cache_data(inst),
+        .cache_data(cache_data),
         .cache_miss('0),
         .PC_restore(PC_restore),  // Retire module tells the ROB how many entries can be cleared
         .restore_valid(restore_valid),
@@ -511,6 +585,12 @@ module cpu (
         // ------------ TO/FROM RS ------------- // 
         .rs_spots(rs_spots),
         .rs_entries(rs_entries),
+        // ------------ TO/FROM SQ ------------- // 
+        .sq_spots(sq_spots),
+        .sq_tail(sq_tail),
+        .sq_mask_combinational(sq_mask_combinational),
+        .dispatch_sq_mask(dispatch_sq_mask),
+        .stores_dispatching(stores_dispatching),
         // ------------ TO/FROM FREDDY LIST ------------- //
         .next_complete_list(next_complete_list),
         .regs_to_use(regs_to_use),
@@ -563,16 +643,17 @@ module cpu (
         .next_cdb_reg(next_cdb_reg),
         // ------------- TO/FROM EXECUTE -------------- //
         .mult_free(mult_free),
-        .ldst_free(ldst_free),
+        .load_free(load_free),
         .mult_cdb_req(mult_cdb_valid),
-        .ldst_cdb_req(ldst_cdb_valid),
+        .load_cdb_req(load_cdb_valid),
         .mult_cdb_gnt(mult_cdb_gnt),
-        .ldst_cdb_gnt(ldst_cdb_gnt),
+        .load_cdb_gnt(load_cdb_gnt),
         .alu_packets(alu_packets),
         .mult_packets(mult_packets),
         .branch_packets(branch_packets),
-        .ldst_packets(ldst_packets),
-        .complete_gnt_bus(complete_gnt_bus)
+        .load_addr_packets(load_addr_packets),
+        .complete_gnt_bus(complete_gnt_bus),
+        .store_addr_packets(store_addr_packets)
     );
     
     //////////////////////////////////////////////////
@@ -587,19 +668,35 @@ module cpu (
         .mult_packets_issuing_in(mult_packets),
         .alu_packets_issuing_in(alu_packets),
         .branch_packets_issuing_in(branch_packets),
+        .load_packets_issuing_in(load_addr_packets),
         .mult_cdb_gnt(mult_cdb_gnt),
-        .load_cdb_en(load_cdb_gnt),
+        .load_cdb_gnt(load_cdb_gnt),
         .complete_gnt_bus(complete_gnt_bus),
         .mult_free(mult_free),
-        .ldst_free(ldst_free),
+        .load_free(load_free),
         .mult_cdb_valid(mult_cdb_valid),
-        .ldst_cdb_valid(ldst_cdb_valid),
+        .load_cdb_valid(load_cdb_valid),
         .cdb_completing(cdb_completing),
         .cdb_reg(cdb_reg),
         .next_cdb_reg(next_cdb_reg),
         .b_mm_resolve(b_mm_out),
         .b_mm_mispred(restore_valid),
-        .branch_reg(branch_reg)
+        .branch_reg(branch_reg),
+        .load_data_cache_packet(load_data_cache_packet),
+        .load_buffer_cache_packet(load_buffer_cache_packet),
+        .load_req_addr(load_req_addr),
+        .load_req_valid(load_req_valid),
+        .sq_load_data(sq_load_data),
+        .sq_data_mask(sq_data_mask),
+        .load_sq_tail(load_sq_tail)
+    );
+
+    store_addr_stage sas_instance (
+        .clock(clock),
+        .reset(reset),
+        .store_addr_packet_in(store_addr_packets),
+        .resolving_sq_mask(resolving_sq_mask),
+        .sq_packet(sq_packet)
     );
 
     //////////////////////////////////////////////////
@@ -615,6 +712,8 @@ module cpu (
         .rob_outputs(rob_outputs),
         .rob_outputs_valid(rob_outputs_valid),
         .num_retiring(num_retiring),
+        // ------------- TO SQ -------------- //
+        .num_store_retiring(num_store_retiring),
         // ------------- TO/FROM FREDDYLIST -------------- //
         .complete_list_exposed(complete_list),
         .phys_regs_retiring(phys_regs_retiring),

@@ -25,10 +25,10 @@ module instbuffer #() (
     logic [$clog2(`FB_SZ + 1)-1:0] entries, next_entries;
     
     always_comb begin
-        next_head = (head + num_dispatched) % `FB_SZ;
+        next_head = restore_valid ? tail : (head + num_dispatched) % `FB_SZ;
         next_tail = (tail + inst_valid) % `FB_SZ;
-        next_entries = entries + inst_valid - num_dispatched;
-        inst_buffer_spots = (`FB_SZ - entries < `N) ? `FB_SZ - entries : `N;
+        next_entries = restore_valid ? inst_valid : entries + inst_valid - num_dispatched;
+        inst_buffer_spots = restore_valid ? `N : ((`FB_SZ - entries < `N) ? `FB_SZ - entries : `N);
         inst_buffer_outputs_valid = (entries < `N) ? entries : `N;
         inst_buffer_outputs = '0;
         for (int i = 0; i < `N; ++i) begin
@@ -39,7 +39,7 @@ module instbuffer #() (
     end
 
     always_ff @(posedge clock) begin
-        if (reset || restore_valid) begin
+        if (reset) begin
             inst_buffer <= '0; 
             head <= 0;             // initial PC value is 0 (the memory address where our program starts)
             tail <= 0;

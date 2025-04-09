@@ -37,8 +37,6 @@ module regfile (
     output DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_1,
     output DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_2,
 
-    // TODO: ldst
-    
     // note: no system reset, register values must be written before they can be read
     input CDB_REG_PACKET [`N-1:0] cdb_reg
 );

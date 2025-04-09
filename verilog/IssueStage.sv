@@ -53,10 +53,10 @@ module Issue # (
     output MULT_PACKET            [`NUM_FU_MULT-1:0] mult_packets,
     output BRANCH_PACKET        [`NUM_FU_BRANCH-1:0] branch_packets,
     output LOAD_ADDR_PACKET       [`NUM_FU_LOAD-1:0] load_addr_packets,
-    output logic [`N-1:0]        [`NUM_FU_TOTAL-1:0] complete_gnt_bus
+    output logic [`N-1:0]        [`NUM_FU_TOTAL-1:0] complete_gnt_bus,
 
     // ------------- TO/FROM STORE ADDR STAGE  -------------- //
-    output STORE_ADDR_PACKET     [`NUM_FU_STORE-1:0] store_addr_packets,
+    output STORE_ADDR_PACKET     [`NUM_FU_STORE-1:0] store_addr_packets
 );
 
 genvar i;
@@ -89,7 +89,7 @@ for (i = 0; i < `RS_SZ; ++i) begin
     assign branch_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == BU);
     assign mult_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == MULT); 
     assign alu_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == ALU); 
-    assign load_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && !rs_data_next[i].store_mask && (rs_data_next[i].decoded_signals.FU_type == LOAD); 
+    assign load_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && !rs_data_next[i].sq_mask && (rs_data_next[i].decoded_signals.FU_type == LOAD); 
     assign store_entries_valid[i] = rs_valid_issue[i] && rs_data_next[i].Source1_ready && rs_data_next[i].Source2_ready && (rs_data_next[i].decoded_signals.FU_type == STORE); 
 end
 endgenerate
@@ -106,7 +106,7 @@ always_comb begin
         rs_data_issuing |= branch_inst_gnt_bus[i] & rs_cdb_gnt;
     end
     for (int i = 0; i < `NUM_FU_LOAD; ++i) begin
-        rs_data_issuing |= load_inst_gnt_bus[i] & 'load_free; 
+        rs_data_issuing |= load_free ? load_inst_gnt_bus[i] : '0; 
     end
     for (int i = 0; i < `NUM_FU_STORE; ++i) begin
         rs_data_issuing |= store_inst_gnt_bus[i]; 
@@ -389,22 +389,21 @@ end
 // Create The Load Packets Issuing
 generate
     //loop through load gnt bus
-    for (i = 0; i < `NUM_FU_load; ++i) begin : load_loop
+    for (i = 0; i < `NUM_FU_LOAD; ++i) begin : load_loop
         logic [`RS_SZ_BITS-1:0] load_index;
         encoder #(`RS_SZ, `RS_SZ_BITS) encoders_load (load_inst_gnt_bus[i], load_index);
 
         always_comb begin 
             issue_load_regs_reading_1[i] = 1'b0;
-            issue_load_regs_reading_2[i] = 1'b0;
-            load_addr_packet[i] = NOP_LOAD_ADDR_PACKET; //NOP
+            load_addr_packets[i] = NOP_LOAD_ADDR_PACKET; //NOP
             if (load_inst_gnt_bus[i] && load_free) begin
                 //regfile_read_indices
                 issue_load_regs_reading_1[i] = rs_data_next[load_index].Source1;
-                load_addr_packet[i].valid = rs_data_next[load_index].decoded_signals.valid;
-                load_addr_packet[i].bm = rs_data_next[load_index].bm;
-                load_addr_packet[i].sq_tail = rs_data_next[load_index].sq_tail;
-                load_addr_packet[i].load_func = rs_data_next[load_index].decoded_signals.inst.r.funct3;
-                load_addr_packet[i].dest_reg_idx = rs_data_next[load_index].decoded_signals.T_new;
+                load_addr_packets[i].valid = rs_data_next[load_index].decoded_signals.valid;
+                load_addr_packets[i].bm = rs_data_next[load_index].b_mask;
+                load_addr_packets[i].sq_tail = rs_data_next[load_index].sq_tail;
+                load_addr_packets[i].load_func = rs_data_next[load_index].decoded_signals.inst.r.funct3;
+                load_addr_packets[i].dest_reg_idx = rs_data_next[load_index].T_new;
 
                 if (complete_list[rs_data_next[load_index].Source1]) begin
                     load_addr_packets[i].source_reg_1 = issue_load_read_data_1[i];
@@ -421,7 +420,7 @@ generate
                     end
                 end
 
-                load_addr_packets[i].source_reg_2 = `RV32_signext_Iimm(load_addr_packet.inst);
+                load_addr_packets[i].source_reg_2 = `RV32_signext_Iimm(rs_data_next[load_index].decoded_signals.inst);
             end
         end
     end
@@ -436,18 +435,17 @@ generate
 
         always_comb begin 
             issue_store_regs_reading_1[i] = 1'b0;
-            store_addr_packet[i] = NOP_STORE_ADDR_PACKET; //NOP
+            store_addr_packets[i] = NOP_STORE_ADDR_PACKET; //NOP
             if (store_inst_gnt_bus[i]) begin
 
                 //regfile_read_indices
                 issue_store_regs_reading_1[i] = rs_data_next[store_index].Source1;
                 issue_store_regs_reading_2[i] = rs_data_next[store_index].Source2;
 
-                store_addr_packet[i].valid = rs_data_next[store_index].decoded_signals.valid;
-                store_addr_packet[i].sq_mask = rs_data_next[store_index].sq_mask;
-                store_addr_packet[i].store_func = rs_data_next[store_index].decoded_signals.inst.r.funct3;
-;
-                store_addr_packet[i].dest_reg_idx = rs_data_next[store_index].decoded_signals.T_new;
+                store_addr_packets[i].valid = rs_data_next[store_index].decoded_signals.valid;
+                store_addr_packets[i].sq_mask = rs_data_next[store_index].sq_mask;
+                store_addr_packets[i].store_func = rs_data_next[store_index].decoded_signals.inst.r.funct3;
+                store_addr_packets[i].dest_reg_idx = rs_data_next[store_index].T_new;
 
                 if (complete_list[rs_data_next[store_index].Source1]) begin
                     store_addr_packets[i].source_reg_1 = issue_store_read_data_1[i];
@@ -479,7 +477,7 @@ generate
                     end
                 end
 
-                store_addr_packets[i].store_imm = `RV32_signext_Simm(store_addr_packet.inst);
+                store_addr_packets[i].store_imm = `RV32_signext_Simm(rs_data_next[store_index].decoded_signals.inst);
 
             end
         end
@@ -491,7 +489,7 @@ psel_gen #(
     .WIDTH(`NUM_FU_TOTAL),
     .REQS(`N)
 ) complete_psel (
-    .req({branch_cdb_gnt, alu_cdb_gnt, mult_cdb_gnt , ldst_cdb_gnt}),
+    .req({branch_cdb_gnt, alu_cdb_gnt, mult_cdb_gnt , load_cdb_gnt}),
     .gnt_bus(next_complete_gnt_bus),
     .empty(empty)
 );

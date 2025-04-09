@@ -20,11 +20,12 @@ module store_addr_stage (
     assign sq_packet.valid = store_addr_packet.valid;
     assign sq_packet.addr = store_addr_packet.source_reg_1 + store_addr_packet.store_imm; 
     assign sq_packet.result = store_addr_packet.source_reg_2;
-    assign sq_packet.byte_mask = temp_byte_mask << sq_packet.store_address.w.offset;
+    assign sq_packet.byte_mask = temp_byte_mask << sq_packet.addr.w.offset;
+    assign sq_packet.dest_reg_idx = store_addr_packet.dest_reg_idx;
     assign resolving_sq_mask = store_addr_packet.sq_mask;
 
     always_comb begin
-        case (MEM_SIZE(store_addr_packet.store_func[1:0]))
+        case (MEM_SIZE'(store_addr_packet.store_func[1:0]))
             BYTE:       temp_byte_mask = 4'b0001;
             HALF:       temp_byte_mask = 4'b0011;
             WORD:       temp_byte_mask = 4'b1111;

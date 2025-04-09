@@ -4,7 +4,7 @@ module freddylist #(
 ) (
     input   clock,
     input   reset,
-    // ------------- FROM CDB -------------- //
+    // ------------- FROM EXECUTE -------------- //
     input  PHYS_REG_IDX           [`N-1:0] phys_reg_completing,    // phys reg indexes that are being completed (T_new)
     input  logic                  [`N-1:0] completing_valid,       // bit vector of N showing which phys_reg_completing is valid
     // ------------- FROM RETIRE -------------- //

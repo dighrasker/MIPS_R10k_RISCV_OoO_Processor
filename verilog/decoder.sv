@@ -25,10 +25,10 @@ module decoder (
     assign decoder_out.predict_taken = inst_buffer_input.predict_taken;
     assign decoder_out.PC = inst_buffer_input.PC;
     assign decoder_out.NPC = inst_buffer_input.PC + 4;
-    assign decoder_out.mult_func = inst_buffer_input.inst.r.funct3;
-    assign decoder_out.load_func = inst_buffer_input.inst.r.funct3;
-    assign decoder_out.store_func = inst_buffer_input.inst.r.funct3;
-    assign decoder_out.branch_func = inst_buffer_input.inst.b.funct3;
+    // assign decoder_out.mult_func = inst_buffer_input.inst.r.funct3;
+    // assign decoder_out.load_func = inst_buffer_input.inst.r.funct3;
+    // assign decoder_out.store_func = inst_buffer_input.inst.r.funct3;
+    // assign decoder_out.branch_func = inst_buffer_input.inst.b.funct3;
     
     assign decoder_out.bp_packet = inst_buffer_input.bp_packet;
     assign decoder_out.predicted_PC = inst_buffer_input.predicted_PC;
