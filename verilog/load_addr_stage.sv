@@ -57,6 +57,9 @@ module load_addr_stage (
         end else if (load_addr_free) begin
             load_addr_packet <= load_addr_packet_in;
         end
+        // $display("------- Load Addr Stage ------");
+        // $display("load_addr_packet.source_reg_1: %d", load_addr_packet.source_reg_1);
+        // $display("load_addr_packet.source_reg_2: %d", load_addr_packet.source_reg_2);
     end
 
 endmodule // alu

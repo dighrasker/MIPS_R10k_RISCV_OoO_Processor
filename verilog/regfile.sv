@@ -37,6 +37,14 @@ module regfile (
     output DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_1,
     output DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_2,
 
+    input PHYS_REG_IDX [`NUM_FU_LOAD-1:0] issue_load_regs_reading_1,
+    output DATA        [`NUM_FU_LOAD-1:0] issue_load_read_data_1,
+
+    input PHYS_REG_IDX [`NUM_FU_STORE-1:0] issue_store_regs_reading_1,
+    input PHYS_REG_IDX [`NUM_FU_STORE-1:0] issue_store_regs_reading_2,
+    output DATA        [`NUM_FU_STORE-1:0] issue_store_read_data_1,
+    output DATA        [`NUM_FU_STORE-1:0] issue_store_read_data_2,
+
     // note: no system reset, register values must be written before they can be read
     input CDB_REG_PACKET [`N-1:0] cdb_reg
 );
@@ -77,6 +85,19 @@ module regfile (
         for (i = 0; i < `NUM_FU_MULT; ++i) begin
             assign issue_mult_read_data_1[i] = reg_file[issue_mult_regs_reading_1[i]];
             assign issue_mult_read_data_2[i] = reg_file[issue_mult_regs_reading_2[i]];
+        end
+    endgenerate
+
+    generate
+        for (i = 0; i < `NUM_FU_LOAD; ++i) begin
+            assign issue_load_read_data_1[i] = reg_file[issue_load_regs_reading_1[i]];
+        end
+    endgenerate
+
+    generate
+        for (i = 0; i < `NUM_FU_STORE; ++i) begin
+            assign issue_store_read_data_1[i] = reg_file[issue_store_regs_reading_1[i]];
+            assign issue_store_read_data_2[i] = reg_file[issue_store_regs_reading_2[i]];
         end
     endgenerate
 

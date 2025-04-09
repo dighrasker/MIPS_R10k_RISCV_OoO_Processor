@@ -50,9 +50,9 @@ module store_queue #(
 
     assign sq_mask_combinational = sq_mask & (~resolving_sq_mask);
     assign next_store_buffer_entries = store_buffer_entries + num_store_retiring - store_req_accepted;
-    assign store_req_data            = store_queue[true_head].result;
-    assign store_req_addr            = store_queue[true_head].addr;
-    assign store_req_byte_mask       = store_queue[true_head].byte_mask;
+    assign store_req_data            = store_queue[true_head.sq_idx].result;
+    assign store_req_addr            = store_queue[true_head.sq_idx].addr;
+    assign store_req_byte_mask       = store_queue[true_head.sq_idx].byte_mask;
     assign store_req_valid           = store_buffer_entries != 0;
     assign next_true_head            = true_head + store_req_accepted;
     assign next_head                 = (head + num_store_retiring) % `SQ_SZ;
@@ -143,7 +143,25 @@ module store_queue #(
             sq_mask <= next_sq_mask;
             store_queue <= next_store_queue;
         end
+
         $display("store_req_valid: %b", store_req_valid);
+        $display("store_req_addr: %b", store_req_addr);
+        $display("next_true_head: %b", next_true_head.sq_idx);
+        $display("true_head: %d", true_head.sq_idx);
+        $display("store_req_accepted: %b", store_req_accepted);
+        $display("next_head: %d", next_head.sq_idx);
+        $display("next_tail: %d", next_tail.sq_idx);
+        $display("resolving_sq_mask: %b", resolving_sq_mask);
+
+        for (int i = 0; i < `SQ_SZ; ++i) begin
+            $display("next_store_queue[%d].addr: %h", i, next_store_queue[i].addr);
+        end
+        for (int i = 0; i < `SQ_SZ; ++i) begin
+            $display("next_store_queue[%d].result: %d", i, next_store_queue[i].result);
+        end
+        for (int i = 0; i < `SQ_SZ; ++i) begin
+            $display("next_store_queue[%d].byte_mask: %h", i, next_store_queue[i].byte_mask);
+        end
     end
 
 endmodule

@@ -14,7 +14,7 @@ module rs #(
     input  CDB_ETB_PACKET      [`N-1:0] ETB_tags,            // Tags that are broadcasted from the CDB
     
     // --------- FROM: STORE UNIT ------------ //
-    input  SQ_MASK                      store_mask,
+    input  SQ_MASK                      resolving_sq_mask,
 
     // ------- TO/FROM: ISSUE --------- //
     input  logic           [`RS_SZ-1:0] rs_data_issuing,      // bit vector of rs_data that is being issued by issue stage
@@ -69,13 +69,13 @@ module rs #(
         for(int i = 0; i < `RS_SZ; ++i) begin
             //resolving masks 
             rs_data_next[i].b_mask = rs_data[i].b_mask & ~(b_mm_resolve);
-            rs_data_next[i].sq_mask = rs_data[i].sq_mask & ~(store_mask);
+            rs_data_next[i].sq_mask = rs_data[i].sq_mask & ~(resolving_sq_mask);
         end
         for(int i = 0; i < `RS_SZ; ++i) begin
             //squashing step
             if (b_mm_mispred && (b_mm_resolve & rs_data[i].b_mask)) begin
-                rs_valid_issue[i] =  0;
-                rs_data_next[i] = 0;
+                rs_valid_issue[i] =  '0;
+                rs_data_next[i] = '0;
             end
         end
 
@@ -119,6 +119,16 @@ module rs #(
             rs_data <= rs_data_next_next;
             rs_valid <= next_rs_valid;
         end
+        $display("------ RS --------");
+        $display("b_mm_mispred: %b", b_mm_mispred);
+        $display("b_mm_resolve: %b", b_mm_resolve);
+        for (int i = 0; i < `RS_SZ; ++i) begin
+            $display("rs_data[%d].b_mask: %b", i, rs_data[i].b_mask);
+            $display("rs_data_next[%d].sq_mask: %b", i, rs_data_next[i].sq_mask);
+        end
+        for (int i = 0; i < `N; ++i) begin
+            $display("ETB_tags[%d].valid: %b", i, ETB_tags[i].valid);
+        end
     end
 
     always_comb begin
@@ -131,6 +141,12 @@ module rs #(
         //     i, rs_data[i].Source1_ready, i, rs_data[i].Source2_ready);
         // end
         // $display("rs_valid  : %b", rs_valid);
+
+        // $display("------ RS --------");
+        // $display("store_mask: %b", store_mask);
+        // for (int i = 0; i < `RS_SZ; ++i) begin
+        //     $display("rs_data_next[%d].sq_mask: %b", sq_packet.valid);
+        // end
 
     end
 

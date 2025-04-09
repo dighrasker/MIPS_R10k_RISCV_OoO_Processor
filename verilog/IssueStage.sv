@@ -500,18 +500,23 @@ always_ff @(posedge clock) begin
         complete_gnt_bus <= '0;
     end else begin
         complete_gnt_bus <= next_complete_gnt_bus;
-        $display("rs_data_issuing  : %b", rs_data_issuing);
-        $display("rs_cdb_gnt  : %b", rs_cdb_gnt);
-        $display("single_cycle_inst : %b", {single_cycle_entries_valid, mult_cdb_req, 1'b0});
-        for (int i = 0; i < `NUM_FU_ALU; ++i) begin
-            $display("alu_inst_gnt_bus[%d]  : %b", i, alu_inst_gnt_bus[i]);
-        end
-        for (int i = 0; i < `NUM_FU_BRANCH; ++i) begin
-            $display("branch_inst_gnt_bus[%d]  : %b", i, branch_inst_gnt_bus[i]);
-        end
-        for (int i = 0; i < `NUM_FU_MULT; ++i) begin
-            $display("mult_inst_gnt_bus[%d]  : %b", i, mult_inst_gnt_bus[i]);
-        end
+        // $display("------ ISSUE STAGE --------");
+        // for (int i = 0; i < `RS_SZ; ++i) begin
+        //     $display("rs_data_next.: %b", store_addr_packets[0].sq_mask);
+        // end
+        // $display("store_addr_packet.sq_mask: %b", store_addr_packets[0].sq_mask);
+        // $display("rs_data_issuing  : %b", rs_data_issuing);
+        // $display("rs_cdb_gnt  : %b", rs_cdb_gnt);
+        // $display("single_cycle_inst : %b", {single_cycle_entries_valid, mult_cdb_req, 1'b0});
+        // for (int i = 0; i < `NUM_FU_ALU; ++i) begin
+        //     $display("alu_inst_gnt_bus[%d]  : %b", i, alu_inst_gnt_bus[i]);
+        // end
+        // for (int i = 0; i < `NUM_FU_BRANCH; ++i) begin
+        //     $display("branch_inst_gnt_bus[%d]  : %b", i, branch_inst_gnt_bus[i]);
+        // end
+        // for (int i = 0; i < `NUM_FU_MULT; ++i) begin
+        //     $display("mult_inst_gnt_bus[%d]  : %b", i, mult_inst_gnt_bus[i]);
+        // end
     end
 end
 

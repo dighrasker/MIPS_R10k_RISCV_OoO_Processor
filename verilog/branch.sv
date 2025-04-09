@@ -2,6 +2,7 @@
 `include "verilog/ISA.svh"
 
 module branch (
+    input logic clock,
     input  BRANCH_PACKET     branch_packet,
     output BRANCH_REG_PACKET branch_reg_result,
     output CDB_REG_PACKET    branch_result // True/False condition result
@@ -59,6 +60,14 @@ module branch (
         branch_reg_result.predict_taken = branch_packet.predict_taken;
         branch_reg_result.actual_taken = take;
         branch_reg_result.valid = branch_packet.valid;
+    end
+
+    always_ff @(posedge clock) begin
+        $display("branch_packet.branch_func: %b", branch_packet.branch_func);
+        $display("branch_packet.source_reg_1: %b", branch_packet.source_reg_1);
+        $display("branch_packet.source_reg_2: %b", branch_packet.source_reg_2);
+        $display("branch_packet.source_reg_idx_1: %d", branch_packet.inst.r.rs1);
+        $display("branch_packet.source_reg_idx_2: %d", branch_packet.inst.r.rs2);
     end
 
 endmodule // conditional_branch

@@ -129,6 +129,7 @@ module ExecuteStage (
     // Instantiate the conditional branch module
     branch branch_fus [`NUM_FU_BRANCH-1:0] (
         // Inputs
+        .clock(clock),
         .branch_packet(branch_packets_issuing),
 
         // Output

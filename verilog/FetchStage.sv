@@ -135,12 +135,14 @@ module Fetch #() (
             PC_reg <= Next_PC_reg;
         end
         $display("branches_taken: %b", branches_taken);
-        for (int i = 0; i < `N; ++i) begin
+        for (int i = 0; i <= `N; ++i) begin
             $display("PCs[%d]: %h", i, PCs[i]);
         end
         $display("inst_valid_temp: %d", inst_valid_temp);
         $display("no_limiting_inst: %b", no_limiting_inst);
         $display("cache_miss_in_fetch: %b", cache_miss);
+        $display("PC_restore: %h", PC_restore);
+
         // $display(
         //     "inst_buffer_inputs[%d].inst : %b\ninst_buffer_inputs[%d].PC : %b\ninst_buffer_inputs[%d].taken : %b\inst_valid: %b\n", 
         //     i, inst_buffer_inputs[i].inst, 

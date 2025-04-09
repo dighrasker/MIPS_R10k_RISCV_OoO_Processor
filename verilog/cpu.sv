@@ -118,6 +118,9 @@ module cpu (
     DATA        [`NUM_FU_BRANCH-1:0] issue_branch_read_data_2;
     DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_1;
     DATA        [`NUM_FU_MULT-1:0] issue_mult_read_data_2;                   
+    DATA        [`NUM_FU_LOAD-1:0] issue_load_read_data_1;
+    DATA       [`NUM_FU_STORE-1:0] issue_store_read_data_1;
+    DATA       [`NUM_FU_STORE-1:0] issue_store_read_data_2;
 
     /*------- FETCH WIRES ----------*/  
     FETCH_PACKET         [`N-1:0] inst_buffer_inputs;   //instructions going to instruction buffer
@@ -165,6 +168,9 @@ module cpu (
     PHYS_REG_IDX     [`NUM_FU_MULT-1:0] issue_mult_regs_reading_2;
     PHYS_REG_IDX   [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_1;
     PHYS_REG_IDX   [`NUM_FU_BRANCH-1:0] issue_branch_regs_reading_2;
+    PHYS_REG_IDX     [`NUM_FU_LOAD-1:0] issue_load_regs_reading_1;
+    PHYS_REG_IDX    [`NUM_FU_STORE-1:0] issue_store_regs_reading_1;
+    PHYS_REG_IDX    [`NUM_FU_STORE-1:0] issue_store_regs_reading_2;
     logic            [`NUM_FU_MULT-1:0] mult_cdb_gnt;
     logic            [`LOAD_BUFFER_SZ-1:0] load_cdb_gnt;
     ALU_PACKET        [`NUM_FU_ALU-1:0] alu_packets;
@@ -277,6 +283,7 @@ module cpu (
         .rs_entries        (rs_entries), 
         .rs_spots          (rs_spots),
         .ETB_tags          (cdb_completing),
+        .resolving_sq_mask (resolving_sq_mask),
         .rs_data_issuing   (rs_data_issuing),
         .rs_data_next      (rs_data_next),
         .rs_valid_issue    (rs_valid_issue),
@@ -397,6 +404,12 @@ module cpu (
         .issue_mult_regs_reading_2(issue_mult_regs_reading_2),
         .issue_mult_read_data_1(issue_mult_read_data_1),
         .issue_mult_read_data_2(issue_mult_read_data_2),
+        .issue_load_regs_reading_1(issue_load_regs_reading_1),
+        .issue_load_read_data_1(issue_load_read_data_1),
+        .issue_store_regs_reading_1(issue_store_regs_reading_1),
+        .issue_store_regs_reading_2(issue_store_regs_reading_2),
+        .issue_store_read_data_1(issue_store_read_data_1),
+        .issue_store_read_data_2(issue_store_read_data_2),
         .cdb_reg(cdb_reg)
     );
 
@@ -632,12 +645,18 @@ module cpu (
         .issue_mult_read_data_2(issue_mult_read_data_2),
         .issue_branch_read_data_1(issue_branch_read_data_1),
         .issue_branch_read_data_2(issue_branch_read_data_2),
+        .issue_load_read_data_1(issue_load_read_data_1),
+        .issue_store_read_data_1(issue_store_read_data_1),
+        .issue_store_read_data_2(issue_store_read_data_2),
         .issue_alu_regs_reading_1(issue_alu_regs_reading_1),
         .issue_alu_regs_reading_2(issue_alu_regs_reading_2),
         .issue_mult_regs_reading_1(issue_mult_regs_reading_1),
         .issue_mult_regs_reading_2(issue_mult_regs_reading_2),
         .issue_branch_regs_reading_1(issue_branch_regs_reading_1),
         .issue_branch_regs_reading_2(issue_branch_regs_reading_2),
+        .issue_load_regs_reading_1(issue_load_regs_reading_1),
+        .issue_store_regs_reading_1(issue_store_regs_reading_1),
+        .issue_store_regs_reading_2(issue_store_regs_reading_2),
          // ------------- FROM CDB -------------- //
         .cdb_reg(cdb_reg),
         .next_cdb_reg(next_cdb_reg),

@@ -182,7 +182,7 @@ module dcache (
         if (mshr_allocated) begin
             dcache_mem_req_packet.valid = 1'b1;
             dcache_mem_req_packet.prior = 1'b1;
-            dcache_mem_req_packet.addr = next_mshrs[mshr_tail].addr;
+            dcache_mem_req_packet.addr.dw.addr = next_mshrs[mshr_tail].addr.dw.addr;
             dcache_mem_req_packet.data = next_mshrs[mshr_tail].data;
         end else if (wb_spots != `WB_LINES) begin
             dcache_mem_req_packet.valid = 1'b1;
@@ -376,9 +376,10 @@ module dcache (
         if (!mshr_full) begin
             if (load_miss) begin
                 load_data_cache_packet.valid = 1'b1;
+                load_data_cache_packet.mshr_idx = mshr_tail;
                 mshr_allocated = 1'b1;
                 next_mshrs[mshr_tail].dirty = 0;
-                next_mshrs[mshr_tail].addr = load_req_addr; 
+                next_mshrs[mshr_tail].addr.dw.addr = load_req_addr.dw.addr; 
                 next_mshrs[mshr_tail].data = '0;
                 next_mshrs[mshr_tail].byte_mask = '0;
 
@@ -388,7 +389,7 @@ module dcache (
                 store_req_accepted = 1'b1;
                 mshr_allocated = 1'b1;
                 next_mshrs[mshr_tail].dirty = 1;
-                next_mshrs[mshr_tail].addr = store_req_addr;
+                next_mshrs[mshr_tail].addr.dw.addr = store_req_addr.dw.addr;
                 next_mshrs[mshr_tail].data[store_req_addr.dw.w_idx] = store_req_data;
                 next_mshrs[mshr_tail].byte_mask[store_req_addr.dw.w_idx] = store_req_byte_mask;
 
@@ -585,6 +586,9 @@ module dcache (
         end
 
         $display("------------ DCACHE!!!!---------");
+        $display("mshr_true_head", mshr_true_head);
+        $display("mshr_head", mshr_head);
+        $display("mshr_tail", mshr_tail);
         for (int i = 0; i < `MSHR_SZ; ++i) begin
             $display("mshrs[%d].valid: %b", i, mshrs[i].valid);
         end
@@ -602,17 +606,33 @@ module dcache (
         end
 
         for (int i = 0; i < `MSHR_SZ; ++i) begin
-            $display("mshrs[%d].data: %h", i, mshrs[i].data);
+            $display("mshrs[%d].data: %d", i, mshrs[i].data);
         end
 
         for (int i = 0; i < `MSHR_SZ; ++i) begin
             $display("mshrs[%d].byte_mask: %b", i, mshrs[i].byte_mask);
         end
+
+        for (int i = 0; i < `VCACHE_LINES; ++i) begin
+            $display("vcache_meta_data[%d].addr: %b", i, vcache_meta_data[i].addr);
+        end
         
-        $display("load_data_cache_packet.valid: %b", load_data_cache_packet.valid);
-        $display("load_data_cache_packet.data: %b", load_data_cache_packet.data);
-        $display("dcache_mem_req_packet.prior: %d", dcache_mem_req_packet.prior);
-        $display("wb_spots: %d", wb_spots);
+        $display("load_req_addr: %d", load_req_addr);
+        $display("store_req_addr: %d", store_req_addr);
+        // $display("load_data_cache_packet.valid: %b", load_data_cache_packet.valid);
+        // $display("load_data_cache_packet.data: %b", load_data_cache_packet.data);
+        // $display("dcache_mem_req_packet.prior: %d", dcache_mem_req_packet.prior);
+        // $display("mshr_allocated: %b", mshr_allocated);
+        // $display("store_miss: %b", store_miss);
+        // $display("store_request_valid: %b", store_req_valid);
+        // $display("store_request_addr: %b", store_req_addr);
+        // $display("store_vcache_hit: %b", store_vcache_hit);
+        // $display("store_dcache_hit: %b", store_dcache_hit);
+        // $display("store_mshr_hit: %b", store_mshr_hit);
+        // // $display("load_miss: %b", load_miss);
+        // $display("mshr_full: %b", mshr_full);
+        // $display("load_req_addr: %b", load_req_addr);
+        // $display("wb_spots: %d", wb_spots);
     end
 
 endmodule

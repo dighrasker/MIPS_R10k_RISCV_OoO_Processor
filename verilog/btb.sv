@@ -92,7 +92,7 @@ module btb #(
             rd_btb_set_idx[i] = PCs[i].btb.set_idx;
             rd_btb_tag[i] = PCs[i].btb.tag;
             for(int j = 0; j < `BTB_NUM_WAYS; j++) begin
-                if(next_btb_entries[rd_btb_set_idx[i]][j].btb_tag === rd_btb_tag[i]) begin
+                if(next_btb_entries[rd_btb_set_idx[i]][j].valid && (next_btb_entries[rd_btb_set_idx[i]][j].btb_tag === rd_btb_tag[i])) begin
                     target_PCs[i] = next_btb_entries[rd_btb_set_idx[i]][j].target_PC;
                     btb_hits[i] = 1'b1;
                 end

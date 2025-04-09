@@ -39,6 +39,16 @@ module store_addr_stage (
         end else begin
             store_addr_packet <= store_addr_packet_in;
         end
+        $display("------ Store addr --------");
+        // $display("sq_packet.valid: %b", sq_packet.valid);
+        // $display("sq_packet.addr: %b", sq_packet.addr);
+        // $display("sq_packet.result: %b", sq_packet.result);
+        // $display("sq_packet.byte_mask: %b", sq_packet.byte_mask);
+        // $display("sq_packet.dest_reg_idx: %b", sq_packet.dest_reg_idx);
+        $display("store_addr_packet.sq_mask: %b", store_addr_packet.sq_mask);
+        $display("sq_packet.addr: %b", sq_packet.addr);
+        $display("store_addr_packet.source_reg_1: %d", store_addr_packet.source_reg_1);
+        $display("store_addr_packet.store_imm: %d", store_addr_packet.store_imm);
     end
 
 endmodule // alu

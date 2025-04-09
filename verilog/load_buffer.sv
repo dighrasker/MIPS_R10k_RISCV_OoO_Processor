@@ -108,10 +108,11 @@ module load_buffer(
             load_buffer_valid <= next_load_buffer_valid;
             load_buffer <= next_load_buffer;       
         end
-        for(int ii = 0; ii < `LOAD_BUFFER_SZ; ++ii) begin
-            $display("load_buffer[%d].load_addr: %h", ii, load_buffer[ii].load_addr); //in case its some dont care
-            $display("load_buffer[%d].result: %h", ii, load_buffer[ii].result); //in case its some dont care
-        end
+        // for(int ii = 0; ii < `LOAD_BUFFER_SZ; ++ii) begin
+        //     $display("load_buffer[%d].load_addr: %h", ii, load_buffer[ii].load_addr); //in case its some dont care
+        //     $display("load_buffer[%d].result: %h", ii, load_buffer[ii].result); //in case its some dont care
+        //     $display("load_buffer[%d].mshr_idx: %h", ii, load_buffer[ii].mshr_idx); //in case its some dont care
+        // end
     end
 
 endmodule
