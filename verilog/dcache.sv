@@ -187,7 +187,7 @@ module dcache (
         end else if (wb_spots != `WB_LINES) begin
             dcache_mem_req_packet.valid = 1'b1;
             dcache_mem_req_packet.prior = 1'b0;
-            dcache_mem_req_packet.addr = next_wb_buffer[wb_head].addr;
+            dcache_mem_req_packet.addr.dw.addr = next_wb_buffer[wb_head].addr.dw.addr;
             dcache_mem_req_packet.data = next_wb_buffer[wb_head].data; 
             wb_mem_accepted = dcache_mem_req_accepted;
         end
@@ -615,6 +615,12 @@ module dcache (
 
         for (int i = 0; i < `VCACHE_LINES; ++i) begin
             $display("vcache_meta_data[%d].addr: %b", i, vcache_meta_data[i].addr);
+        end
+
+        for (int i = 0; i < `DCACHE_NUM_SETS; ++i) begin
+            for (int j = 0; j < `DCACHE_NUM_WAYS; ++j) begin
+                $display("dcache_meta_data[%d][%d].addr: %h", i, j, dcache_meta_data[i][j].addr);
+            end
         end
         
         $display("load_req_addr: %d", load_req_addr);
