@@ -435,6 +435,7 @@ generate
 
         always_comb begin 
             issue_store_regs_reading_1[i] = 1'b0;
+            issue_store_regs_reading_2[i] = 1'b0;
             store_addr_packets[i] = NOP_STORE_ADDR_PACKET; //NOP
             if (store_inst_gnt_bus[i]) begin
 
@@ -489,7 +490,7 @@ psel_gen #(
     .WIDTH(`NUM_FU_TOTAL),
     .REQS(`N)
 ) complete_psel (
-    .req({branch_cdb_gnt, alu_cdb_gnt, mult_cdb_gnt , load_cdb_gnt}),
+    .req({branch_cdb_gnt, alu_cdb_gnt, mult_cdb_gnt , load_cdb_gnt}), //TODO change ordering later!! optimize!!!!! 
     .gnt_bus(next_complete_gnt_bus),
     .empty(empty)
 );
