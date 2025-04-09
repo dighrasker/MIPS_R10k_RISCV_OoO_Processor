@@ -15,7 +15,7 @@ module load_data_stage (
     // ------------ TO/FROM STORE QUEUE ------------- //
     input DATA                      sq_load_data,
     input BYTE_MASK                 sq_data_mask,
-    output SQ_IDX                   load_sq_tail,
+    output SQ_POINTER                   load_sq_tail,
     output ADDR                     load_req_addr, //also goes to cache
     
     // ------------ TO LOAD BUFFER ------------- //
