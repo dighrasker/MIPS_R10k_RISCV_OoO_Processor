@@ -113,6 +113,9 @@ module load_buffer(
             $display("load_buffer[%d].valid: %h", ii, load_buffer[ii].valid); //in case its some dont care
             $display("next_load_buffer[%d].valid: %h", ii, next_load_buffer[ii].valid); //in case its some dont care
             $display("load_buffer[%d].result: %h", ii, load_buffer[ii].result); //in case its some dont care
+            $display("load_cdb_grant: %b", load_cdb_gnt); //in case its some dont care
+            $display("load_buffer_valid: %b", load_buffer_valid); //in case its some dont care
+            $display("new_load: %b", new_load); //in case its some dont care
             $display("load_buffer[%d].mshr_idx: %h", ii, load_buffer[ii].mshr_idx); //in case its some dont care
             $display("load_buffer[%d].byte_mask: %h", ii, load_buffer[ii].byte_mask); //in case its some dont care
         end
