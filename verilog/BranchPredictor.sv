@@ -120,25 +120,25 @@ module branchpredictor #(
             $display("I'M MISPREDICTED!!!");
         end
 
-        for (int i = 0; i < `PHT_SZ; ++i) begin
-            $display("next_meta_pht[%d]: %b", i, next_meta_pht[i]);
-        end
+        // for (int i = 0; i < `PHT_SZ; ++i) begin
+        //     $display("next_meta_pht[%d]: %b", i, next_meta_pht[i]);
+        // end
 
-        $display("bhr: %b", bhr);
-        for (int i = 0; i < `N; ++i) begin
-            $display("next bhrs: %b", next_bhr);
-            $display("intermediate bhrs[%d]: %b", i, intermediate_bhrs[i]);
-            $display("assigned bhrs[%d]: %b", i, assigned_bhrs[i]);
-        end
-        $display("branches taken: %b", branches_taken);
-        $display("taken in branchPred: %b", actual_taken);
-        $display("mispred in branchPred: %b", mispred);
-        $display("bs_bp_packet.BHR_state: %b", bs_bp_packet.BHR_state);
-        if (resolving_valid_branch) begin
-            $display("new next_gshare_pht[%d]: %b", bs_bp_packet.gshare_PHT_idx, next_gshare_pht[bs_bp_packet.gshare_PHT_idx]);
-            $display("new next_simple_pht[%d]: %b", bs_bp_packet.meta_PHT_idx, next_simple_pht[bs_bp_packet.meta_PHT_idx]);
-            $display("new next_meta_pht[%d]: %b", bs_bp_packet.meta_PHT_idx, next_meta_pht[bs_bp_packet.meta_PHT_idx]);
-        end
+        // $display("bhr: %b", bhr);
+        // for (int i = 0; i < `N; ++i) begin
+        //     $display("next bhrs: %b", next_bhr);
+        //     $display("intermediate bhrs[%d]: %b", i, intermediate_bhrs[i]);
+        //     $display("assigned bhrs[%d]: %b", i, assigned_bhrs[i]);
+        // end
+        // $display("branches taken: %b", branches_taken);
+        // $display("taken in branchPred: %b", actual_taken);
+        // $display("mispred in branchPred: %b", mispred);
+        // $display("bs_bp_packet.BHR_state: %b", bs_bp_packet.BHR_state);
+        // if (resolving_valid_branch) begin
+        //     $display("new next_gshare_pht[%d]: %b", bs_bp_packet.gshare_PHT_idx, next_gshare_pht[bs_bp_packet.gshare_PHT_idx]);
+        //     $display("new next_simple_pht[%d]: %b", bs_bp_packet.meta_PHT_idx, next_simple_pht[bs_bp_packet.meta_PHT_idx]);
+        //     $display("new next_meta_pht[%d]: %b", bs_bp_packet.meta_PHT_idx, next_meta_pht[bs_bp_packet.meta_PHT_idx]);
+        // end
 
     end
 

@@ -127,7 +127,7 @@ typedef logic [1:0] CHOOSER;
 
 
 // number of mult stages (2, 4) (you likely don't need 8)
-`define MULT_STAGES 2
+`define MULT_STAGES 4
 
 ///////////////////////////////
 // ---- Basic Constants ---- //
@@ -194,14 +194,14 @@ typedef logic [3:0] MEM_TAG;
 
 // icache definitions
 `define ICACHE_NUM_WAYS 1 //LEAVE THIS SHI
-`define ICACHE_NUM_BANKS 4
+`define ICACHE_NUM_BANKS 2
 `define ICACHE_LINES 32 / `ICACHE_NUM_BANKS
 `define ICACHE_NUM_SETS `ICACHE_LINES / `ICACHE_NUM_WAYS
 `define ICACHE_NUM_BANKS_BITS $clog2(`ICACHE_NUM_BANKS)
 `define ICACHE_LINE_BITS $clog2(`ICACHE_LINES)
 `define ICACHE_TAG_BITS 32 - `ICACHE_NUM_BANKS_BITS - `ICACHE_SET_IDX_BITS - 3
 `define ICACHE_WAY_IDX_BITS $clog2(`ICACHE_NUM_WAYS)
-`define PREFETCH_DIST 8
+`define PREFETCH_DIST 16
 
 typedef logic [`ICACHE_TAG_BITS-1:0] ICACHE_TAG;
 typedef logic [`ICACHE_WAY_IDX_BITS-1:0] ICACHE_LRU;
@@ -256,16 +256,16 @@ typedef union packed {
     } dw;
 
     struct packed {
-        logic                    [31:`DCACHE_SET_IDX_BITS+2] tag;
-        logic                    [`DCACHE_SET_IDX_BITS+2-1:2] set_idx;
-        logic                    [1:0] offset;
+        logic                    [31:`DCACHE_SET_IDX_BITS+3] tag;
+        logic                    [`DCACHE_SET_IDX_BITS+3-1:3] set_idx;
+        logic                    [2:0] offset;
     } dcache;
 
     struct packed {
-        logic                    [31:`ICACHE_SET_IDX_BITS+`ICACHE_NUM_BANKS_BITS+2] tag;
-        logic                    [`ICACHE_SET_IDX_BITS+`ICACHE_NUM_BANKS_BITS+2-1:`ICACHE_NUM_BANKS_BITS+2] set_idx;
-        logic                    [`ICACHE_NUM_BANKS_BITS+2-1:2] bank_idx;
-        logic                    [1:0] offset;
+        logic                    [31:`ICACHE_SET_IDX_BITS+`ICACHE_NUM_BANKS_BITS+3] tag;
+        logic                    [`ICACHE_SET_IDX_BITS+`ICACHE_NUM_BANKS_BITS+3-1:`ICACHE_NUM_BANKS_BITS+3] set_idx;
+        logic                    [`ICACHE_NUM_BANKS_BITS+3-1:3] bank_idx;
+        logic                    [2:0] offset;
     } icache;
 
     // struct packed {

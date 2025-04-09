@@ -195,6 +195,7 @@ module dcache (
 
     // ---------------------- all hit logic -------------------- //
     always_comb begin
+        next_mshrs = mshrs;
         next_dcache_meta_data = dcache_meta_data;
         dcache_idx = '0;
         dcache_rd_en = 1'b0;
@@ -216,6 +217,7 @@ module dcache (
 
         store_req_accepted = 1'b0;
         load_data_cache_packet = '0;
+        load_buffer_cache_packet = '0; 
 
         if ((mshr_head != mshr_tail) && mem_data_packet.mem_tag == mshrs[mshr_head].mem_tag) begin
             mem_data_returned = 1'b1;
@@ -340,7 +342,7 @@ module dcache (
             next_vcache_meta_data[store_vcache_idx].addr = dcache_meta_data[store_req_addr.dcache.set_idx][dcache_lru_idx[store_req_addr.dcache.set_idx]].addr;
             next_vcache_meta_data[store_vcache_idx].dirty = dcache_meta_data[store_req_addr.dcache.set_idx][dcache_lru_idx[store_req_addr.dcache.set_idx]].dirty;
 
-        end else if ((mshr_true_head != next_mshr_head || mshr_full) && (!full_eviction || wb_mem_accepted)) begin
+        end else if (((mshr_true_head != next_mshr_head) || mshr_full) && (!full_eviction || wb_mem_accepted)) begin
             mshr_cache_accepted = 1'b1;
 
             dcache_rd_en = 1'b1;
@@ -554,13 +556,13 @@ module dcache (
         if (reset) begin
             wb_head <= '0;
             wb_tail <= '0;
-            wb_spots <= '0;
+            wb_spots <= `WB_LINES;
             wb_buffer <= '0;
 
             mshr_head <= '0;
             mshr_tail <= '0;
             mshr_true_head <= '0;
-            mshr_spots <= '0;
+            mshr_spots <= `MSHR_SZ;
             mshrs <= '0;
 
             dcache_meta_data <= '0;
@@ -581,6 +583,36 @@ module dcache (
             dcache_meta_data <= next_dcache_meta_data;
             vcache_meta_data <= next_vcache_meta_data;
         end
+
+        $display("------------ DCACHE!!!!---------");
+        for (int i = 0; i < `MSHR_SZ; ++i) begin
+            $display("mshrs[%d].valid: %b", i, mshrs[i].valid);
+        end
+
+        for (int i = 0; i < `MSHR_SZ; ++i) begin
+            $display("mshrs[%d].dirty: %b", i, mshrs[i].dirty);
+        end
+
+        for (int i = 0; i < `MSHR_SZ; ++i) begin
+            $display("mshrs[%d].mem_tag: %d", i, mshrs[i].mem_tag);
+        end
+
+        for (int i = 0; i < `MSHR_SZ; ++i) begin
+            $display("mshrs[%d].addr: %h", i, mshrs[i].addr);
+        end
+
+        for (int i = 0; i < `MSHR_SZ; ++i) begin
+            $display("mshrs[%d].data: %h", i, mshrs[i].data);
+        end
+
+        for (int i = 0; i < `MSHR_SZ; ++i) begin
+            $display("mshrs[%d].byte_mask: %b", i, mshrs[i].byte_mask);
+        end
+        
+        $display("load_data_cache_packet.valid: %b", load_data_cache_packet.valid);
+        $display("load_data_cache_packet.data: %b", load_data_cache_packet.data);
+        $display("dcache_mem_req_packet.prior: %d", dcache_mem_req_packet.prior);
+        $display("wb_spots: %d", wb_spots);
     end
 
 endmodule

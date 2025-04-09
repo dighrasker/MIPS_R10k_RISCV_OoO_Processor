@@ -15,7 +15,7 @@ module load_data_stage (
     // ------------ TO/FROM STORE QUEUE ------------- //
     input DATA                      sq_load_data,
     input BYTE_MASK                 sq_data_mask,
-    output SQ_POINTER                   load_sq_tail,
+    output SQ_POINTER               load_sq_tail,
     output ADDR                     load_req_addr, //also goes to cache
     
     // ------------ TO LOAD BUFFER ------------- //
@@ -31,7 +31,7 @@ module load_data_stage (
     //ldback press
 
     // TODO: make sure this logic is correct
-    assign load_data_free = !load_buffer_packet.valid || load_data_cache_packet.valid || !load_buffer_packet.byte_mask;
+    assign load_data_free = ((b_mm_resolve & load_data_packet.bm) && b_mm_mispred) || !load_data_packet.valid || load_data_cache_packet.valid || !load_buffer_packet.byte_mask;
     assign load_req_addr = load_data_packet.load_addr;
     assign load_req_valid = load_data_packet.valid;
     assign load_sq_tail = load_data_packet.sq_tail;
@@ -73,6 +73,16 @@ module load_data_stage (
         end else if (load_data_free) begin
             load_data_packet <= load_data_packet_in;
         end
+        $display("-------load data stage------");
+        $display("load_data_packet.valid: %h", load_data_packet.valid);
+        $display("load_buffer_packet.result: %h", load_buffer_packet.result);
+        $display("load_buffer_packet.valid: %h", load_buffer_packet.valid);
+        $display("sq_load_data: %h", sq_load_data);
+        $display("load_data_cache_packet.valid: %h", load_data_cache_packet.valid);
+        $display("load_data_cache_packet.byte_mask: %b", load_data_cache_packet.byte_mask);
+        $display("load_data_cache_packet.data: %h", load_data_cache_packet.data);
+        $display("load_data_cache_packet.mshr_idx: %d", load_data_cache_packet.mshr_idx);
+
     end
 
 endmodule // alu

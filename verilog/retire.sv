@@ -83,26 +83,26 @@ always_ff @(posedge clock) begin
         halt <= '0;
     end else begin
         halt <= next_halt;
-        for (int i = 0; i < `N; ++i) begin
-            $display("complete_list_exposed[rob_outputs[%d].T_new]: %d",
-                i, complete_list_exposed[rob_outputs[i].T_new]
-            );
-        end
+        // for (int i = 0; i < `N; ++i) begin
+        //     $display("complete_list_exposed[rob_outputs[%d].T_new]: %d",
+        //         i, complete_list_exposed[rob_outputs[i].T_new]
+        //     );
+        // end
 
-        for (int i = 0; i < `N; ++i) begin
-            // if (i < num_retiring) begin
-                $display("rob_outputs[%d].T_old: %d, rob_outputs[%d].T_new: %d, rob_outputs[%d].NPC: %h, rob_outputs[%d].Arch_reg: %d",
-                    i, rob_outputs[i].T_old, i, rob_outputs[i].T_new, i, rob_outputs[i].NPC, i, rob_outputs[i].arch_reg
-                );
-            // end
-        end
+        // for (int i = 0; i < `N; ++i) begin
+        //     // if (i < num_retiring) begin
+        //         $display("rob_outputs[%d].T_old: %d, rob_outputs[%d].T_new: %d, rob_outputs[%d].NPC: %h, rob_outputs[%d].Arch_reg: %d",
+        //             i, rob_outputs[i].T_old, i, rob_outputs[i].T_new, i, rob_outputs[i].NPC, i, rob_outputs[i].arch_reg
+        //         );
+        //     // end
+        // end
 
-        $display("num_retiring: %d\nrob_outputs_valid: %d", 
-        num_retiring,
-        rob_outputs_valid);
+        // $display("num_retiring: %d\nrob_outputs_valid: %d", 
+        // num_retiring,
+        // rob_outputs_valid);
 
-        $display("halt: %b", 
-        halt);
+        // $display("halt: %b", 
+        // halt);
         
     end
 end

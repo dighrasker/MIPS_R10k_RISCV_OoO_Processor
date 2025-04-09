@@ -33,11 +33,8 @@ module load_buffer(
          .req(~(load_buffer_valid)),
          .gnt(chosen_spot)
     );
-
-    
     
     assign new_load = load_buffer_packet_in.valid ? chosen_spot : '0;
-
 
     always_comb begin
         next_load_buffer_valid = load_buffer_valid;
@@ -54,7 +51,7 @@ module load_buffer(
         end
 
         for (int i = 0; i < `LOAD_BUFFER_SZ; ++i) begin    
-            load_cdb_req[i] = next_load_buffer_valid && !load_buffer[i].byte_mask;
+            load_cdb_req[i] = next_load_buffer_valid[i] && !load_buffer[i].byte_mask;
         end
         
         next_load_buffer_valid = next_load_buffer_valid ^ load_cdb_gnt ^ new_load;
@@ -112,7 +109,8 @@ module load_buffer(
             load_buffer <= next_load_buffer;       
         end
         for(int ii = 0; ii < `LOAD_BUFFER_SZ; ++ii) begin
-            $display("load_cdb_req[%d]: %b", ii, load_cdb_req[ii]); //in case its some dont care
+            $display("load_buffer[%d].load_addr: %h", ii, load_buffer[ii].load_addr); //in case its some dont care
+            $display("load_buffer[%d].result: %h", ii, load_buffer[ii].result); //in case its some dont care
         end
     end
 

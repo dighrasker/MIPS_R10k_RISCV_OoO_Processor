@@ -136,6 +136,7 @@ module mem (
     end
 
     always_ff @(posedge clock) begin
+        $display("mem2proc_transaction_tag: %d", mem2proc_transaction_tag);
         $display("mem2proc_data_tag: %d", mem2proc_data_tag);
     end
 

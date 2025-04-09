@@ -79,7 +79,7 @@ module ExecuteStage (
         for (int i = 0; i < `N; ++i) begin
             for (int j = 0; j < `NUM_FU_TOTAL; ++j) begin
                 if (complete_gnt_bus[i][j]) begin
-                    $display("completing!!!!!: %d", fu_result[j].completing_reg);
+                    // $display("completing!!!!!: %d", fu_result[j].completing_reg);
                     next_cdb_reg[i] = fu_result[j];
                     cdb_completing[i].completing_reg = next_cdb_reg[i].completing_reg;
                     cdb_completing[i].valid = next_cdb_reg[i].valid;
@@ -94,10 +94,10 @@ module ExecuteStage (
         end else begin
             cdb_reg <= next_cdb_reg;
 
-            for (int i = 0; i < `N; ++i) begin
-                $display("cdb_reg[%d].completing_reg : %d", i, cdb_reg[i].completing_reg);
-                $display("mult_cdb_valid: %b", mult_cdb_valid);
-            end
+            // for (int i = 0; i < `N; ++i) begin
+            //     $display("cdb_reg[%d].completing_reg : %d", i, cdb_reg[i].completing_reg);
+            //     $display("mult_cdb_valid: %b", mult_cdb_valid);
+            // end
 
         end
     end
@@ -172,13 +172,13 @@ module ExecuteStage (
             branch_reg <= '0;
         end else begin
             branch_reg <= next_branch_reg;
-            for (int i = 0; i < `NUM_FU_TOTAL; ++i) begin
-                $display(
-                    "fu_result[%d].completing_reg: %d\nfu_result[%d].result: %h",
-                    i, fu_result[i].completing_reg, i, fu_result[i].result
-                );
-            end
-            $display("branch_reg.bm_mispred: %b", branch_reg.bm_mispred);
+            // for (int i = 0; i < `NUM_FU_TOTAL; ++i) begin
+            //     $display(
+            //         "fu_result[%d].completing_reg: %d\nfu_result[%d].result: %h",
+            //         i, fu_result[i].completing_reg, i, fu_result[i].result
+            //     );
+            // end
+            // $display("branch_reg.bm_mispred: %b", branch_reg.bm_mispred);
         end
     end
     //add logic to set the mispredict signal

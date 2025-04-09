@@ -143,6 +143,7 @@ module store_queue #(
             sq_mask <= next_sq_mask;
             store_queue <= next_store_queue;
         end
+        $display("store_req_valid: %b", store_req_valid);
     end
 
 endmodule

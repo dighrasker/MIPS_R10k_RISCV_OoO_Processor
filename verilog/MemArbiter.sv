@@ -49,6 +49,7 @@ module memarbiter (
             proc2mem_data = icache_mem_req_packet.data;
             proc2mem_command = 1;
         end else if (dcache_mem_req_packet.valid && dcache_mem_req_packet.prior == 0) begin
+            $display("YASFAFDASFASDF");
             dcache_mem_req_accepted = 1;
             proc2mem_addr = dcache_mem_req_packet.addr;
             proc2mem_data = dcache_mem_req_packet.data;
@@ -62,10 +63,13 @@ module memarbiter (
     end
 
     always_ff @(posedge clock) begin
-        $display(": %b", branches_taken);
-        $display("inst_valid_temp: %d", inst_valid_temp);
-        $display("no_limiting_inst: %b", no_limiting_inst);
-        $display("cache_miss_in_fetch: %b", cache_miss);
+        $display("---------MEM ARB -----------");
+        $display("mem_trxn_tag: %b", mem_trxn_tag);
+        $display("mem_data_packet.data: %h", mem_data_packet.data);
+        $display("mem_data_packet.mem_tag: %d", mem_data_packet.mem_tag);
+        $display("dcache_mem_req_accepted: %b", dcache_mem_req_accepted);
+        $display("icache_mem_req_accepted: %b", icache_mem_req_accepted);
+        $display("proc2mem_command: %d", proc2mem_command);
     end
 
 endmodule

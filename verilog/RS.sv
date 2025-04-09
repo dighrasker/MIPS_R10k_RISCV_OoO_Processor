@@ -126,11 +126,11 @@ module rs #(
         //     $display("rs_data[%d].Source1_ready: %b, rs_data[%d].Source2_ready: %b\n",
         //     i, rs_data[i].Source1_ready, i, rs_data[i].Source2_ready);
         // end
-        for (int i = 0; i < `RS_SZ; ++i) begin
-            $display("rs_data[%d]: %b, rs_data[%d].Source2_ready: %b\n",
-            i, rs_data[i].Source1_ready, i, rs_data[i].Source2_ready);
-        end
-        $display("rs_valid  : %b", rs_valid);
+        // for (int i = 0; i < `RS_SZ; ++i) begin
+        //     $display("rs_data[%d]: %b, rs_data[%d].Source2_ready: %b\n",
+        //     i, rs_data[i].Source1_ready, i, rs_data[i].Source2_ready);
+        // end
+        // $display("rs_valid  : %b", rs_valid);
 
     end
 
