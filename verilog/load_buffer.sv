@@ -108,16 +108,17 @@ module load_buffer(
             load_buffer_valid <= next_load_buffer_valid;
             load_buffer <= next_load_buffer;       
         end
+        $display("load_cdb_grant: %b", load_cdb_gnt); //in case its some dont care
+        $display("load_buffer_valid: %b", load_buffer_valid); //in case its some dont care
+        $display("new_load: %b", new_load); //in case its some dont care
         for(int ii = 0; ii < `LOAD_BUFFER_SZ; ++ii) begin
             $display("load_buffer[%d].load_addr: %h", ii, load_buffer[ii].load_addr); //in case its some dont care
-            $display("load_buffer[%d].valid: %h", ii, load_buffer[ii].valid); //in case its some dont care
+            $display("load_buffer[%d].valid: %b", ii, load_buffer[ii].valid); //in case its some dont care
             $display("next_load_buffer[%d].valid: %h", ii, next_load_buffer[ii].valid); //in case its some dont care
             $display("load_buffer[%d].result: %h", ii, load_buffer[ii].result); //in case its some dont care
-            $display("load_cdb_grant: %b", load_cdb_gnt); //in case its some dont care
-            $display("load_buffer_valid: %b", load_buffer_valid); //in case its some dont care
-            $display("new_load: %b", new_load); //in case its some dont care
             $display("load_buffer[%d].mshr_idx: %h", ii, load_buffer[ii].mshr_idx); //in case its some dont care
-            $display("load_buffer[%d].byte_mask: %h", ii, load_buffer[ii].byte_mask); //in case its some dont care
+            $display("load_buffer[%d].byte_mask: %b", ii, load_buffer[ii].byte_mask); //in case its some dont care
+            $display("load_result[%d].result: %h", ii, load_result[ii].result);
         end
     end
 

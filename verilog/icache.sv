@@ -174,7 +174,7 @@ module icache (
                     icache_meta_data <= next_icache_meta_data;
                 end
 
-                $display("--------- ICACHE -----------");
+                /*$display("--------- ICACHE -----------");
                 for(int i = 0; i < `ICACHE_LINES; ++i) begin
                     $display("I$[%d]: %d", i, icache_mem.memData[i]);
                 end
@@ -183,7 +183,7 @@ module icache (
                 end
                 for(int i = 0; i < `ICACHE_LINES; ++i) begin
                     $display("I$_meta_data[%d].addr: %h", i, icache_meta_data[i].addr);
-                end
+                end*/
             end
         end
     endgenerate

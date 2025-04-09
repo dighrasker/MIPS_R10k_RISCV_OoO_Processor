@@ -585,7 +585,7 @@ module dcache (
             vcache_meta_data <= next_vcache_meta_data;
         end
 
-        $display("------------ DCACHE!!!!---------");
+        /*$display("------------ DCACHE!!!!---------");
         $display("mshr_true_head", mshr_true_head);
         $display("mshr_head", mshr_head);
         $display("mshr_tail", mshr_tail);
@@ -624,7 +624,7 @@ module dcache (
         end
         
         $display("load_req_addr: %d", load_req_addr);
-        $display("store_req_addr: %d", store_req_addr);
+        $display("store_req_addr: %d", store_req_addr);*/
         // $display("load_data_cache_packet.valid: %b", load_data_cache_packet.valid);
         // $display("load_data_cache_packet.data: %b", load_data_cache_packet.data);
         // $display("dcache_mem_req_packet.prior: %d", dcache_mem_req_packet.prior);
