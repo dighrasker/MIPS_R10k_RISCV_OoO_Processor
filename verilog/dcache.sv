@@ -343,13 +343,12 @@ module dcache (
             next_vcache_meta_data[store_vcache_idx].dirty = dcache_meta_data[store_req_addr.dcache.set_idx][dcache_lru_idx[store_req_addr.dcache.set_idx]].dirty;
 
         end else if (((mshr_true_head != next_mshr_head) || mshr_full) && (!full_eviction || wb_mem_accepted)) begin
+            $display("MSHR CACHE WRITE");
             mshr_cache_accepted = 1'b1;
-
             dcache_rd_en = 1'b1;
             dcache_wr_en = 1'b1;
             dcache_wr_data = next_mshrs[mshr_true_head].data;
             dcache_idx = (mshrs[mshr_true_head].addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx];
-
             next_dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].dirty = next_mshrs[mshr_true_head].dirty;
             next_dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].addr = next_mshrs[mshr_true_head].addr;
             next_dcache_meta_data[mshrs[mshr_true_head].addr.dcache.set_idx][dcache_lru_idx[mshrs[mshr_true_head].addr.dcache.set_idx]].valid = 1;
@@ -375,6 +374,8 @@ module dcache (
 
         if (!mshr_full) begin
             if (load_miss) begin
+                next_mshrs[mshr_tail] = '0;
+
                 load_data_cache_packet.valid = 1'b1;
                 load_data_cache_packet.mshr_idx = mshr_tail;
                 mshr_allocated = 1'b1;
@@ -386,6 +387,8 @@ module dcache (
                 // Happens after the mem request is created
                 next_mshrs[mshr_tail].mem_tag = dcache_mem_trxn_tag;
             end else if (store_miss) begin
+                next_mshrs[mshr_tail] = '0;
+
                 store_req_accepted = 1'b1;
                 mshr_allocated = 1'b1;
                 next_mshrs[mshr_tail].dirty = 1;
@@ -401,18 +404,22 @@ module dcache (
         // update lru bits
         dcache_set_idx = dcache_idx >> `DCACHE_WAY_IDX_BITS;
         dcache_way_idx = dcache_idx & {`DCACHE_WAY_IDX_BITS{1'b1}};
-        next_dcache_meta_data[dcache_set_idx][dcache_way_idx].lru = `DCACHE_NUM_WAYS - 1;
-        for (int i = 0; i < `DCACHE_NUM_WAYS; ++i) begin
-            if ((dcache_rd_en || dcache_wr_en) && dcache_meta_data[dcache_set_idx][i].valid && dcache_meta_data[dcache_set_idx][i].lru > dcache_meta_data[dcache_set_idx][dcache_way_idx].lru) begin
-                next_dcache_meta_data[dcache_set_idx][i].lru--;
+        if (dcache_rd_en || dcache_wr_en) begin
+            next_dcache_meta_data[dcache_set_idx][dcache_way_idx].lru = `DCACHE_NUM_WAYS - 1;
+            for (int i = 0; i < `DCACHE_NUM_WAYS; ++i) begin
+                if (dcache_meta_data[dcache_set_idx][i].valid && dcache_meta_data[dcache_set_idx][i].lru > dcache_meta_data[dcache_set_idx][dcache_way_idx].lru) begin
+                    next_dcache_meta_data[dcache_set_idx][i].lru--;
+                end
             end
         end
 
-        next_vcache_meta_data[vcache_idx].lru = `VCACHE_NUM_WAYS - 1;
-        for (int i = 0; i < `VCACHE_NUM_WAYS; ++i) begin
-            if ( (vcache_rd_en || vcache_wr_en) && vcache_meta_data[i].valid && (vcache_meta_data[i].lru > vcache_meta_data[vcache_idx].lru)) begin
-                next_vcache_meta_data[i].lru--;
-            end 
+        if (vcache_rd_en || vcache_wr_en) begin
+            next_vcache_meta_data[vcache_idx].lru = `VCACHE_NUM_WAYS - 1;
+            for (int i = 0; i < `VCACHE_NUM_WAYS; ++i) begin
+                if (vcache_meta_data[i].valid && (vcache_meta_data[i].lru > vcache_meta_data[vcache_idx].lru)) begin
+                    next_vcache_meta_data[i].lru--;
+                end 
+            end
         end
     end
 
@@ -634,15 +641,21 @@ module dcache (
             $display("dcache_mem.memData[%d]: %h", i, dcache_mem.memData[i]);
         end
         
-        $display("load_req_addr: %d", load_req_addr);
-        $display("store_req_addr: %d", store_req_addr);
+        $display("mshr_cache_accepted: %b", mshr_cache_accepted);
+        // if ((mshr_true_head != next_mshr_head) || mshr_full) && (!full_eviction || wb_mem_accepted) begin
+        //     $display("MSHR CACHE WRITE");
+        // end
+
+        $display("load_req_valid: %b", load_req_valid);
+        $display("load_req_addr: %h", load_req_addr);
+        $display("store_req_valid: %b", store_req_valid);
+        $display("store_req_addr: %h", store_req_addr);
+        $display("store_req_byte_mask: %b", store_req_byte_mask);
         $display("load_data_cache_packet.valid: %b", load_data_cache_packet.valid);
         $display("load_data_cache_packet.data: %b", load_data_cache_packet.data);
-        $display("dcache_mem_req_packet.prior: %d", dcache_mem_req_packet.prior);
         $display("mshr_allocated: %b", mshr_allocated);
         $display("store_miss: %b", store_miss);
-        $display("store_request_valid: %b", store_req_valid);
-        $display("store_request_addr: %b", store_req_addr);
+        $display("load_miss: %b", load_miss);
         $display("store_vcache_hit: %b", store_vcache_hit);
         $display("store_dcache_hit: %b", store_dcache_hit);
         $display("load_vcache_hit: %b", load_vcache_hit);

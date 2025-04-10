@@ -55,12 +55,12 @@ module store_queue #(
     assign store_req_byte_mask       = store_queue[true_head.sq_idx].byte_mask;
     assign store_req_valid           = store_buffer_entries != 0;
     assign next_true_head            = true_head + store_req_accepted;
-    assign next_head                 = (head + num_store_retiring) % `SQ_SZ;
+    assign next_head                 = head + num_store_retiring;
     assign next_tail                 = sq_restore_valid ? sq_tail_restore : (sq_tail + stores_dispatching);
     assign sq_spots                  = ((`SQ_SZ - sq_entries) < `N) ? `SQ_SZ - sq_entries : `N;
 
     assign next_sq_entries           = sq_restore_valid ? ((next_head ^ sq_tail_restore) == (1'b1 << `SQ_IDX_BITS) ? `SQ_SZ : 
-                                                             (sq_tail_restore.sq_idx - next_head.sq_idx + `SQ_SZ) % `SQ_SZ) : 
+                                                        (sq_tail_restore.sq_idx - next_true_head.sq_idx + `SQ_SZ) % `SQ_SZ) : 
                                                                        sq_entries + stores_dispatching - store_req_accepted ;  // if restore valid -> if only parities different -> full
                                                                                                                               //                  -> else -> size = difference between indices
                                                                                                                               // else calculate with entries
@@ -92,7 +92,7 @@ module store_queue #(
             
             //squashing 
             for (int j = 0; j < `SQ_SZ; ++j) begin
-                if (j < (true_head.sq_idx + `SQ_SZ - load_sq_tail.sq_idx) % `SQ_SZ) begin
+                if (j < ((true_head - load_sq_tail) % `SQ_SZ)) begin
                     byte_matches[j] = 1'b0;
                 end
             end
@@ -119,7 +119,7 @@ module store_queue #(
 
         always_ff @(posedge clock) begin
             $display("byte_matches: %b", byte_matches);
-            $display("true_head.sq_idx - load_sq_tail.sq_idx: %d", true_head.sq_idx - load_sq_tail.sq_idx);
+            $display("dependent_store: %b", dependent_store);
         end
     end
     endgenerate
@@ -154,14 +154,15 @@ module store_queue #(
 
         $display("---------- STORE QUEUE -------------");
         $display("store_req_valid: %b", store_req_valid);
-        $display("store_req_addr: %b", store_req_addr);
+        $display("store_req_addr: %h", store_req_addr);
+        $display("store_req_data: %h", store_req_data);
         $display("next_true_head: %b", next_true_head);
         $display("true_head: %d", true_head);
         $display("store_req_accepted: %b", store_req_accepted);
         $display("sq_entries: %b", sq_entries);
         $display("sq_mask: %b", sq_mask);
-        $display("next_head: %d", next_head.sq_idx);
-        $display("next_tail: %d", next_tail.sq_idx);
+        $display("next_head: %d", next_head);
+        $display("next_tail: %d", next_tail);
         $display("resolving_sq_mask: %b", resolving_sq_mask);
         $display("load_req_addr: %h", load_req_addr);
 

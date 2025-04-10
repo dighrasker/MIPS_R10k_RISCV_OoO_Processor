@@ -177,9 +177,9 @@ module Dispatch (
                 // Store Dispatched
                 if (decoder_out[i].wr_mem) begin 
                     if (stores_dispatching < sq_spots) begin
-                        dispatch_sq_mask[sq_tail_combinational] = 1'b1;
-                        rs_entries[i].sq_mask[sq_tail_combinational] = 1'b1;
-                        sq_tail_combinational = (sq_tail_combinational + 1) % `SQ_SZ;
+                        dispatch_sq_mask[sq_tail_combinational.sq_idx] = 1'b1;
+                        rs_entries[i].sq_mask[sq_tail_combinational.sq_idx] = 1'b1;
+                        sq_tail_combinational = sq_tail_combinational + 1;
                         stores_dispatching += 1;
                     end else begin
                         break;

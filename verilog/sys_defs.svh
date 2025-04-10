@@ -639,7 +639,7 @@ typedef struct packed {
     PHYS_REG_IDX [`ARCH_REG_SZ_R10K:0] map_table;
     B_MASK                             b_m;
     // lsq_tail
-    SQ_IDX                             sq_tail;
+    SQ_POINTER                         sq_tail;
     SQ_MASK                            sq_mask;
     BRANCH_PREDICTOR_PACKET            bp_packet;
     logic                              is_jump;

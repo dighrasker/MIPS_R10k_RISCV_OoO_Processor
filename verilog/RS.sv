@@ -57,8 +57,6 @@ module rs #(
         .count_ones(rs_num_available)
     );
 
-
-
     always_comb begin
 
         rs_spots = rs_num_available > `N ? `N : rs_num_available;
