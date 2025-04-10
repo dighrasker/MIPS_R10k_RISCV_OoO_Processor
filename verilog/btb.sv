@@ -109,8 +109,9 @@ module btb #(
             $display("resolving_branch_pc: %h", resolving_branch_PC);
             for (int i = 0; i < `N; ++i) begin
                 $display("target_pc[%d]: %h", i, target_PCs[i]);
-                $display("btb_hits[%d]: %h", i, btb_hits[i]);
+                $display("btb_hits[%d]: %h", i, btb_hits[i]); 
             end
+            
         end
     end
 

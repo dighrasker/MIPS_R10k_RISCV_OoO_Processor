@@ -107,7 +107,8 @@ module branchstack #(
                 resolving_valid = 1'b1;
                 resolving_branch_PC = branch_stack[i].original_PC;
                 resolving_valid_branch = !branch_stack[i].is_jump;
-                if (b_mm_mispred || (branch_stack[i].is_jump && (target_PC != branch_stack[i].recovery_PC))) begin
+                if (b_mm_mispred) begin
+                    // || (branch_stack[i].is_jump && (target_PC != branch_stack[i].recovery_PC))
                     restore_valid = 1;
                     PC_restore = (predict_taken && !branch_stack[i].is_jump) ? branch_stack[i].recovery_PC : target_PC;
                     rob_tail_restore = branch_stack[i].rob_tail;

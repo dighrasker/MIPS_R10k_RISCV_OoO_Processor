@@ -117,16 +117,16 @@ module rs #(
             rs_data <= rs_data_next_next;
             rs_valid <= next_rs_valid;
         end
-        $display("------ RS --------");
-        $display("b_mm_mispred: %b", b_mm_mispred);
-        $display("b_mm_resolve: %b", b_mm_resolve);
-        for (int i = 0; i < `RS_SZ; ++i) begin
-            $display("rs_data[%d].b_mask: %b", i, rs_data[i].b_mask);
-            $display("rs_data_next[%d].sq_mask: %b", i, rs_data_next[i].sq_mask);
-        end
-        for (int i = 0; i < `N; ++i) begin
-            $display("ETB_tags[%d].valid: %b", i, ETB_tags[i].valid);
-        end
+        // $display("------ RS --------");
+        // $display("b_mm_mispred: %b", b_mm_mispred);
+        // $display("b_mm_resolve: %b", b_mm_resolve);
+        // for (int i = 0; i < `RS_SZ; ++i) begin
+        //     $display("rs_data[%d].b_mask: %b", i, rs_data[i].b_mask);
+        //     $display("rs_data_next[%d].sq_mask: %b", i, rs_data_next[i].sq_mask);
+        // end
+        // for (int i = 0; i < `N; ++i) begin
+        //     $display("ETB_tags[%d].valid: %b", i, ETB_tags[i].valid);
+        // end
     end
 
     always_comb begin

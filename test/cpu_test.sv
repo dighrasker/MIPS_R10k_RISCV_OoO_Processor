@@ -401,7 +401,31 @@ module testbench;
     );
 `endif 
 
-    logic [$bits(MEM_BLOCK)][`DCACHE_LINES-1:0]
+    // DCACHE DATA EXPOSED
+    localparam WIDTH = $bits(MEM_BLOCK);
+
+    logic [`DCACHE_LINES-1:0][WIDTH-1:0] dcache_info;
+    DCACHE_META_DATA [`DCACHE_NUM_SETS-1:0] [`DCACHE_NUM_WAYS-1:0] dcache_meta_data;
+    assign dcache_info = verisimpleV.dcache_instance.dcache_mem.memData;
+    assign dcache_meta_data = verisimpleV.dcache_instance.dcache_meta_data;
+
+    logic [`VCACHE_LINES-1:0][WIDTH-1:0] vcache_info;
+    VCACHE_META_DATA [`VCACHE_LINES-1:0] vcache_meta_data;
+    assign vcache_info = verisimpleV.dcache_instance.vcache_mem.memData;
+    assign vcache_meta_data = verisimpleV.dcache_instance.vcache_meta_data;
+
+    DCACHE_MSHR_ENTRY [`MSHR_SZ-1:0] dcache_mshrs;
+    assign dcache_mshrs = verisimpleV.dcache_instance.mshrs;
+
+    WB_ENTRY [`WB_LINES-1:0] dcache_wb_buffer;
+    assign dcache_wb_buffer = verisimpleV.dcache_instance.wb_buffer;
+
+    // STORE BUFFER
+
+    SQ_POINTER sq_true_head;
+    SQ_POINTER sq_head;
+    STORE_QUEUE_PACKET [`SQ_SZ-1:0] store_queue;
+    assign sq_true_head = verisimpleV.store_queue_instance.true_head;
 
     // Generate System Clock
     always begin

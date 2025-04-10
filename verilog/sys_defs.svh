@@ -729,6 +729,7 @@ typedef struct packed {
     logic           valid;
     ADDR            PC;
     ADDR            NPC; // PC + 4
+    ADDR            predicted_PC;
     logic           conditional;
     ALU_OPA_SELECT  opa_select; // ALU opa mux select (ALU_OPA_xxx *)
     ALU_OPB_SELECT  opb_select; // ALU opb mux select (ALU_OPB_xxx *)
@@ -745,6 +746,7 @@ const BRANCH_PACKET NOP_BRANCH_PACKET = '{
     valid:              '0,
     PC:                 '0,
     NPC:                '0, // PC + 4
+    predicted_PC:       '0,
     conditional:        '0,
     opa_select:         OPA_IS_RS1, // ALU opa mux select (ALU_OPA_xxx *)
     opb_select:         OPB_IS_RS2, // ALU opb mux select (ALU_OPB_xxx *)

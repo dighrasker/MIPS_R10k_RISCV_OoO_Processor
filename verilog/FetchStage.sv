@@ -36,7 +36,7 @@ module Fetch #() (
     ADDR Next_PC_reg, PC_reg;
     logic [`N-1:0] valid_jump;
 
-    logic [`N-1:0] valid_branch, masked_valid_branch, shifted_branches;
+    logic [`N-1:0] valid_branch, masked_valid_branch, shifted_branches, shifted_jumps;
     logic [`N-1:0] valid_store;
 
     logic [`NUM_SCALAR_BITS-1:0] final_valid_inst_idx;
@@ -57,12 +57,13 @@ module Fetch #() (
     );
 
     assign shifted_branches = branches_taken << 1;
+    assign shifted_jumps = valid_jump << 1;
 
     lsb_psel_gen #(
         .WIDTH(`N),
         .REQS(1)
     ) right_most_inst_psel (
-        .req(cache_miss | shifted_branches),
+        .req(cache_miss | shifted_branches | shifted_jumps),
         .gnt(right_most_inst),
         .empty(no_limiting_inst)
     );
@@ -118,8 +119,9 @@ module Fetch #() (
             inst_buffer_inputs[i].is_jump = valid_jump[i];
         end
 
-        if(inst_valid && branches_taken[inst_valid - 1]) begin
-            Next_PC_reg = target_PCs[inst_valid - 1];
+        if(inst_valid && (branches_taken[inst_valid - 1] || valid_jump[inst_valid - 1])) begin
+            // Next_PC_reg = target_PCs[inst_valid - 1];
+            Next_PC_reg = inst_buffer_inputs[inst_valid - 1].predicted_PC;
         end else begin
             Next_PC_reg = PCs[inst_valid];
         end

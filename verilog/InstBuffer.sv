@@ -50,13 +50,13 @@ module instbuffer #() (
                     inst_buffer[(tail + i) % `FB_SZ] <= inst_buffer_inputs[i]; 
                 end
             end  
-            $display("inst_buffer_outputs_valid: %d", inst_buffer_outputs_valid);
-            $display("entries: %d", entries);
-            $display("inst_buffer_head: %d", head);
-            $display("inst_buffer_tail: %d", tail);
-            for (int i = 0; i < `FB_SZ; ++i) begin
-                $display("inst_buffer[%d].PC: %h", i, inst_buffer[i].PC);
-            end
+            // $display("inst_buffer_outputs_valid: %d", inst_buffer_outputs_valid);
+            // $display("entries: %d", entries);
+            // $display("inst_buffer_head: %d", head);
+            // $display("inst_buffer_tail: %d", tail);
+            // for (int i = 0; i < `FB_SZ; ++i) begin
+            //     $display("inst_buffer[%d].PC: %h", i, inst_buffer[i].PC);
+            // end
             head <= next_head;
             tail <= next_tail;
             entries <= next_entries;

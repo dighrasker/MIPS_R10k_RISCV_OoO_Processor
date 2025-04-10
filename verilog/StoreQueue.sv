@@ -118,8 +118,8 @@ module store_queue #(
         end
 
         always_ff @(posedge clock) begin
-            $display("byte_matches: %b", byte_matches);
-            $display("dependent_store: %b", dependent_store);
+            // $display("byte_matches: %b", byte_matches);
+            // $display("dependent_store: %b", dependent_store);
         end
     end
     endgenerate
@@ -152,7 +152,7 @@ module store_queue #(
             store_queue <= next_store_queue;
         end
 
-        $display("---------- STORE QUEUE -------------");
+        /*$display("---------- STORE QUEUE -------------");
         $display("store_req_valid: %b", store_req_valid);
         $display("store_req_addr: %h", store_req_addr);
         $display("store_req_data: %h", store_req_data);
@@ -174,7 +174,7 @@ module store_queue #(
         end
         for (int i = 0; i < `SQ_SZ; ++i) begin
             $display("next_store_queue[%d].byte_mask: %h", i, next_store_queue[i].byte_mask);
-        end
+        end*/
     end
 
 endmodule

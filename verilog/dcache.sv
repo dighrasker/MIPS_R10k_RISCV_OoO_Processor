@@ -592,7 +592,7 @@ module dcache (
             vcache_meta_data <= next_vcache_meta_data;
         end
 
-        $display("------------ DCACHE!!!!---------");
+        /*$display("------------ DCACHE!!!!---------");
         $display("mshr_true_head", mshr_true_head);
         $display("mshr_head", mshr_head);
         $display("mshr_tail", mshr_tail);
@@ -666,7 +666,7 @@ module dcache (
         // $display("load_miss: %b", load_miss);
         $display("mshr_full: %b", mshr_full);
         $display("load_req_addr: %b", load_req_addr);
-        $display("wb_spots: %d", wb_spots);
+        $display("wb_spots: %d", wb_spots);*/
     end
 
 endmodule

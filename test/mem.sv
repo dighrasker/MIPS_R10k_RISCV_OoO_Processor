@@ -137,21 +137,21 @@ module mem (
 
     always_ff @(posedge clock) begin
 
-        $display("------------- MEM ------------");
+        // $display("------------- MEM ------------");
 
-        $display("mem2proc_transaction_tag: %d", mem2proc_transaction_tag);
-        $display("mem2proc_command: %d", proc2mem_command);
-        $display("valid_address: %b", valid_address);
-        $display("proc2mem_addr: %d", proc2mem_addr);
-        $display("MEM_SIZE_IN_BYTES: %d", `MEM_SIZE_IN_BYTES);
-        $display("mem2proc_data_tag: %d", mem2proc_data_tag);
-        for (int i = 1; i <= `NUM_MEM_TAGS; ++i) begin
-            $display("waiting_for_bus[%d]: %b", i, waiting_for_bus[i]);
-        end
-        for (int i = 1; i <= `NUM_MEM_TAGS; ++i) begin
-            $display("cycles_left[%d]: %d", i, cycles_left[i]);
-        end
-        $display("acquire_tag: %b", acquire_tag);
+        // $display("mem2proc_transaction_tag: %d", mem2proc_transaction_tag);
+        // $display("mem2proc_command: %d", proc2mem_command);
+        // $display("valid_address: %b", valid_address);
+        // $display("proc2mem_addr: %d", proc2mem_addr);
+        // $display("MEM_SIZE_IN_BYTES: %d", `MEM_SIZE_IN_BYTES);
+        // $display("mem2proc_data_tag: %d", mem2proc_data_tag);
+        // for (int i = 1; i <= `NUM_MEM_TAGS; ++i) begin
+        //     $display("waiting_for_bus[%d]: %b", i, waiting_for_bus[i]);
+        // end
+        // for (int i = 1; i <= `NUM_MEM_TAGS; ++i) begin
+        //     $display("cycles_left[%d]: %d", i, cycles_left[i]);
+        // end
+        // $display("acquire_tag: %b", acquire_tag);
     end
 
 endmodule // module mem

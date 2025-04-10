@@ -214,6 +214,7 @@ generate
                 branch_packets[i].predict_taken = rs_data_next[branch_index].decoded_signals.predict_taken;
                 branch_packets[i].branch_func = rs_data_next[branch_index].decoded_signals.inst.b.funct3;
                 branch_packets[i].bmm = rs_data_next[branch_index].b_mask_mask;
+                branch_packets[i].predicted_PC = rs_data_next[branch_index].decoded_signals.predicted_PC;
 
                 // Get the data from the prf
                 if (complete_list[rs_data_next[branch_index].Source1]) begin
