@@ -230,21 +230,21 @@ module icache (
             mshrs <= next_mshrs;
             mshr_spots <= next_mshr_spots;
         end
-        $display("------- ICACHE -------- ");
-        $display("cache_miss: %b", cache_miss);
-        $display("icache_mem_trxn_tag: %d", icache_mem_trxn_tag);
-        $display("icache_mem_data_tag: %d", mem_data_packet.mem_tag);
-        $display("icache_mem_req_accepted: %d", icache_mem_req_accepted);
-        $display("mshr_head: %d", mshr_head);
-        $display("mshr_tail: %d", mshr_tail);
-        $display("mshr_spots: %d", mshr_spots);
-        $display("next_mshr_tail: %d", next_mshr_tail);
-        $display("prefetch_inst: %b", prefetch_inst);
-        $display("PC[0]: %h", PCs_out[0]);
-        for (int i = 0; i < `MSHR_SZ; ++i) begin
-            $display("mshr[%d].mem_tag: %d", i, mshrs[i].mem_tag);
-            $display("mshr[%d].addr: %h", i, mshrs[i].addr);
-        end
+        // $display("------- ICACHE -------- ");
+        // $display("cache_miss: %b", cache_miss);
+        // $display("icache_mem_trxn_tag: %d", icache_mem_trxn_tag);
+        // $display("icache_mem_data_tag: %d", mem_data_packet.mem_tag);
+        // $display("icache_mem_req_accepted: %d", icache_mem_req_accepted);
+        // $display("mshr_head: %d", mshr_head);
+        // $display("mshr_tail: %d", mshr_tail);
+        // $display("mshr_spots: %d", mshr_spots);
+        // $display("next_mshr_tail: %d", next_mshr_tail);
+        // $display("prefetch_inst: %b", prefetch_inst);
+        // $display("PC[0]: %h", PCs_out[0]);
+        // for (int i = 0; i < `MSHR_SZ; ++i) begin
+        //     $display("mshr[%d].mem_tag: %d", i, mshrs[i].mem_tag);
+        //     $display("mshr[%d].addr: %h", i, mshrs[i].addr);
+        // end
         // for (int i = 0; i < `PREFETCH_DIST; ++i) begin
         //     $display("mshr[%d].mem_tag: %d", i, mshrs[i].mem_tag);
         //     $display("mshr[%d].addr: %h", i, mshrs[i].addr);

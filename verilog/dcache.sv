@@ -274,7 +274,7 @@ module dcache (
             load_data_cache_packet.valid = 1'b1;
             dcache_rd_en = 1'b1;
 
-            dcache_idx = (load_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + load_dcache_idx;
+            dcache_idx = load_dcache_idx;
 
             load_data_cache_packet.byte_mask = 8'hFF; //shove that shi IN 
             load_data_cache_packet.data = dcache_data_out;
@@ -305,7 +305,7 @@ module dcache (
 
             dcache_rd_en = 1'b1;
             dcache_wr_en = 1'b1;
-            dcache_idx = (store_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + dcache_lru_idx[store_req_addr.dcache.set_idx];
+            dcache_idx = store_dcache_idx;
 
             dcache_wr_data = dcache_data_out;
             for (int i = 0; i < 4; ++i) begin
@@ -325,7 +325,7 @@ module dcache (
             vcache_wr_en = 1'b1;
 
             dcache_idx = (store_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + dcache_lru_idx[store_req_addr.dcache.set_idx];
-            vcache_idx = vcache_lru_idx;
+            vcache_idx = store_vcache_idx;
 
             dcache_wr_data = vcache_data_out; //return store to d$
             for (int i = 0; i < 4; ++i) begin
@@ -585,10 +585,11 @@ module dcache (
             vcache_meta_data <= next_vcache_meta_data;
         end
 
-        /*$display("------------ DCACHE!!!!---------");
+        $display("------------ DCACHE!!!!---------");
         $display("mshr_true_head", mshr_true_head);
         $display("mshr_head", mshr_head);
         $display("mshr_tail", mshr_tail);
+        $display("mshr_spots", mshr_spots);
         for (int i = 0; i < `MSHR_SZ; ++i) begin
             $display("mshrs[%d].valid: %b", i, mshrs[i].valid);
         end
@@ -623,22 +624,36 @@ module dcache (
             end
         end
         
+        for (int i = 0; i < `DCACHE_NUM_SETS; ++i) begin
+            for (int j = 0; j < `DCACHE_NUM_WAYS; ++j) begin
+                $display("dcache_meta_data[%d][%d].valid: %h", i, j, dcache_meta_data[i][j].valid);
+            end
+        end
+
+        for (int i = 0; i < `DCACHE_LINES; ++i) begin
+            $display("dcache_mem.memData[%d]: %h", i, dcache_mem.memData[i]);
+        end
+        
         $display("load_req_addr: %d", load_req_addr);
-        $display("store_req_addr: %d", store_req_addr);*/
-        // $display("load_data_cache_packet.valid: %b", load_data_cache_packet.valid);
-        // $display("load_data_cache_packet.data: %b", load_data_cache_packet.data);
-        // $display("dcache_mem_req_packet.prior: %d", dcache_mem_req_packet.prior);
-        // $display("mshr_allocated: %b", mshr_allocated);
-        // $display("store_miss: %b", store_miss);
-        // $display("store_request_valid: %b", store_req_valid);
-        // $display("store_request_addr: %b", store_req_addr);
-        // $display("store_vcache_hit: %b", store_vcache_hit);
-        // $display("store_dcache_hit: %b", store_dcache_hit);
-        // $display("store_mshr_hit: %b", store_mshr_hit);
-        // // $display("load_miss: %b", load_miss);
-        // $display("mshr_full: %b", mshr_full);
-        // $display("load_req_addr: %b", load_req_addr);
-        // $display("wb_spots: %d", wb_spots);
+        $display("store_req_addr: %d", store_req_addr);
+        $display("load_data_cache_packet.valid: %b", load_data_cache_packet.valid);
+        $display("load_data_cache_packet.data: %b", load_data_cache_packet.data);
+        $display("dcache_mem_req_packet.prior: %d", dcache_mem_req_packet.prior);
+        $display("mshr_allocated: %b", mshr_allocated);
+        $display("store_miss: %b", store_miss);
+        $display("store_request_valid: %b", store_req_valid);
+        $display("store_request_addr: %b", store_req_addr);
+        $display("store_vcache_hit: %b", store_vcache_hit);
+        $display("store_dcache_hit: %b", store_dcache_hit);
+        $display("load_vcache_hit: %b", load_vcache_hit);
+        $display("load_dcache_hit: %b", load_dcache_hit);
+        $display("load_vcache_idx: %d", load_vcache_idx);
+        $display("load_dcache_idx: %d", load_dcache_idx);
+        $display("store_mshr_hit: %b", store_mshr_hit);
+        // $display("load_miss: %b", load_miss);
+        $display("mshr_full: %b", mshr_full);
+        $display("load_req_addr: %b", load_req_addr);
+        $display("wb_spots: %d", wb_spots);
     end
 
 endmodule

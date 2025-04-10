@@ -46,7 +46,7 @@ module store_queue #(
 
     logic [`SQ_NUM_ENTRIES_BITS-1:0] sq_entries, next_sq_entries;
     logic [`SQ_NUM_ENTRIES_BITS-1:0] store_buffer_entries, next_store_buffer_entries;
-    logic [`SQ_NUM_ENTRIES_BITS-1:0] sq_mask, next_sq_mask;
+    logic [`SQ_SZ-1:0] sq_mask, next_sq_mask;
 
     assign sq_mask_combinational = sq_mask & (~resolving_sq_mask);
     assign next_store_buffer_entries = store_buffer_entries + num_store_retiring - store_req_accepted;
@@ -57,11 +57,11 @@ module store_queue #(
     assign next_true_head            = true_head + store_req_accepted;
     assign next_head                 = (head + num_store_retiring) % `SQ_SZ;
     assign next_tail                 = sq_restore_valid ? sq_tail_restore : (sq_tail + stores_dispatching);
-    assign sq_spots                  = (`SQ_SZ - sq_entries < `N) ? `SQ_SZ - sq_entries : `N;
+    assign sq_spots                  = ((`SQ_SZ - sq_entries) < `N) ? `SQ_SZ - sq_entries : `N;
 
-    assign next_sq_entries           = sq_restore_valid ? (next_head ^ sq_tail_restore) == (1'b1 << `SQ_IDX_BITS) ? `SQ_SZ : 
-                                                                                 sq_tail_restore.sq_idx - next_head.sq_idx : 
-                                                                      sq_entries + stores_dispatching - store_req_accepted;  // if restore valid -> if only parities different -> full
+    assign next_sq_entries           = sq_restore_valid ? ((next_head ^ sq_tail_restore) == (1'b1 << `SQ_IDX_BITS) ? `SQ_SZ : 
+                                                             (sq_tail_restore.sq_idx - next_head.sq_idx + `SQ_SZ) % `SQ_SZ) : 
+                                                                       sq_entries + stores_dispatching - store_req_accepted ;  // if restore valid -> if only parities different -> full
                                                                                                                               //                  -> else -> size = difference between indices
                                                                                                                               // else calculate with entries
 
@@ -70,14 +70,15 @@ module store_queue #(
     generate
     for (genvar i = 0; i < 4; ++i) begin
         logic [`SQ_SZ-1:0] byte_matches;
-        logic [`SQ_SZ-1:0] dependent_store; 
+        logic [`SQ_SZ-1:0] shifted_dependent_store; 
+        logic [`SQ_SZ-1:0] dependent_store;
 
         psel_gen #(
             .WIDTH(`SQ_SZ),
             .REQS(1)
         ) newest_inst (
             .req(byte_matches),
-            .gnt(dependent_store)
+            .gnt(shifted_dependent_store)
         );
         
         always_comb begin
@@ -91,7 +92,7 @@ module store_queue #(
             
             //squashing 
             for (int j = 0; j < `SQ_SZ; ++j) begin
-                if (j < (true_head.sq_idx - load_sq_tail.sq_idx)) begin
+                if (j < (true_head.sq_idx + `SQ_SZ - load_sq_tail.sq_idx) % `SQ_SZ) begin
                     byte_matches[j] = 1'b0;
                 end
             end
@@ -100,10 +101,12 @@ module store_queue #(
             if (true_head == load_sq_tail) begin
                 byte_matches = '0;
             end
+
         end
             // psel that shit
         
         always_comb begin
+            dependent_store = (shifted_dependent_store >> (`SQ_SZ - load_sq_tail.sq_idx)) | (shifted_dependent_store << load_sq_tail.sq_idx);
             sq_load_data.bytes[i] = '0;
             sq_data_mask[i] = 1'b0;
             for (int j = 0; j < `SQ_SZ; ++j) begin
@@ -112,6 +115,11 @@ module store_queue #(
                     sq_data_mask[i] = 1'b1;
                 end
             end
+        end
+
+        always_ff @(posedge clock) begin
+            $display("byte_matches: %b", byte_matches);
+            $display("true_head.sq_idx - load_sq_tail.sq_idx: %d", true_head.sq_idx - load_sq_tail.sq_idx);
         end
     end
     endgenerate
@@ -144,14 +152,18 @@ module store_queue #(
             store_queue <= next_store_queue;
         end
 
+        $display("---------- STORE QUEUE -------------");
         $display("store_req_valid: %b", store_req_valid);
         $display("store_req_addr: %b", store_req_addr);
-        $display("next_true_head: %b", next_true_head.sq_idx);
-        $display("true_head: %d", true_head.sq_idx);
+        $display("next_true_head: %b", next_true_head);
+        $display("true_head: %d", true_head);
         $display("store_req_accepted: %b", store_req_accepted);
+        $display("sq_entries: %b", sq_entries);
+        $display("sq_mask: %b", sq_mask);
         $display("next_head: %d", next_head.sq_idx);
         $display("next_tail: %d", next_tail.sq_idx);
         $display("resolving_sq_mask: %b", resolving_sq_mask);
+        $display("load_req_addr: %h", load_req_addr);
 
         for (int i = 0; i < `SQ_SZ; ++i) begin
             $display("next_store_queue[%d].addr: %h", i, next_store_queue[i].addr);
