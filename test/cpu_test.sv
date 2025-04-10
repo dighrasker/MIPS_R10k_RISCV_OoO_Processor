@@ -259,6 +259,7 @@ module testbench;
         .mem2proc_data_tag        (mem2proc_data_tag)
     );
 
+    
 
 `ifdef SIM
     ROB_sva rob_instance (
@@ -399,6 +400,8 @@ module testbench;
         .complete_gnt_bus               (verisimpleV.complete_gnt_bus)
     );
 `endif 
+
+    logic [$bits(MEM_BLOCK)][`DCACHE_LINES-1:0]
 
     // Generate System Clock
     always begin

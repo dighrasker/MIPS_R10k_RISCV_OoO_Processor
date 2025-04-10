@@ -70,8 +70,8 @@ module mult # (
         .internal_mult_packet_out ({internal_mult_packet_out, internal_mult_packets})
     );
 
-    // assign mult_result.result = (internal_mult_packet_out.func == M_MUL) ? internal_mult_packet_out.prev_sum[31:0]
-    assign mult_result.result = internal_mult_packet_out.prev_sum[31:0];
+    assign mult_result.result = (internal_mult_packet_out.func == M_MUL) ? internal_mult_packet_out.prev_sum[31:0] : internal_mult_packet_out.prev_sum[63:32];
+    //assign mult_result.result = internal_mult_packet_out.prev_sum[31:0]; //This sh is whack
     assign mult_result.completing_reg = internal_mult_packet_out.dest_reg_idx;
     assign mult_result.valid = internal_mult_packet_out.valid;
 endmodule // mult
