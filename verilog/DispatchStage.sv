@@ -208,17 +208,17 @@ module Dispatch (
             /*for (int i = 0; i < `ARCH_REG_SZ_R10K; ++i) begin
                 $display("map_table[%d]: %d", i, map_table[i]);
             end*/
-            for (int i = 0; i < `N; ++i) begin
-                $display("dest_arch_reg[%d]: %d\ndecoder_out[%d].has_dest: %b\nregs_to_use[%d]: %d", i, dest_arch_reg[i], i, decoder_out[i].has_dest, i, regs_to_use[i]);
-            end
-            $display("sq_spots: %d", sq_spots);
-            $display(
-                "num_dispatched: %d\ni_num_dispatched: %d\nrob_spots: %d\nrs_spots: %d",
-                num_dispatched,
-                i_num_dispatched,
-                rob_spots,
-                rs_spots
-            );
+            // for (int i = 0; i < `N; ++i) begin
+            //     $display("dest_arch_reg[%d]: %d\ndecoder_out[%d].has_dest: %b\nregs_to_use[%d]: %d", i, dest_arch_reg[i], i, decoder_out[i].has_dest, i, regs_to_use[i]);
+            // end
+            // $display("sq_spots: %d", sq_spots);
+            // $display(
+            //     "num_dispatched: %d\ni_num_dispatched: %d\nrob_spots: %d\nrs_spots: %d",
+            //     num_dispatched,
+            //     i_num_dispatched,
+            //     rob_spots,
+            //     rs_spots
+            // );
             map_table <= restore_valid ? map_table_restore : next_map_table;
         end
     end

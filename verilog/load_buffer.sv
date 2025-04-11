@@ -81,8 +81,8 @@ module load_buffer(
         end
     end
 
-    function logic [31:0] sign_extend(input DATA result, input logic [1:0] offset, input LOAD_FUNC func);
-        sign_extend = result >> offset;
+    function logic signed [31:0] sign_extend(input DATA result, input logic [1:0] offset, input LOAD_FUNC func);
+        sign_extend = result >> (offset*8);
         if (func[2]) begin
             // unsigned: zero-extend the data
             if (MEM_SIZE'(func[1:0]) == BYTE) begin
@@ -108,18 +108,18 @@ module load_buffer(
             load_buffer_valid <= next_load_buffer_valid;
             load_buffer <= next_load_buffer;       
         end
-        $display("load_cdb_grant: %b", load_cdb_gnt); //in case its some dont care
-        $display("load_buffer_valid: %b", load_buffer_valid); //in case its some dont care
-        $display("new_load: %b", new_load); //in case its some dont care
-        for(int ii = 0; ii < `LOAD_BUFFER_SZ; ++ii) begin
-            $display("load_buffer[%d].load_addr: %h", ii, load_buffer[ii].load_addr); //in case its some dont care
-            $display("load_buffer[%d].valid: %b", ii, load_buffer[ii].valid); //in case its some dont care
-            $display("next_load_buffer[%d].valid: %h", ii, next_load_buffer[ii].valid); //in case its some dont care
-            $display("load_buffer[%d].result: %h", ii, load_buffer[ii].result); //in case its some dont care
-            $display("load_buffer[%d].mshr_idx: %h", ii, load_buffer[ii].mshr_idx); //in case its some dont care
-            $display("load_buffer[%d].byte_mask: %b", ii, load_buffer[ii].byte_mask); //in case its some dont care
-            $display("load_result[%d].result: %h", ii, load_result[ii].result);
-        end
+        // $display("load_cdb_grant: %b", load_cdb_gnt); //in case its some dont care
+        // $display("load_buffer_valid: %b", load_buffer_valid); //in case its some dont care
+        // $display("new_load: %b", new_load); //in case its some dont care
+        // for(int ii = 0; ii < `LOAD_BUFFER_SZ; ++ii) begin
+        //     $display("load_buffer[%d].load_addr: %h", ii, load_buffer[ii].load_addr); //in case its some dont care
+        //     $display("load_buffer[%d].valid: %b", ii, load_buffer[ii].valid); //in case its some dont care
+        //     $display("next_load_buffer[%d].valid: %h", ii, next_load_buffer[ii].valid); //in case its some dont care
+        //     $display("load_buffer[%d].result: %h", ii, load_buffer[ii].result); //in case its some dont care
+        //     $display("load_buffer[%d].mshr_idx: %h", ii, load_buffer[ii].mshr_idx); //in case its some dont care
+        //     $display("load_buffer[%d].byte_mask: %b", ii, load_buffer[ii].byte_mask); //in case its some dont care
+        //     $display("load_result[%d].result: %h", ii, load_result[ii].result);
+        // end
     end
 
 endmodule

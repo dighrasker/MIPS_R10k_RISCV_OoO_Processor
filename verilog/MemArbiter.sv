@@ -62,16 +62,16 @@ module memarbiter (
     end
 
     always_ff @(posedge clock) begin
-        $display("---------MEM ARB -----------");
+        // $display("---------MEM ARB -----------");
 
-        $display("mem_trxn_tag: %d", mem_trxn_tag);
-        $display("mem_data_packet.data: %h", mem_data_packet.data);
-        $display("mem_data_packet.mem_tag: %d", mem_data_packet.mem_tag);
-        $display("dcache_mem_req_accepted: %b", dcache_mem_req_accepted);
-        $display("icache_mem_req_accepted: %b", icache_mem_req_accepted);
-        $display("proc2mem_command: %d", proc2mem_command);
-        $display("proc2mem_addr: %d", proc2mem_command);
-        $display("proc2mem_data: %d", proc2mem_command);
+        // $display("mem_trxn_tag: %d", mem_trxn_tag);
+        // $display("mem_data_packet.data: %h", mem_data_packet.data);
+        // $display("mem_data_packet.mem_tag: %d", mem_data_packet.mem_tag);
+        // $display("dcache_mem_req_accepted: %b", dcache_mem_req_accepted);
+        // $display("icache_mem_req_accepted: %b", icache_mem_req_accepted);
+        // $display("proc2mem_command: %d", proc2mem_command);
+        // $display("proc2mem_addr: %d", proc2mem_command);
+        // $display("proc2mem_data: %d", proc2mem_command);
     end
 
 endmodule

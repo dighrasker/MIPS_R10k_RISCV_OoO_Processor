@@ -130,8 +130,8 @@ module branchstack #(
             //branch_stack_spots <= next_branch_stack_spots;
             b_mask_reg <= next_b_mask;
             branch_stack <= next_branch_stack | branch_stack_entries;
-            $display("PC_restore: %h", PC_restore);
-            $display("restore_valid: %b", restore_valid);
+            // $display("PC_restore: %h", PC_restore);
+            // $display("restore_valid: %b", restore_valid);
         end
     end
 

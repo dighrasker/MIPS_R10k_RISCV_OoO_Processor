@@ -95,7 +95,7 @@ module branchpredictor #(
             bp_packets[i].gshare_PHT_idx = PCs_out[i][`HISTORY_BITS-1:0] ^ assigned_bhrs[i];
             bp_packets[i].BHR_state = assigned_bhrs[i];
             branches_taken[i] = btb_hits[i] && (next_meta_pht[PCs_out[i][`HISTORY_BITS-1:0]][1] ? bp_packets[i].gshare_predict_taken : bp_packets[i].simple_predict_taken);
-            $display("Branches taken[%d]: %b", i, branches_taken[i]);
+            // $display("Branches taken[%d]: %b", i, branches_taken[i]);
         end
     end
 
@@ -112,13 +112,13 @@ module branchpredictor #(
             simple_pht <= next_simple_pht;
         end
 
-        if (resolving_valid_branch) begin
-            $display("I'M RESOLVING!!!");
-        end
+        // if (resolving_valid_branch) begin
+        //     $display("I'M RESOLVING!!!");
+        // end
 
-        if (resolving_valid_branch && mispred) begin
-            $display("I'M MISPREDICTED!!!");
-        end
+        // if (resolving_valid_branch && mispred) begin
+        //     $display("I'M MISPREDICTED!!!");
+        // end
 
         // for (int i = 0; i < `PHT_SZ; ++i) begin
         //     $display("next_meta_pht[%d]: %b", i, next_meta_pht[i]);

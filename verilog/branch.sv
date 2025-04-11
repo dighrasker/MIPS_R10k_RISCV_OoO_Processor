@@ -63,11 +63,11 @@ module branch (
     end
 
     always_ff @(posedge clock) begin
-        $display("branch_packet.branch_func: %b", branch_packet.branch_func);
-        $display("branch_packet.source_reg_1: %b", branch_packet.source_reg_1);
-        $display("branch_packet.source_reg_2: %b", branch_packet.source_reg_2);
-        $display("branch_packet.source_reg_idx_1: %d", branch_packet.inst.r.rs1);
-        $display("branch_packet.source_reg_idx_2: %d", branch_packet.inst.r.rs2);
+        // $display("branch_packet.branch_func: %b", branch_packet.branch_func);
+        // $display("branch_packet.source_reg_1: %b", branch_packet.source_reg_1);
+        // $display("branch_packet.source_reg_2: %b", branch_packet.source_reg_2);
+        // $display("branch_packet.source_reg_idx_1: %d", branch_packet.inst.r.rs1);
+        // $display("branch_packet.source_reg_idx_2: %d", branch_packet.inst.r.rs2);
     end
 
 endmodule // conditional_branch

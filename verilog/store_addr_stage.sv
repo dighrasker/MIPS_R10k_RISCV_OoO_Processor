@@ -19,7 +19,7 @@ module store_addr_stage (
 
     assign sq_packet.valid = store_addr_packet.valid;
     assign sq_packet.addr = store_addr_packet.source_reg_1 + store_addr_packet.store_imm; 
-    assign sq_packet.result = store_addr_packet.source_reg_2;
+    assign sq_packet.result = store_addr_packet.source_reg_2 << (sq_packet.addr.w.offset*8);
     assign sq_packet.byte_mask = temp_byte_mask << sq_packet.addr.w.offset;
     assign sq_packet.dest_reg_idx = store_addr_packet.dest_reg_idx;
     assign resolving_sq_mask = store_addr_packet.sq_mask;
@@ -39,16 +39,16 @@ module store_addr_stage (
         end else begin
             store_addr_packet <= store_addr_packet_in;
         end
-        $display("------ Store addr --------");
-        $display("sq_packet.valid: %b", sq_packet.valid);
-        $display("sq_packet.addr: %b", sq_packet.addr);
-        $display("sq_packet.result: %b", sq_packet.result);
-        $display("sq_packet.byte_mask: %b", sq_packet.byte_mask);
-        $display("sq_packet.dest_reg_idx: %b", sq_packet.dest_reg_idx);
-        $display("store_addr_packet.sq_mask: %b", store_addr_packet.sq_mask);
-        $display("sq_packet.addr: %b", sq_packet.addr);
-        $display("store_addr_packet.source_reg_1: %d", store_addr_packet.source_reg_1);
-        $display("store_addr_packet.store_imm: %d", store_addr_packet.store_imm);
+        // $display("------ Store addr --------");
+        // $display("sq_packet.valid: %b", sq_packet.valid);
+        // $display("sq_packet.addr: %b", sq_packet.addr);
+        // $display("sq_packet.result: %b", sq_packet.result);
+        // $display("sq_packet.byte_mask: %b", sq_packet.byte_mask);
+        // $display("sq_packet.dest_reg_idx: %b", sq_packet.dest_reg_idx);
+        // $display("store_addr_packet.sq_mask: %b", store_addr_packet.sq_mask);
+        // $display("sq_packet.addr: %b", sq_packet.addr);
+        // $display("store_addr_packet.source_reg_1: %d", store_addr_packet.source_reg_1);
+        // $display("store_addr_packet.store_imm: %d", store_addr_packet.store_imm);
     end
 
 endmodule // alu
