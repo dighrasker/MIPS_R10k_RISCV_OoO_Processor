@@ -179,6 +179,7 @@ module dcache (
     always_comb begin 
         dcache_mem_req_packet = '0;
         wb_mem_accepted = 1'b0;
+
         if (mshr_allocated) begin
             dcache_mem_req_packet.valid = 1'b1;
             dcache_mem_req_packet.prior = 1'b1;
@@ -191,7 +192,7 @@ module dcache (
             dcache_mem_req_packet.data = next_wb_buffer[wb_head].data; 
             wb_mem_accepted = dcache_mem_req_accepted;
         end
-    end
+    end 
 
     // ---------------------- all hit logic -------------------- //
     always_comb begin
@@ -366,8 +367,9 @@ module dcache (
                 
                 // punt to wb buffer
                 if (vcache_meta_data[vcache_lru_idx].valid) begin
-                    next_wb_buffer[wb_tail] = vcache_data_out;
-                    wb_allocated = 1;
+                    next_wb_buffer[wb_tail].data = vcache_data_out;
+                    next_wb_buffer[wb_tail].addr = vcache_meta_data[vcache_lru_idx].addr;
+                    wb_allocated = 1'b1;
                 end
             end    
         end
@@ -475,12 +477,14 @@ module dcache (
         load_dcache_idx = '0;
         store_dcache_hit = 1'b0;
         store_dcache_idx = '0;
+
         for (int i = 0; i < `DCACHE_NUM_WAYS; ++i) begin
             if (load_req_valid && dcache_meta_data[load_req_addr.dcache.set_idx][i].valid && dcache_meta_data[load_req_addr.dcache.set_idx][i].addr.dcache.tag == load_req_addr.dcache.tag) begin
                 load_dcache_hit = 1;
                 load_dcache_idx = (load_req_addr.dcache.set_idx << `DCACHE_WAY_IDX_BITS) + i;
             end
         end
+
         for (int i = 0; i < `DCACHE_NUM_WAYS; ++i) begin
             if (store_req_valid && dcache_meta_data[store_req_addr.dcache.set_idx][i].valid && dcache_meta_data[store_req_addr.dcache.set_idx][i].addr.dcache.tag == store_req_addr.dcache.tag) begin
                 store_dcache_hit = 1;
@@ -536,11 +540,11 @@ module dcache (
         store_wb_idx = '0;
         for (int i = 0; i < `WB_LINES; ++i) begin
             if (i < `WB_LINES - wb_spots) begin
-                if(load_req_valid && wb_buffer[wb_head + i].addr.dw.addr == load_req_addr.dw.addr) begin
+                if(load_req_valid && wb_buffer[(wb_head + i) % `WB_LINES].addr.dw.addr == load_req_addr.dw.addr) begin
                     load_wb_hit = 1'b1;
                     load_wb_idx = wb_head + i;
-                end       
-                if (store_req_valid && wb_buffer[wb_head + i].addr.dw.addr == store_req_addr.dw.addr) begin
+                end
+                if (store_req_valid && wb_buffer[(wb_head + i) % `WB_LINES].addr.dw.addr == store_req_addr.dw.addr) begin
                     store_wb_hit = 1'b1;
                     store_wb_idx = wb_head + i;
                 end
@@ -550,8 +554,8 @@ module dcache (
 
     // update next pointers
     always_comb begin
-        next_wb_head = wb_head + wb_mem_accepted;
-        next_wb_tail = wb_tail + wb_allocated;
+        next_wb_head = (wb_head + wb_mem_accepted) % `WB_LINES;
+        next_wb_tail = (wb_tail + wb_allocated) % `WB_LINES;
         next_wb_spots = wb_spots + wb_mem_accepted - wb_allocated;
 
         next_mshr_head = (mshr_head + mem_data_returned) % `MSHR_SZ;
@@ -592,7 +596,7 @@ module dcache (
             vcache_meta_data <= next_vcache_meta_data;
         end
 
-        /*$display("------------ DCACHE!!!!---------");
+        $display("------------ DCACHE!!!!---------");
         $display("mshr_true_head", mshr_true_head);
         $display("mshr_head", mshr_head);
         $display("mshr_tail", mshr_tail);
@@ -647,7 +651,7 @@ module dcache (
         // end
 
         $display("load_req_valid: %b", load_req_valid);
-        $display("load_req_addr: %h", load_req_addr);
+        $display("load_req_addr: %d", load_req_addr);
         $display("store_req_valid: %b", store_req_valid);
         $display("store_req_addr: %h", store_req_addr);
         $display("store_req_byte_mask: %b", store_req_byte_mask);
@@ -665,8 +669,7 @@ module dcache (
         $display("store_mshr_hit: %b", store_mshr_hit);
         // $display("load_miss: %b", load_miss);
         $display("mshr_full: %b", mshr_full);
-        $display("load_req_addr: %b", load_req_addr);
-        $display("wb_spots: %d", wb_spots);*/
+        $display("wb_spots: %d", wb_spots);
     end
 
 endmodule

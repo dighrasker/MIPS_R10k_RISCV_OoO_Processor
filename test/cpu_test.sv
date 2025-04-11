@@ -401,31 +401,48 @@ module testbench;
     );
 `endif 
 
-    // DCACHE DATA EXPOSED
+    // UPDATED MEMORY
+    DATA [1:0] updated_memory [`MEM_64BIT_LINES-1:0];
+
     localparam WIDTH = $bits(MEM_BLOCK);
 
+    // DCACHE DATA EXPOSED
     logic [`DCACHE_LINES-1:0][WIDTH-1:0] dcache_info;
     DCACHE_META_DATA [`DCACHE_NUM_SETS-1:0] [`DCACHE_NUM_WAYS-1:0] dcache_meta_data;
     assign dcache_info = verisimpleV.dcache_instance.dcache_mem.memData;
     assign dcache_meta_data = verisimpleV.dcache_instance.dcache_meta_data;
 
+    //VCACHE DATA EXPOSED
     logic [`VCACHE_LINES-1:0][WIDTH-1:0] vcache_info;
     VCACHE_META_DATA [`VCACHE_LINES-1:0] vcache_meta_data;
     assign vcache_info = verisimpleV.dcache_instance.vcache_mem.memData;
     assign vcache_meta_data = verisimpleV.dcache_instance.vcache_meta_data;
 
+    //MSHRs DATA EXPOSED
+    MSHR_IDX mshr_true_head;
+    logic [`MSHR_NUM_ENTRIES_BITS-1:0] mshr_spots;
     DCACHE_MSHR_ENTRY [`MSHR_SZ-1:0] dcache_mshrs;
+    assign mshr_true_head = verisimpleV.dcache_instance.mshr_true_head;
+    assign mshr_spots = verisimpleV.dcache_instance.mshr_spots;
     assign dcache_mshrs = verisimpleV.dcache_instance.mshrs;
 
+    //WB BUFFER DATA EXPOSED
+    
+    WB_IDX wb_head;
+    logic [`WB_NUM_ENTRIES_BITS-1:0] wb_spots;
     WB_ENTRY [`WB_LINES-1:0] dcache_wb_buffer;
+    assign wb_head = verisimpleV.dcache_instance.wb_head;
+    assign wb_spots = verisimpleV.dcache_instance.wb_spots;
     assign dcache_wb_buffer = verisimpleV.dcache_instance.wb_buffer;
 
-    // STORE BUFFER
-
-    SQ_POINTER sq_true_head;
-    SQ_POINTER sq_head;
+    // STORE BUFFER DATA EXPOSED
+    SQ_POINTER sq_true_head, sq_head;
+    logic [`SQ_NUM_ENTRIES_BITS-1:0] store_buffer_entries;
     STORE_QUEUE_PACKET [`SQ_SZ-1:0] store_queue;
     assign sq_true_head = verisimpleV.store_queue_instance.true_head;
+    assign sq_head = verisimpleV.store_queue_instance.head;
+    assign store_buffer_entries = verisimpleV.store_queue_instance.store_buffer_entries;
+    assign store_queue = verisimpleV.store_queue_instance.store_queue;
 
     // Generate System Clock
     always begin
@@ -496,6 +513,80 @@ module testbench;
         $display("  %16t : Running Processor", $realtime);
     end
 
+    task show_curr_mem_and_status;
+        int showing_data;
+        updated_memory = memory.unified_memory;
+        $display("Current memory state and exit status:");
+        $display("@@@ Unified Memory contents hex on left, decimal on right: ");
+        $display("@@@");
+        showing_data = 0;
+        for (int k = 0; k <= `MEM_64BIT_LINES - 1; k = k+1) begin
+            //that sh is in memory
+
+            for (int l = 0; l < `DCACHE_NUM_SETS; ++l) begin
+                for (int m = 0; m < `DCACHE_NUM_WAYS; ++m) begin
+                    if (dcache_meta_data[l][m].valid && dcache_meta_data[l][m].addr.dw.addr == k) begin
+                        updated_memory[k] = dcache_info[(l * `DCACHE_NUM_WAYS) + m];
+                    end
+                end
+            end
+
+            //is the most updated version of k in vcache?
+            for (int l = 0; l < `VCACHE_LINES; ++l) begin
+                if(vcache_meta_data[l].valid && (vcache_meta_data[l].addr.dw.addr == k)) begin
+                    updated_memory[k] = vcache_info[l];
+                end 
+            end
+
+            //is the most updated version of k in wb_buffer?
+            for (int l = 0; l < `WB_LINES; ++l) begin
+                if (l < `WB_LINES - wb_spots) begin
+                    if (dcache_wb_buffer[(wb_head + l) % `WB_LINES].addr.dw.addr == k) begin
+                        updated_memory[k] = dcache_wb_buffer[(wb_head + l) % `WB_LINES].data;
+                    end
+                end
+            end
+
+            // $display("mshr_spots: %d", mshr_spots);
+            // $display("mshr_true_head: %d", mshr_true_head);
+            //is the most updated version of k in mshrs?
+            for(int l = 0; l < `MSHR_SZ; ++l) begin
+                if (l < `MSHR_SZ - mshr_spots) begin
+                    if (dcache_mshrs[(mshr_true_head + l) % `MSHR_SZ].addr.dw.addr == k) begin
+                        for(int m = 0; m < 2; ++m) begin
+                            for(int n = 0; n < 4; ++n) begin
+                                if(dcache_mshrs[(mshr_true_head + l) % `MSHR_SZ].byte_mask[m][n]) begin
+                                    updated_memory[k][m].bytes[n] = dcache_mshrs[(mshr_true_head + l) % `MSHR_SZ].data[m].bytes[n];
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            
+            for(int l = 0; l < `SQ_SZ; ++l) begin
+                if(l < store_buffer_entries) begin
+                    if (store_queue[(sq_true_head.sq_idx + l) % `SQ_SZ].addr.dw.addr == k) begin
+                        for(int m = 0; m < 4; ++m) begin
+                            if(store_queue[(sq_true_head.sq_idx + l) % `SQ_SZ].byte_mask[m]) begin
+                                updated_memory[k][store_queue[(sq_true_head.sq_idx + l) % `SQ_SZ].addr.dw.w_idx].bytes[m] = store_queue[(sq_true_head.sq_idx + l) % `SQ_SZ].result.bytes[m];
+                            end
+                        end
+                    end
+                end
+            end
+
+            if (updated_memory[k] != 0) begin
+                $display("@@@ mem[%5d] = %x : %0d", k*8, updated_memory[k],
+                                                        updated_memory[k]);
+                showing_data = 1;
+            end else if (showing_data != 0) begin
+                $display("@@@");
+                showing_data = 0;
+            end
+        end
+        $display("@@@");
+    endtask
 
     always @(negedge clock) begin
         if (reset) begin
@@ -527,6 +618,8 @@ module testbench;
 
             output_reg_writeback_and_maybe_halt();
 
+            show_curr_mem_and_status();
+
             // stop the processor
             if (error_status != NO_ERROR || clock_count > `TB_MAX_CYCLES) begin
 
@@ -537,6 +630,8 @@ module testbench;
                 $fclose(wb_fileno);
 
                 // display the final memory and status
+                $display("FRICK U");
+                @(negedge clock);
                 show_final_mem_and_status(error_status);
                 // output the final CPI
                 output_cpi_file();
@@ -606,15 +701,75 @@ module testbench;
     task show_final_mem_and_status;
         input EXCEPTION_CODE final_status;
         int showing_data;
+        
         begin
+            
+            updated_memory = memory.unified_memory;
             $fdisplay(out_fileno, "\nFinal memory state and exit status:\n");
             $fdisplay(out_fileno, "@@@ Unified Memory contents hex on left, decimal on right: ");
             $fdisplay(out_fileno, "@@@");
             showing_data = 0;
-            for (int k = 0; k <= `MEM_64BIT_LINES - 1; k = k+1) begin
-                if (memory.unified_memory[k] != 0) begin
-                    $fdisplay(out_fileno, "@@@ mem[%5d] = %x : %0d", k*8, memory.unified_memory[k],
-                                                             memory.unified_memory[k]);
+            for (int k = 0; k < `MEM_64BIT_LINES; ++k) begin
+                // is the most updated version of k in dcache?
+                for (int l = 0; l < `DCACHE_NUM_SETS; ++l) begin
+                    for (int m = 0; m < `DCACHE_NUM_WAYS; ++m) begin
+                        if (dcache_meta_data[l][m].valid && dcache_meta_data[l][m].addr.dw.addr == k) begin
+                            updated_memory[k] = dcache_info[(l * `DCACHE_NUM_WAYS) + m];
+                        end
+                    end
+                end
+
+                //is the most updated version of k in vcache?
+                for (int l = 0; l < `VCACHE_LINES; ++l) begin
+                    if(vcache_meta_data[l].valid && (vcache_meta_data[l].addr.dw.addr == k)) begin
+                        updated_memory[k] = vcache_info[l];
+                    end 
+                end
+
+                //is the most updated version of k in wb_buffer?
+                for (int l = 0; l < `WB_LINES; ++l) begin
+                    if (l < `WB_LINES - wb_spots) begin
+                        if (dcache_wb_buffer[(wb_head + l) % `WB_LINES].addr.dw.addr == k) begin
+                            updated_memory[k] = dcache_wb_buffer[(wb_head + l) % `WB_LINES].data;
+                        end
+                    end
+                end
+
+                // $display("mshr_spots: %d", mshr_spots);
+                // $display("mshr_true_head: %d", mshr_true_head);
+                //is the most updated version of k in mshrs?
+                for(int l = 0; l < `MSHR_SZ; ++l) begin
+                    if (l < `MSHR_SZ - mshr_spots) begin
+                        $display("HELLLOOOO: %h", dcache_mshrs[(mshr_true_head + l) % `MSHR_SZ].data);
+                        if (dcache_mshrs[(mshr_true_head + l) % `MSHR_SZ].addr.dw.addr == k) begin
+                            $display("HIIIIIIIIIIIII: %h", dcache_mshrs[(mshr_true_head + l) % `MSHR_SZ].data);
+                            for(int m = 0; m < 2; ++m) begin
+                                for(int n = 0; n < 4; ++n) begin
+                                    if(dcache_mshrs[(mshr_true_head + l) % `MSHR_SZ].byte_mask[m][n]) begin
+                                        updated_memory[k][m].bytes[n] = dcache_mshrs[(mshr_true_head + l) % `MSHR_SZ].data[m].bytes[n];
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                for(int l = 0; l < `SQ_SZ; ++l) begin
+                    if(l < store_buffer_entries) begin
+                        if (store_queue[(sq_true_head.sq_idx + l) % `SQ_SZ].addr.dw.addr == k) begin
+                            for(int m = 0; m < 4; ++m) begin
+                                if(store_queue[(sq_true_head.sq_idx + l) % `SQ_SZ].byte_mask[m]) begin
+                                    updated_memory[k][store_queue[(sq_true_head.sq_idx + l) % `SQ_SZ].addr.dw.w_idx].bytes[m] = store_queue[(sq_true_head.sq_idx + l) % `SQ_SZ].result.bytes[m];
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                //that sh is in memory
+                if (updated_memory[k] != 0) begin
+                    $fdisplay(out_fileno, "@@@ mem[%5d] = %x : %0d", k*8, updated_memory[k],
+                                                            updated_memory[k]);
                     showing_data = 1;
                 end else if (showing_data != 0) begin
                     $fdisplay(out_fileno, "@@@");
@@ -633,6 +788,8 @@ module testbench;
             $fclose(out_fileno);
         end
     endtask // task show_final_mem_and_status
+
+    
 
 
 

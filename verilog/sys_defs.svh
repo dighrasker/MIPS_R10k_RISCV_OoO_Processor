@@ -90,7 +90,7 @@ typedef logic [2:0]                         LOAD_FUNC;
 typedef logic [`SQ_SZ-1:0]                  SQ_MASK;
 typedef logic [`SQ_IDX_BITS-1:0]            SQ_IDX;
 typedef logic [2:0]                         STORE_FUNC;
-typedef logic [4:0]                         STORE_IMM;
+typedef logic [11:0]                        STORE_IMM;
 typedef logic [3:0]                         BYTE_MASK;
 typedef logic [`FU_ID_BITS-1:0]             FU_IDX;
 typedef logic [`HISTORY_BITS-1:0]           PHT_IDX;
