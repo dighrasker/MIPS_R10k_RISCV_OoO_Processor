@@ -812,7 +812,7 @@ typedef struct packed {
 typedef struct packed {
     logic           valid;
     DATA            source_reg_1;
-    DATA            source_reg_2;
+    logic [11:0]    source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;
     B_MASK          bm;
     SQ_POINTER      sq_tail;
