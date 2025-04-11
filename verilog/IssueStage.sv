@@ -518,6 +518,10 @@ always_ff @(posedge clock) begin
         // for (int i = 0; i < `NUM_FU_MULT; ++i) begin
         //     $display("mult_inst_gnt_bus[%d]  : %b", i, mult_inst_gnt_bus[i]);
         // end
+        // for (int i = 0; i < `NUM_FU_STORE; ++i) begin
+        //     $display("store_addr_packet[%d].source_reg_1: %b", i, store_addr_packet[i].source_reg_1);
+        //     $display("store_addr_packet[%d].source_reg_2: %b", i, store_addr_packet[i].source_reg_2);
+        // end
     end
 end
 

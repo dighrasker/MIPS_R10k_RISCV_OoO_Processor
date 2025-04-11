@@ -59,7 +59,7 @@ module store_queue #(
     assign next_tail                 = sq_restore_valid ? sq_tail_restore : (sq_tail + stores_dispatching);
     assign sq_spots                  = ((`SQ_SZ - sq_entries) < `N) ? `SQ_SZ - sq_entries : `N;
 
-    assign next_sq_entries           = sq_restore_valid ? ((next_head ^ sq_tail_restore) == (1'b1 << `SQ_IDX_BITS) ? `SQ_SZ : 
+    assign next_sq_entries           = sq_restore_valid ? ((next_true_head ^ sq_tail_restore) == (1'b1 << `SQ_IDX_BITS) ? `SQ_SZ : 
                                                         (sq_tail_restore.sq_idx - next_true_head.sq_idx + `SQ_SZ) % `SQ_SZ) : 
                                                                        sq_entries + stores_dispatching - store_req_accepted ;  // if restore valid -> if only parities different -> full
                                                                                                                               //                  -> else -> size = difference between indices
@@ -168,13 +168,15 @@ module store_queue #(
         // $display("load_req_addr: %h", load_req_addr);
 
         // for (int i = 0; i < `SQ_SZ; ++i) begin
-        //     $display("next_store_queue[%d].addr: %h", i, next_store_queue[i].addr);
+        //     $display("store_queue[%d].addr: %h", i, store_queue[i].addr);
         // end
+
         // for (int i = 0; i < `SQ_SZ; ++i) begin
-        //     $display("next_store_queue[%d].result: %d", i, next_store_queue[i].result);
+        //     $display("store_queue[%d].result: %h", i, store_queue[i].result);
         // end
+
         // for (int i = 0; i < `SQ_SZ; ++i) begin
-        //     $display("next_store_queue[%d].byte_mask: %h", i, next_store_queue[i].byte_mask);
+        //     $display("store_queue[%d].byte_mask: %h", i, store_queue[i].byte_mask);
         // end
     end
 
