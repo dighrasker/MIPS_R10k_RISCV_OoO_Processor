@@ -23,7 +23,7 @@
 // this is *your* processor, you decide these values (try analyzing which is best!)
 
 // superscalar width
-`define N 2
+`define N 1
 `define B_MASK_WIDTH 4
 `define NUM_B_MASK_BITS $clog2(`B_MASK_WIDTH + 1)
 `define CDB_SZ `N // This MUST match your superscalar width
@@ -90,7 +90,7 @@ typedef logic [2:0]                         LOAD_FUNC;
 typedef logic [`SQ_SZ-1:0]                  SQ_MASK;
 typedef logic [`SQ_IDX_BITS-1:0]            SQ_IDX;
 typedef logic [2:0]                         STORE_FUNC;
-typedef logic [11:0]                        STORE_IMM;
+typedef logic signed [11:0]                 STORE_IMM;
 typedef logic [3:0]                         BYTE_MASK;
 typedef logic [`FU_ID_BITS-1:0]             FU_IDX;
 typedef logic [`HISTORY_BITS-1:0]           PHT_IDX;
@@ -811,8 +811,8 @@ typedef struct packed {
 
 typedef struct packed {
     logic           valid;
-    DATA            source_reg_1;
-    logic [11:0]    source_reg_2;
+    logic signed [31:0] source_reg_1;
+    logic signed [31:0] source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;
     B_MASK          bm;
     SQ_POINTER      sq_tail;
@@ -873,7 +873,7 @@ const LOAD_BUFFER_PACKET NOP_LOAD_BUFFER_PACKET = '{
 
 typedef struct packed {
     logic           valid;
-    DATA            source_reg_1;
+    logic signed [31:0] source_reg_1;
     DATA            source_reg_2;
     STORE_IMM       store_imm;
     SQ_MASK         sq_mask;

@@ -521,11 +521,11 @@ module dcache (
         store_vcache_hit = 1'b0;
         store_vcache_idx = '0;
         for (int i = 0; i < `VCACHE_LINES; ++i) begin
-            if (load_req_valid && vcache_meta_data[i].addr.dw.addr == load_req_addr.dw.addr) begin
+            if (load_req_valid && vcache_meta_data[i].valid && vcache_meta_data[i].addr.dw.addr == load_req_addr.dw.addr) begin
                 load_vcache_hit = 1'b1;
                 load_vcache_idx = i;
             end 
-            if (store_req_valid && vcache_meta_data[i].addr.dw.addr == store_req_addr.dw.addr) begin
+            if (store_req_valid && vcache_meta_data[i].valid && vcache_meta_data[i].addr.dw.addr == store_req_addr.dw.addr) begin
                 store_vcache_hit = 1'b1;
                 store_vcache_idx = i;
             end
@@ -652,8 +652,8 @@ module dcache (
 
         $display("load_req_valid: %b", load_req_valid);
         $display("load_req_addr: %h", load_req_addr);
-        $display("store_req_valid: %b", store_req_valid);
-        $display("store_req_addr: %h", store_req_addr);
+        // $display("store_req_valid: %b", store_req_valid);
+        // $display("store_req_addr: %h", store_req_addr);
         $display("store_req_byte_mask: %b", store_req_byte_mask);
         $display("load_data_cache_packet.valid: %b", load_data_cache_packet.valid);
         $display("load_data_cache_packet.data: %b", load_data_cache_packet.data);
