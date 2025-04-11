@@ -65,7 +65,7 @@ module rob #(
             rob_tail <= next_tail;
             entries <= next_entries;
         end
-        $display("rob_entries: %d\nrob_head: %d\nrob_tail: %d", entries, head, rob_tail);
+        // $display("rob_entries: %d\nrob_head: %d\nrob_tail: %d", entries, head, rob_tail);
     end
 
 // Debug signals

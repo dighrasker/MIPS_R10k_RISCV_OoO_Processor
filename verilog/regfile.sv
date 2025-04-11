@@ -106,7 +106,7 @@ module regfile (
             reg_file <= '0;
         end else begin
             for(int i = 0; i < `N; ++i) begin
-                $display("cdb_reg[%d].result: %h", i, cdb_reg[i].result);
+                // $display("cdb_reg[%d].result: %h", i, cdb_reg[i].result);
                 if (cdb_reg[i].valid && (cdb_reg[i].completing_reg != 0)) begin
                     reg_file[cdb_reg[i].completing_reg] <= cdb_reg[i].result;
                 end

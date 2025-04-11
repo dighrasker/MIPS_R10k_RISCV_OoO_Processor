@@ -577,7 +577,7 @@ module testbench;
             end
 
             if (updated_memory[k] != 0) begin
-                $display("@@@ mem[%5d] = %x : %0d", k*8, updated_memory[k],
+                $display("@@@ mem[%h] = %x : %0d", k*8, updated_memory[k],
                                                         updated_memory[k]);
                 showing_data = 1;
             end else if (showing_data != 0) begin
@@ -618,7 +618,7 @@ module testbench;
 
             output_reg_writeback_and_maybe_halt();
 
-            show_curr_mem_and_status();
+            // show_curr_mem_and_status();
 
             // stop the processor
             if (error_status != NO_ERROR || clock_count > `TB_MAX_CYCLES) begin

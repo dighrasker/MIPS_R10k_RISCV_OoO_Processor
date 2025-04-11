@@ -152,29 +152,30 @@ module store_queue #(
             store_queue <= next_store_queue;
         end
 
-        $display("---------- STORE QUEUE -------------");
-        $display("store_req_valid: %b", store_req_valid);
-        $display("store_req_addr: %h", store_req_addr);
-        $display("store_req_data: %h", store_req_data);
-        $display("next_true_head: %b", next_true_head);
-        $display("true_head: %d", true_head);
-        $display("store_req_accepted: %b", store_req_accepted);
-        $display("sq_entries: %b", sq_entries);
-        $display("sq_mask: %b", sq_mask);
-        $display("head: %d", head);
-        $display("tail: %d", sq_tail);
-        $display("resolving_sq_mask: %b", resolving_sq_mask);
-        // $display("load_req_addr: %h", load_req_addr);
+        // $display("---------- STORE QUEUE -------------");
+        // $display("store_req_valid: %b", store_req_valid);
+        // $display("store_req_addr: %h", store_req_addr);
+        // $display("store_req_data: %h", store_req_data);
+        // $display("next_true_head: %b", next_true_head);
+        // $display("true_head: %d", true_head);
+        // $display("load_sq_tail: %d", load_sq_tail);
+        // $display("store_req_accepted: %b", store_req_accepted);
+        // $display("sq_entries: %b", sq_entries);
+        // $display("sq_mask: %b", sq_mask);
+        // $display("head: %d", head);
+        // $display("tail: %d", sq_tail);
+        // $display("resolving_sq_mask: %b", resolving_sq_mask);
+        // // $display("load_req_addr: %h", load_req_addr);
 
-        for (int i = 0; i < `SQ_SZ; ++i) begin
-            $display("next_store_queue[%d].addr: %h", i, next_store_queue[i].addr);
-        end
-        for (int i = 0; i < `SQ_SZ; ++i) begin
-            $display("next_store_queue[%d].result: %d", i, next_store_queue[i].result);
-        end
-        for (int i = 0; i < `SQ_SZ; ++i) begin
-            $display("next_store_queue[%d].byte_mask: %h", i, next_store_queue[i].byte_mask);
-        end
+        // for (int i = 0; i < `SQ_SZ; ++i) begin
+        //     $display("next_store_queue[%d].addr: %h", i, next_store_queue[i].addr);
+        // end
+        // for (int i = 0; i < `SQ_SZ; ++i) begin
+        //     $display("next_store_queue[%d].result: %d", i, next_store_queue[i].result);
+        // end
+        // for (int i = 0; i < `SQ_SZ; ++i) begin
+        //     $display("next_store_queue[%d].byte_mask: %h", i, next_store_queue[i].byte_mask);
+        // end
     end
 
 endmodule

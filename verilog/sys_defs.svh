@@ -628,7 +628,7 @@ typedef struct packed {
     logic               Source2_ready;
     B_MASK              b_mask;
     B_MASK_MASK         b_mask_mask;
-    SQ_IDX              sq_tail;
+    SQ_POINTER          sq_tail;
     SQ_MASK             sq_mask;
 } RS_PACKET;
 
@@ -815,7 +815,7 @@ typedef struct packed {
     DATA            source_reg_2;
     PHYS_REG_IDX    dest_reg_idx;
     B_MASK          bm;
-    SQ_IDX          sq_tail;
+    SQ_POINTER      sq_tail;
     LOAD_FUNC       load_func;
 } LOAD_ADDR_PACKET;
 
@@ -835,7 +835,7 @@ typedef struct packed {
     BYTE_MASK       byte_mask;
     ADDR            load_addr;
     B_MASK          bm;
-    SQ_IDX          sq_tail;
+    SQ_POINTER          sq_tail;
     LOAD_FUNC       load_func;
 } LOAD_DATA_PACKET;
 

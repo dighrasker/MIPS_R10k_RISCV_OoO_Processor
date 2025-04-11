@@ -100,8 +100,8 @@ module freddylist #(
             // entries <= `0;
         end else begin
             
-            $display("free_list:     %b", free_list);
-            $display("complete_list: %b", complete_list);
+            // $display("free_list:     %b", free_list);
+            // $display("complete_list: %b", complete_list);
             // for (int i = 0; i < `PHYS_REG_SZ_R10K; ++i) begin
             //     $display("free_list[%d]: %d", i, free_list[i]);
             //     // $display("free_list_restore[%d]: %d", i, free_list_restore[i]);
