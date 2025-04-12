@@ -213,9 +213,11 @@ module icache (
 
     // update next pointers
     always_comb begin
-        next_mshr_spots = restore_valid ? `MSHR_SZ - icache_mem_req_accepted : mshr_spots - icache_mem_req_accepted + mem_data_returned;
-        next_mshr_head = restore_valid ? mshr_tail : (mshr_head + mem_data_returned) % `MSHR_SZ;
+        // next_mshr_spots = restore_valid ? `MSHR_SZ - icache_mem_req_accepted : mshr_spots - icache_mem_req_accepted + mem_data_returned;
+        next_mshr_spots = restore_valid ? `MSHR_SZ : mshr_spots - icache_mem_req_accepted + mem_data_returned;
         next_mshr_tail = (mshr_tail + icache_mem_req_accepted) % `MSHR_SZ;
+        // next_mshr_head = restore_valid ? mshr_tail : (mshr_head + mem_data_returned) % `MSHR_SZ;
+        next_mshr_head = restore_valid ? next_mshr_tail : (mshr_head + mem_data_returned) % `MSHR_SZ;
     end
 
     always_ff @(posedge clock) begin

@@ -73,17 +73,17 @@ module load_data_stage (
         end else if (load_data_free) begin
             load_data_packet <= load_data_packet_in;
         end
-        $display("-------load data stage------");
-        $display("load_data_packet.valid: %h", load_data_packet.valid);
-        $display("load_data_packet.load_addr: %h", load_data_packet.load_addr);
-        $display("load_buffer_packet.result: %h", load_buffer_packet.result);
-        $display("load_buffer_packet.valid: %h", load_buffer_packet.valid);
-        $display("sq_load_data: %h", sq_load_data);
-        $display("load_data_packet.dest_reg_idx: %h", load_data_packet.dest_reg_idx);
-        $display("load_data_cache_packet.valid: %h", load_data_cache_packet.valid);
-        $display("load_data_cache_packet.byte_mask: %b", load_data_cache_packet.byte_mask);
-        $display("load_data_cache_packet.data: %h", load_data_cache_packet.data);
-        $display("load_data_cache_packet.mshr_idx: %d", load_data_cache_packet.mshr_idx);
+        // $display("-------load data stage------");
+        // $display("load_data_packet.valid: %h", load_data_packet.valid);
+        // $display("load_data_packet.load_addr: %h", load_data_packet.load_addr);
+        // $display("load_buffer_packet.result: %h", load_buffer_packet.result);
+        // $display("load_buffer_packet.valid: %h", load_buffer_packet.valid);
+        // $display("sq_load_data: %h", sq_load_data);
+        // $display("load_data_packet.dest_reg_idx: %h", load_data_packet.dest_reg_idx);
+        // $display("load_data_cache_packet.valid: %h", load_data_cache_packet.valid);
+        // $display("load_data_cache_packet.byte_mask: %b", load_data_cache_packet.byte_mask);
+        // $display("load_data_cache_packet.data: %h", load_data_cache_packet.data);
+        // $display("load_data_cache_packet.mshr_idx: %d", load_data_cache_packet.mshr_idx);
 
     end
 

@@ -80,7 +80,7 @@ module Fetch #() (
     encoder #(`N, `NUM_SCALAR_BITS) final_inst_encoder (right_most_inst, right_most_inst_idx);
 
     assign inst_valid_temp = no_limiting_inst ? `N : right_most_inst_idx;
-    assign inst_valid = (inst_valid_temp <= inst_buffer_spots) ? inst_valid_temp : inst_buffer_spots;
+    assign inst_valid = restore_valid ? 0 : (inst_valid_temp <= inst_buffer_spots) ? inst_valid_temp : inst_buffer_spots;
     assign PCs_out = PCs[`N-1:0];
 
     always_comb begin
@@ -97,7 +97,8 @@ module Fetch #() (
         valid_branch = '0;
         valid_jump = '0;
         valid_store = '0;
-        Next_PC_reg = restore_valid ? PC_restore : PC_reg;
+        // Next_PC_reg = restore_valid ? PC_restore : PC_reg;
+        Next_PC_reg = PC_reg;
         
         //creating array of N PCs that will be sent to ICache
         for (int i = 0; i <= `N; ++i) begin
@@ -131,8 +132,8 @@ module Fetch #() (
     always_ff @(posedge clock) begin
         if (reset) begin
             PC_reg <= 0;             // initial PC value is 0 (the memory address where our program starts)
-        // end else if (restore_valid) begin
-        //     PC_reg <= PC_restore;    // or transition to next PC if valid
+        end else if (restore_valid) begin
+            PC_reg <= PC_restore;    // or transition to next PC if valid
         end else begin
             PC_reg <= Next_PC_reg;
         end
