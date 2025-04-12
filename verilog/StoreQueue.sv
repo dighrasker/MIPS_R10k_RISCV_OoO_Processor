@@ -159,25 +159,25 @@ module store_queue #(
         // $display("next_true_head: %b", next_true_head);
         // $display("true_head: %d", true_head);
         // $display("load_sq_tail: %d", load_sq_tail);
-        // $display("store_req_accepted: %b", store_req_accepted);
+        $display("store_req_accepted: %b", store_req_accepted);
         // $display("sq_entries: %b", sq_entries);
         // $display("sq_mask: %b", sq_mask);
-        // $display("head: %d", head);
-        // $display("tail: %d", sq_tail);
+        $display("head: %d", head);
+        $display("tail: %d", sq_tail);
         // $display("resolving_sq_mask: %b", resolving_sq_mask);
         // $display("load_req_addr: %h", load_req_addr);
 
-        // for (int i = 0; i < `SQ_SZ; ++i) begin
-        //     $display("store_queue[%d].addr: %h", i, store_queue[i].addr);
-        // end
+        for (int i = 0; i < `SQ_SZ; ++i) begin
+            $display("store_queue[%d].addr: %h", i, store_queue[i].addr);
+        end
 
-        // for (int i = 0; i < `SQ_SZ; ++i) begin
-        //     $display("store_queue[%d].result: %h", i, store_queue[i].result);
-        // end
+        for (int i = 0; i < `SQ_SZ; ++i) begin
+            $display("store_queue[%d].result: %h", i, store_queue[i].result);
+        end
 
-        // for (int i = 0; i < `SQ_SZ; ++i) begin
-        //     $display("store_queue[%d].byte_mask: %h", i, store_queue[i].byte_mask);
-        // end
+        for (int i = 0; i < `SQ_SZ; ++i) begin
+            $display("store_queue[%d].byte_mask: %h", i, store_queue[i].byte_mask);
+        end
     end
 
 endmodule

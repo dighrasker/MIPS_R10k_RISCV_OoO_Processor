@@ -626,7 +626,7 @@ module dcache (
         end
 
         for (int i = 0; i < `VCACHE_LINES; ++i) begin
-            $display("vcache_meta_data[%d].addr: %b", i, vcache_meta_data[i].addr);
+            $display("vcache_meta_data[%d].addr: %h", i, vcache_meta_data[i].addr);
         end
 
         for (int i = 0; i < `DCACHE_NUM_SETS; ++i) begin
@@ -652,11 +652,12 @@ module dcache (
 
         $display("load_req_valid: %b", load_req_valid);
         $display("load_req_addr: %h", load_req_addr);
-        // $display("store_req_valid: %b", store_req_valid);
-        // $display("store_req_addr: %h", store_req_addr);
+        $display("store_req_valid: %b", store_req_valid);
+        $display("store_req_addr: %h", store_req_addr);
+        $display("store_req_data: %h", store_req_data);
         $display("store_req_byte_mask: %b", store_req_byte_mask);
         $display("load_data_cache_packet.valid: %b", load_data_cache_packet.valid);
-        $display("load_data_cache_packet.data: %b", load_data_cache_packet.data);
+        $display("load_data_cache_packet.data: %h", load_data_cache_packet.data);
         $display("mshr_allocated: %b", mshr_allocated);
         $display("store_miss: %b", store_miss);
         $display("load_miss: %b", load_miss);
@@ -667,7 +668,7 @@ module dcache (
         $display("load_vcache_idx: %d", load_vcache_idx);
         $display("load_dcache_idx: %d", load_dcache_idx);
         $display("store_mshr_hit: %b", store_mshr_hit);
-        // $display("load_miss: %b", load_miss);
+        $display("load_miss: %b", load_miss);
         $display("mshr_full: %b", mshr_full);
         $display("wb_spots: %d", wb_spots);
     end

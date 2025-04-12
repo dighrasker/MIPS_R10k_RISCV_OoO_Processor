@@ -164,7 +164,7 @@ module Dispatch (
                                 branch_stack_entries[j].is_jump = decoder_out[i].is_jump;
                                 branch_stack_entries[j].original_PC = decoder_out[i].PC;
                                 branch_stack_entries[j].sq_tail = sq_tail_combinational;
-                                branch_stack_entries[j].sq_mask = sq_mask_combinational;
+                                branch_stack_entries[j].sq_mask = dispatch_sq_mask;
                                 next_b_mask[j] = 1'b1;
                                 rs_entries[i].b_mask_mask[j] = 1'b1;
                             end
