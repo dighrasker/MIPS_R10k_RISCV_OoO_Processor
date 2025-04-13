@@ -58,6 +58,19 @@ module dcache (
     input MEM_TAG                           dcache_mem_trxn_tag,
     input MEM_DATA_PACKET                   mem_data_packet,
     output MEM_REQ_PACKET                   dcache_mem_req_packet
+
+`ifdef DEBUG
+    , output logic [`DCACHE_LINES-1:0]             [$bits(MEM_BLOCK)-1:0] debug_mem_data_dcache,
+    output logic [`VCACHE_LINES-1:0]               [$bits(MEM_BLOCK)-1:0] debug_mem_data_vcache,
+    output DCACHE_META_DATA [`DCACHE_NUM_SETS-1:0] [`DCACHE_NUM_WAYS-1:0] debug_dcache_meta_data,
+    output VCACHE_META_DATA                           [`VCACHE_LINES-1:0] debug_vcache_meta_data, 
+    output MSHR_IDX                                                       debug_mshr_true_head,
+    output logic                             [`MSHR_NUM_ENTRIES_BITS-1:0] debug_mshr_spots,
+    output DCACHE_MSHR_ENTRY                               [`MSHR_SZ-1:0] debug_mshrs,
+    output WB_IDX                                                         debug_wb_head,
+    output logic                               [`WB_NUM_ENTRIES_BITS-1:0] debug_wb_spots,
+    output WB_ENTRY                                       [`WB_LINES-1:0] debug_wb_buffer
+`endif
 );
 
     // ------- WB BUFFER WIRES -------- //
@@ -156,6 +169,9 @@ module dcache (
         .we   (dcache_wr_en),
         .waddr(dcache_idx),
         .wdata(dcache_wr_data)
+    `ifdef DEBUG
+        , .debug_mem_data(debug_mem_data_dcache)
+    `endif
     );
 
     memDP #(
@@ -172,6 +188,9 @@ module dcache (
         .we   (vcache_wr_en),
         .waddr(vcache_idx),
         .wdata(vcache_wr_data)
+    `ifdef DEBUG
+        , .debug_mem_data(debug_mem_data_vcache)
+    `endif
     );
 
     // ---------------------- create mem req ------------------- //
@@ -672,5 +691,16 @@ module dcache (
         // $display("mshr_full: %b", mshr_full);
         // $display("wb_spots: %d", wb_spots);
     end
+
+`ifdef DEBUG
+    assign debug_dcache_meta_data = dcache_meta_data;
+    assign debug_vcache_meta_data = vcache_meta_data;
+    assign debug_mshr_true_head   = mshr_true_head;
+    assign debug_mshr_spots       = mshr_spots;
+    assign debug_mshrs            = mshrs;
+    assign debug_wb_head          = wb_head;
+    assign debug_wb_spots         = wb_spots;
+    assign debug_wb_buffer        = wb_buffer;
+`endif
 
 endmodule

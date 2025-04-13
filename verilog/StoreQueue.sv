@@ -36,7 +36,15 @@ module store_queue #(
 
     // ------------- TO/FROM Retire -------------- //
     input logic                 [`NUM_SCALAR_BITS-1:0] num_store_retiring
+
+`ifdef DEBUG
+    , output SQ_POINTER                     debug_sq_true_head, 
+    output SQ_POINTER                       debug_sq_head,
+    output logic [`SQ_NUM_ENTRIES_BITS-1:0] debug_store_buffer_entries,
+    output STORE_QUEUE_PACKET  [`SQ_SZ-1:0] debug_store_queue
+`endif
 ); 
+
     STORE_QUEUE_PACKET     [`SQ_SZ-1:0] store_queue, next_store_queue;
 
     //TODO: Update these to add parity bit to the front assuming SQ_SZ is a power of 2
@@ -179,5 +187,12 @@ module store_queue #(
         //     $display("store_queue[%d].byte_mask: %h", i, store_queue[i].byte_mask);
         // end
     end
+
+`ifdef DEBUG
+    assign debug_sq_true_head = true_head;
+    assign debug_sq_head = head;
+    assign debug_store_buffer_entries = store_buffer_entries;
+    assign debug_store_queue = store_queue;
+`endif
 
 endmodule

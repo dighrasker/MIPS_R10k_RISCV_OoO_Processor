@@ -36,6 +36,23 @@ module cpu (
     // Debug outputs: these signals are solely used for debugging in testbenches
     // Do not change for project 3
     // You should definitely change these for project 4
+`ifdef DEBUG
+    , output logic [`DCACHE_LINES-1:0][$bits(MEM_BLOCK)-1:0] debug_mem_data_dcache,
+    output logic [`VCACHE_LINES-1:0][$bits(MEM_BLOCK)-1:0] debug_mem_data_vcache,
+    output DCACHE_META_DATA [`DCACHE_NUM_SETS-1:0] [`DCACHE_NUM_WAYS-1:0] debug_dcache_meta_data,
+    output VCACHE_META_DATA                           [`VCACHE_LINES-1:0] debug_vcache_meta_data, 
+    output MSHR_IDX                                                       debug_mshr_true_head,
+    output logic                             [`MSHR_NUM_ENTRIES_BITS-1:0] debug_mshr_spots,
+    output DCACHE_MSHR_ENTRY                               [`MSHR_SZ-1:0] debug_mshrs,
+    output WB_IDX                                                         debug_wb_head,
+    output logic                               [`WB_NUM_ENTRIES_BITS-1:0] debug_wb_spots,
+    output WB_ENTRY                                       [`WB_LINES-1:0] debug_wb_buffer,
+    output SQ_POINTER                                                     debug_sq_true_head, 
+    output SQ_POINTER                                                     debug_sq_head,
+    output logic                               [`SQ_NUM_ENTRIES_BITS-1:0] debug_store_buffer_entries,
+    output STORE_QUEUE_PACKET                                [`SQ_SZ-1:0] debug_store_queue
+`endif
+
 );
 
     // ONLY OUTPUTS ARE UNCOMMENTED
@@ -458,6 +475,12 @@ module cpu (
         .store_req_addr(store_req_addr),
         .store_req_byte_mask(store_req_byte_mask),        
         .num_store_retiring(num_store_retiring)
+    `ifdef DEBUG
+        , .debug_sq_true_head(debug_sq_true_head),
+        .debug_sq_head(debug_sq_head),
+        .debug_store_buffer_entries(debug_store_buffer_entries),
+        .debug_store_queue(debug_store_queue)
+    `endif
     );
 
     dcache dcache_instance (
@@ -476,6 +499,18 @@ module cpu (
         .dcache_mem_trxn_tag(mem_trxn_tag),
         .mem_data_packet(mem_data_packet),                  //NEED TO INSTANTIATE MEM DATA PACKET 
         .dcache_mem_req_packet(dcache_mem_req_packet)
+    `ifdef DEBUG
+        , .debug_mem_data_dcache(debug_mem_data_dcache),
+        .debug_mem_data_vcache(debug_mem_data_vcache),
+        .debug_dcache_meta_data(debug_dcache_meta_data),
+        .debug_vcache_meta_data(debug_vcache_meta_data),
+        .debug_mshr_true_head(debug_mshr_true_head),
+        .debug_mshr_spots(debug_mshr_spots),
+        .debug_mshrs(debug_mshrs),
+        .debug_wb_head(debug_wb_head),
+        .debug_wb_spots(debug_wb_spots),
+        .debug_wb_buffer(debug_wb_buffer)
+    `endif
     );
 
 

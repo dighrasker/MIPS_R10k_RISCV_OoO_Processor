@@ -209,6 +209,35 @@ module testbench;
 //     PHYS_REG_IDX [`N-1:0] phys_regs_retiring;
 //     PHYS_REG_IDX [`N-1:0] retire_phys_regs_reading;
 
+    // UPDATED MEMORY
+    DATA [1:0] updated_memory [`MEM_64BIT_LINES-1:0];
+
+    localparam WIDTH = $bits(MEM_BLOCK);
+
+    // DCACHE DATA EXPOSED
+    logic [`DCACHE_LINES-1:0][WIDTH-1:0] dcache_info;
+    DCACHE_META_DATA [`DCACHE_NUM_SETS-1:0] [`DCACHE_NUM_WAYS-1:0] dcache_meta_data;
+
+    //VCACHE DATA EXPOSED
+    logic [`VCACHE_LINES-1:0][WIDTH-1:0] vcache_info;
+    VCACHE_META_DATA [`VCACHE_LINES-1:0] vcache_meta_data;
+
+    //MSHRs DATA EXPOSED
+    MSHR_IDX mshr_true_head;
+    logic [`MSHR_NUM_ENTRIES_BITS-1:0] mshr_spots;
+    DCACHE_MSHR_ENTRY [`MSHR_SZ-1:0] dcache_mshrs;
+
+    //WB BUFFER DATA EXPOSED
+    
+    WB_IDX wb_head;
+    logic [`WB_NUM_ENTRIES_BITS-1:0] wb_spots;
+    WB_ENTRY [`WB_LINES-1:0] dcache_wb_buffer;
+
+    // STORE BUFFER DATA EXPOSED
+    SQ_POINTER sq_true_head, sq_head;
+    logic [`SQ_NUM_ENTRIES_BITS-1:0] store_buffer_entries;
+    STORE_QUEUE_PACKET [`SQ_SZ-1:0] store_queue;
+    
     // Instantiate the Pipeline
     cpu verisimpleV (
         // Inputs
@@ -227,8 +256,22 @@ module testbench;
         .proc2mem_size    (proc2mem_size),
 `endif
         // .inst(insts),
-        .committed_insts(committed_insts)
+        .committed_insts(committed_insts),
         // .PCs_out(PCs)
+        .debug_mem_data_dcache(dcache_info), // DEBUG ALWAYS HIGH
+        .debug_mem_data_vcache(vcache_info),
+        .debug_dcache_meta_data(dcache_meta_data),
+        .debug_vcache_meta_data(vcache_meta_data),
+        .debug_mshr_true_head(mshr_true_head),
+        .debug_mshr_spots(mshr_spots),
+        .debug_mshrs(dcache_mshrs),
+        .debug_wb_head(wb_head),
+        .debug_wb_spots(wb_spots),
+        .debug_wb_buffer(dcache_wb_buffer),
+        .debug_sq_true_head(sq_true_head),
+        .debug_sq_head(sq_head),
+        .debug_store_buffer_entries(store_buffer_entries),
+        .debug_store_queue(store_queue)
     );
 
     // cpu_sva cpu_sva (
@@ -330,7 +373,7 @@ module testbench;
         .resolving_valid_branch (verisimpleV.resolving_valid_branch),
         .resolving_valid        (verisimpleV.resolving_valid),
         .resolving_target_PC    (verisimpleV.resolving_target_PC),
-        .resolving_branch_PC    (verisimpleV.resolving_branchPC)
+       debug_mem_data_vcache  .resolving_branch_PC    (verisimpleV.resolving_branchPC)
         `ifdef DEBUG
         , .bs_debug(bs_debug)
         `endif
@@ -401,48 +444,7 @@ module testbench;
     );
 `endif 
 
-    // UPDATED MEMORY
-    DATA [1:0] updated_memory [`MEM_64BIT_LINES-1:0];
-
-    localparam WIDTH = $bits(MEM_BLOCK);
-
-    // DCACHE DATA EXPOSED
-    logic [`DCACHE_LINES-1:0][WIDTH-1:0] dcache_info;
-    DCACHE_META_DATA [`DCACHE_NUM_SETS-1:0] [`DCACHE_NUM_WAYS-1:0] dcache_meta_data;
-    assign dcache_info = verisimpleV.dcache_instance.dcache_mem.memData;
-    assign dcache_meta_data = verisimpleV.dcache_instance.dcache_meta_data;
-
-    //VCACHE DATA EXPOSED
-    logic [`VCACHE_LINES-1:0][WIDTH-1:0] vcache_info;
-    VCACHE_META_DATA [`VCACHE_LINES-1:0] vcache_meta_data;
-    assign vcache_info = verisimpleV.dcache_instance.vcache_mem.memData;
-    assign vcache_meta_data = verisimpleV.dcache_instance.vcache_meta_data;
-
-    //MSHRs DATA EXPOSED
-    MSHR_IDX mshr_true_head;
-    logic [`MSHR_NUM_ENTRIES_BITS-1:0] mshr_spots;
-    DCACHE_MSHR_ENTRY [`MSHR_SZ-1:0] dcache_mshrs;
-    assign mshr_true_head = verisimpleV.dcache_instance.mshr_true_head;
-    assign mshr_spots = verisimpleV.dcache_instance.mshr_spots;
-    assign dcache_mshrs = verisimpleV.dcache_instance.mshrs;
-
-    //WB BUFFER DATA EXPOSED
     
-    WB_IDX wb_head;
-    logic [`WB_NUM_ENTRIES_BITS-1:0] wb_spots;
-    WB_ENTRY [`WB_LINES-1:0] dcache_wb_buffer;
-    assign wb_head = verisimpleV.dcache_instance.wb_head;
-    assign wb_spots = verisimpleV.dcache_instance.wb_spots;
-    assign dcache_wb_buffer = verisimpleV.dcache_instance.wb_buffer;
-
-    // STORE BUFFER DATA EXPOSED
-    SQ_POINTER sq_true_head, sq_head;
-    logic [`SQ_NUM_ENTRIES_BITS-1:0] store_buffer_entries;
-    STORE_QUEUE_PACKET [`SQ_SZ-1:0] store_queue;
-    assign sq_true_head = verisimpleV.store_queue_instance.true_head;
-    assign sq_head = verisimpleV.store_queue_instance.head;
-    assign store_buffer_entries = verisimpleV.store_queue_instance.store_buffer_entries;
-    assign store_queue = verisimpleV.store_queue_instance.store_queue;
 
     // Generate System Clock
     always begin
