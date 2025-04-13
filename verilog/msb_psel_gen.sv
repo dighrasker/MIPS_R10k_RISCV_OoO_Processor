@@ -13,7 +13,7 @@ module msb_psel_gen #(parameter WIDTH, REQS) (
     assign empty = ~(|req);
 
     genvar j, k;
-    for (j=0; j<REQS; j=j+1)
+    for (j=0; j<REQS; ++j)
     begin:foo
         // Zero'th request/grant trivial, just normal priority selector
         if (j == 0) begin
@@ -42,7 +42,7 @@ module msb_psel_gen #(parameter WIDTH, REQS) (
 
     // assign final gnt outputs
     // gnt_bus is the full-width vector for each request line, so OR everything
-    for(k=0; k<WIDTH; k=k+1)
+    for(k=0; k<WIDTH; ++k)
     begin:final_gnt
         if(k < REQS) begin
             assign gnt = gnt_bus[(k+1)*WIDTH-1 -: WIDTH];

@@ -29,9 +29,7 @@ module lsb_psel_gen #(parameter WIDTH, REQS) (
             assign tmp_reqs[(j+1)*WIDTH-1 -: WIDTH] = tmp_reqs[(j)*WIDTH-1 -: WIDTH] &
                                                         ~tmp_gnts[(j)*WIDTH-1 -: WIDTH];
 
-
             assign gnt_bus[(j+1)*WIDTH-1 -: WIDTH] = tmp_gnts[(j+1)*WIDTH-1 -: WIDTH];
-
         end
 
         // instantiate priority selectors
@@ -59,17 +57,6 @@ module lsb_wand_sel (req, gnt);
     input wire  [WIDTH-1:0] req;
     output wand [WIDTH-1:0] gnt;
 
-    // wire  [WIDTH-1:0] req_r;
-    // wand  [WIDTH-1:0] gnt_r;
-
-    //priority selector
-    // genvar i;
-    // reverse inputs and outputs
-    // for (i = 0; i < WIDTH; i = i + 1)
-    // begin : reverse
-    //     assign req_r[WIDTH-1-i] = req[i];
-    //     assign gnt[WIDTH-1-i]   = gnt_r[i];
-    // end
     genvar i;
     for (i = 0; i < WIDTH-1 ; i = i + 1)
     begin : foo

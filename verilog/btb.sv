@@ -18,7 +18,7 @@ module btb #(
     input  ADDR                                  resolving_target_PC,
     input  ADDR                                  resolving_branch_PC
     //NOTE: This is not necessarily PC restore, this is whatever the target address is for a valid resolving branch
-
+    
 `ifdef DEBUG
     , output BTB_DEBUG                            btb_debug //define BP_DEBUG later sys defs
 `endif
