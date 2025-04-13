@@ -50,7 +50,7 @@ module dcache (
     input logic                             store_req_valid,
     input ADDR                              store_req_addr,
     input DATA                              store_req_data,
-    input SQ_MASK                           store_req_byte_mask,
+    input BYTE_MASK                           store_req_byte_mask,
     output logic                            store_req_accepted, // TODO Make sure this works. At the very least, this is how it should be thought of
 
     // ------------------ MAIN MEM ------------------- //

@@ -29,7 +29,7 @@
 `define CDB_SZ `N // This MUST match your superscalar width
 `define NUM_SCALAR_BITS $clog2(`N+1) // Number of bits to represent [0, NUM_SCALAR_BITS]
 `define HISTORY_BITS 5
-`define BTB_NUM_WAYS 4
+`define BTB_NUM_WAYS 8
 
 // functional units (you should decide if you want more or fewer types of FUs)
 `define NUM_FU_BRANCH 1
@@ -47,7 +47,7 @@
 `define ROB_NUM_ENTRIES_BITS $clog2(`ROB_SZ + 1)
 `define RS_SZ 32
 `define MSHR_SZ 16
-`define SQ_SZ 4
+`define SQ_SZ 8
 `define SQ_IDX_BITS $clog2(`SQ_SZ)
 `define SQ_NUM_ENTRIES_BITS $clog2(`SQ_SZ + 1)
 `define RS_SZ_BITS $clog2(`RS_SZ)
@@ -66,7 +66,7 @@
 `define NUM_SQ_BITS $clog2(`SQ_SZ+1)
 `define MSHR_IDX_BITS $clog2(`MSHR_SZ)
 `define MSHR_NUM_ENTRIES_BITS $clog2(`MSHR_SZ+1)
-`define LOAD_BUFFER_SZ 4
+`define LOAD_BUFFER_SZ 8
 `define PHT_SZ 2 ** `HISTORY_BITS
 `define CTR_SZ 2 
 
