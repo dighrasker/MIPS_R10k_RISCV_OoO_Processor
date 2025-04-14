@@ -267,7 +267,6 @@ CPU_SOURCES = verilog/alu.sv \
 			  verilog/load_data_stage.sv \
 			  verilog/load_buffer.sv \
 			  verilog/load.sv \
-			  verilog/MapTable.sv \
 			  verilog/MemArbiter.sv \
 			  verilog/memDP.sv \
 		      verilog/mult.sv \
