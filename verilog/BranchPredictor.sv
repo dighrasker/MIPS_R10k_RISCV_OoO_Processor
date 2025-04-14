@@ -106,9 +106,9 @@ module branchpredictor #(
             // gshare_pht <= '0;
             // simple_pht <= '0;
             for (int i = 0; i < `PHT_SZ; ++i) begin
-                simple_pht[i] = 1'b1;
-                gshare_pht[i] = 2'b10;
-                meta_pht[i] = 1'b1;
+                simple_pht[i] <= 1'b1;
+                gshare_pht[i] <= 2'b10;
+                meta_pht[i] <= 1'b1;
             end
         end else begin
             bhr <= (resolving_valid_branch && mispred) ? ((bs_bp_packet.BHR_state << 1) | actual_taken) : next_bhr; 
