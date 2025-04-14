@@ -189,7 +189,7 @@ GREP = grep -E --color=auto
 # ---- Modules to Test ---- #
 
 # TODO: add more modules here
-MODULES = alu branch branchstack CountOnes cpu decoder mult rob rs freddylist branchstack instbuffer retire dispatch msb_psel_gen lsb_psel_gen
+MODULES = alu branch branchstack branchpredictor btb CountOnes cpu dcache decoder Dispatch encoder ExecuteStage Fetch freddylist icache instbuffer Issue load_addr_stage load_buffer load_data_stage load lsb_psel_gen memarbiter memDP msb_psel_gen mult_stage mult psel_gen regfile retire rob rs store_addr_stage store_queue
 
 # TODO: update this if you add more header files
 ALL_HEADERS = $(CPU_HEADERS)
