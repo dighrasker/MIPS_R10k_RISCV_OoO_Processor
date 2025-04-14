@@ -5,7 +5,7 @@ echo "Running $program"
 make $program.out
 # &> /dev/null
 echo "Comparing writeback output for $program"
-wb_diff_output=$(diff output/$program.wb correct_out/$program.wb)
+wb_diff_output=$(diff output/$program.wb correct_out_o1/$program.wb)
 if [ -z "$wb_diff_output" ]; then
     echo "Files are identical"
 else
@@ -13,7 +13,7 @@ else
     # echo "$wb_diff_output"
 fi
 echo "Comparing memory output for $program"
-mem_diff_output=$(diff <(grep "^@@@" output/$program.out) <(grep "^@@@" correct_out/$program.out))
+mem_diff_output=$(diff <(grep "^@@@" output/$program.out) <(grep "^@@@" correct_out_o1/$program.out))
 if [ -z "$mem_diff_output" ]; then
     echo "Files are identical"
 else

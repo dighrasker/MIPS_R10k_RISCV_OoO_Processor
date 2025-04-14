@@ -191,6 +191,7 @@ module store_queue #(
 `ifdef DEBUG
     assign debug_sq_true_head = true_head;
     assign debug_sq_head = head;
+    // assign debug_store_buffer_entries = store_buffer_entries + num_store_retiring; // yes or no
     assign debug_store_buffer_entries = store_buffer_entries;
     assign debug_store_queue = store_queue;
 `endif
