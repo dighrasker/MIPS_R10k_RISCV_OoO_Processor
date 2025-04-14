@@ -248,7 +248,7 @@ CPU_TESTBENCH = test/pipeline_print.c \
 # verilog/cpu.sv is implicit
 CPU_SOURCES = verilog/alu.sv \
 		      verilog/branch.sv \
-			  verilog/branchstack.sv \
+			  verilog/BranchStack.sv \
 			  verilog/BranchPredictor.sv \
 			  verilog/btb.sv \
 			  verilog/CountOnes.sv \
