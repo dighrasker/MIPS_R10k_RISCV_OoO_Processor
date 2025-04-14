@@ -23,7 +23,7 @@ for source_file in programs/*.s programs/*.c; do
         make $program.out &> /dev/null
 
         echo "Comparing writeback output for $program"
-        diff output/$program.wb correct_out_o2/$program.wb
+        diff output/$program.wb correct_out_o3/$program.wb
 
         if [ $? = 1 ]
         then
@@ -31,7 +31,7 @@ for source_file in programs/*.s programs/*.c; do
         fi
 
         echo "Comparing memory output for $program"
-        diff <(grep "@@@" output/$program.out) <(grep "@@@" correct_out_o2/$program.out)
+        diff <(grep "@@@" output/$program.out) <(grep "@@@" correct_out_o3/$program.out)
 
         if [ $? = 1 ]
         then
