@@ -742,9 +742,7 @@ module testbench;
                 //is the most updated version of k in mshrs?
                 for(int l = 0; l < `MSHR_SZ; ++l) begin
                     if (l < `MSHR_SZ - mshr_spots) begin
-                        $display("HELLLOOOO: %h", dcache_mshrs[(mshr_true_head + l) % `MSHR_SZ].data);
                         if (dcache_mshrs[(mshr_true_head + l) % `MSHR_SZ].addr.dw.addr == k) begin
-                            $display("HIIIIIIIIIIIII: %h", dcache_mshrs[(mshr_true_head + l) % `MSHR_SZ].data);
                             for(int m = 0; m < 2; ++m) begin
                                 for(int n = 0; n < 4; ++n) begin
                                     if(dcache_mshrs[(mshr_true_head + l) % `MSHR_SZ].byte_mask[m][n]) begin
