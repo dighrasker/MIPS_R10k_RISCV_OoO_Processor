@@ -96,7 +96,7 @@
 # there should be no need to change anything for project 3
 
 # this is a global clock period variable used in the tcl script and referenced in testbenches
-export CLOCK_PERIOD = 8.0
+export CLOCK_PERIOD = 7.9
 
 # the Verilog Compiler command and arguments
 VCS =  vcs -sverilog -xprop=tmerge +vc -Mupdate -Mdir=build/csrc -line -full64 -kdb -lca -nc \
@@ -124,7 +124,7 @@ SHELL := $(SHELL) -o pipefail
 # https://gcc.gnu.org/onlinedocs/gcc/RISC-V-Options.html
 CFLAGS     = -mno-relax -march=rv32im -mabi=ilp32 -nostartfiles -std=gnu11 -mstrict-align -mno-div
 # adjust the optimization if you want programs to run faster; this may obfuscate/change their instructions
-OFLAGS     = -O2
+OFLAGS     = -Os
 ASFLAGS    = -mno-relax -march=rv32im -mabi=ilp32 -nostartfiles -Wno-main -mstrict-align
 OBJFLAGS   = -SD -M no-aliases
 OBJCFLAGS  = --set-section-flags .bss=contents,alloc,readonly
