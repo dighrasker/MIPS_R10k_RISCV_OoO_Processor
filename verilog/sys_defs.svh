@@ -127,7 +127,7 @@ typedef logic [1:0] CHOOSER;
 
 
 // number of mult stages (2, 4) (you likely don't need 8)
-`define MULT_STAGES 8
+`define MULT_STAGES 16
 
 ///////////////////////////////
 // ---- Basic Constants ---- //
@@ -209,7 +209,7 @@ typedef logic [`ICACHE_WAY_IDX_BITS-1:0] ICACHE_WAY_IDX;
 typedef logic [`ICACHE_LINE_BITS-1:0] ICACHE_IDX;
 
 // dcache definitions
-`define DCACHE_NUM_WAYS 8
+`define DCACHE_NUM_WAYS 16
 `define DCACHE_LINES 32
 `define DCACHE_NUM_SETS `DCACHE_LINES / `DCACHE_NUM_WAYS
 `define DCACHE_LINE_BITS $clog2(`DCACHE_LINES)

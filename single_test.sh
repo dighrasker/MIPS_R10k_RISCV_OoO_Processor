@@ -2,7 +2,7 @@ program="$1"
 echo "Comparing ground truth output to new processor for program: $program"
 cd ~/eecs470/Final_Project
 echo "Running $program"
-make $program.out
+make $program.out -B
 # &> /dev/null
 echo "Comparing writeback output for $program"
 wb_diff_output=$(diff output/$program.wb correct_out_o2/$program.wb)

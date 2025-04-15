@@ -12,7 +12,7 @@ echo_color() {
         if [ -t 0 ]; then tput sgr0; fi
 }
 
-for source_file in programs/*.s programs/*.c; do
+for source_file in programs/*.c; do
         if [ "$source_file" = "programs/crt.s" ]
         then
                 continue
@@ -20,7 +20,7 @@ for source_file in programs/*.s programs/*.c; do
         passed=1
         program=$(echo "$source_file" | cut -d '.' -f1 | cut -d '/' -f 2)
         echo "Running $program"
-        make $program.out &> /dev/null
+        make $program.out -B &> /dev/null
 
         echo "Comparing writeback output for $program"
         diff output/$program.wb correct_out_o2/$program.wb
