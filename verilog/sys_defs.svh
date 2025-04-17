@@ -127,7 +127,7 @@ typedef logic [1:0] CHOOSER;
 
 
 // number of mult stages (2, 4) (you likely don't need 8)
-`define MULT_STAGES 16
+`define MULT_STAGES 8
 
 ///////////////////////////////
 // ---- Basic Constants ---- //
